@@ -277,8 +277,8 @@ function applyProductFilters() {
     });
 }
 
-// 8. PENCARIAN REALTIME
-function filterProducts() {
+// 8. PENCARIAN REALTIME & SERVER-SIDE FALLBACK
+function filterProducts(event) {
     let searchInput = document.getElementById('search_product');
     let searchKeyword = searchInput ? searchInput.value.trim() : '';
     
@@ -286,20 +286,33 @@ function filterProducts() {
     let maxPriceInput = document.getElementById('filter_max_price');
     let hasPriceFilter = (minPriceInput && minPriceInput.value !== '') || (maxPriceInput && maxPriceInput.value !== '');
 
+    // Jika pengguna menekan tombol Enter pada input pencarian, kirim request pencarian ke Server
+    if (event && event.key === 'Enter') {
+        let form = searchInput.closest('form');
+        if (form) {
+            form.submit();
+            return;
+        }
+    }
+
     if ((searchKeyword.length > 0 || hasPriceFilter) && navLevel !== 3) {
         navLevel = 3;
         selectedCategory = 'all';
         selectedProvider = '';
         
-        document.getElementById('view_main_categories').classList.add('hidden');
-        document.getElementById('view_sub_providers').classList.add('hidden');
-        document.getElementById('view_products_grid').classList.remove('hidden');
+        let mainCat = document.getElementById('view_main_categories');
+        let subProv = document.getElementById('view_sub_providers');
+        let prodGrid = document.getElementById('view_products_grid');
+
+        if (mainCat) mainCat.classList.add('hidden');
+        if (subProv) subProv.classList.add('hidden');
+        if (prodGrid) prodGrid.classList.remove('hidden');
         
-        // Aktifkan tampilan filter harga jika melakukan pencarian global / filter harga dari halaman utama
         togglePriceFilterVisibility(true);
         
         let backBtn = document.getElementById('btn_back_category');
         if (backBtn) backBtn.classList.remove('hidden');
     }
+
     applyProductFilters();
 }

@@ -73,23 +73,24 @@ function closeAddToCartModal() {
 function openCustomAmountModal() {
     let providerName = (typeof selectedProvider !== 'undefined' && selectedProvider) ? selectedProvider.toUpperCase() : 'TRANSFER / TOP-UP';
     
-    document.getElementById('modal_product_name').innerText = providerName + ' (Nominal Bebas)';
+    let modalTitle = document.getElementById('modal_product_name');
+    if (modalTitle) modalTitle.innerText = providerName + ' (Nominal Bebas)';
     
     let customProductIdInput = document.getElementById('modal_product_id');
     let firstProductItem = document.querySelector('.product-item');
 
     if (customProductIdInput) {
+        let assignedId = 1;
         if (firstProductItem) {
             let matchData = firstProductItem.getAttribute('onclick');
             if (matchData) {
                 let idMatch = matchData.match(/"id":(\d+)/);
-                customProductIdInput.value = (idMatch && idMatch[1]) ? idMatch[1] : 1;
-            } else {
-                customProductIdInput.value = 1;
+                if (idMatch && idMatch[1]) {
+                    assignedId = idMatch[1];
+                }
             }
-        } else {
-            customProductIdInput.value = 1;
         }
+        customProductIdInput.value = assignedId;
     }
 
     let phoneContainer = document.getElementById('phone_field_container');
@@ -131,7 +132,8 @@ function openCustomAmountModal() {
 
     if (qtyContainer) qtyContainer.classList.add('hidden');
 
-    document.getElementById('cartModal').classList.remove('hidden');
+    let cartModal = document.getElementById('cartModal');
+    if (cartModal) cartModal.classList.remove('hidden');
 }
 
 

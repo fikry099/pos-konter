@@ -39,24 +39,47 @@ class PosController extends Controller
     }
 
     /**
-     * Menampilkan Halaman Transaksi Kasir POS
+     * Menampilkan Halaman Transaksi Kasir POS (Super Dioptimalkan)
      */
-    public function index()
+    public function index(Request $request)
     {
         $storeId = $this->getActiveStoreId();
-
         $activeShift = Shift::getActiveShift($storeId);
-        
-        // Load kategori berserta produk dan parent-nya
-        $categories  = Category::whereNull('parent_id')
-            ->with(['allChildren', 'products'])
+
+        // 1. Ambil Kategori Utama
+        $categories = Category::whereNull('parent_id')
+            ->with(['allChildren'])
             ->get();
 
-        $products    = Product::where('is_active', true)
-            ->with(['category.parent'])
-            ->get();
+        // 2. Ambil Produk + Stok Cabang dengan 1 Kueri (Bebas N+1 Problem)
+        $query = Product::query()
+            ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
+            ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
+                $join->on('products.id', '=', 'store_product_stocks.product_id')
+                     ->where('store_product_stocks.store_id', '=', $storeId);
+            })
+            ->where('products.is_active', true)
+            ->with(['category.parent']);
 
-        // Ambil Daftar Karyawan yang Bertugas pada Shift Aktif Ini
+        // Filter Pencarian
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('products.name', 'like', "%{$search}%")
+                  ->orWhere('products.code', 'like', "%{$search}%")
+                  ->orWhere('products.barcode', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter Kategori
+        if ($request->filled('category_id')) {
+            $query->where('products.category_id', $request->input('category_id'));
+        }
+
+        // Terapkan Pagination 60 produk per halaman agar loading < 0.5 detik
+        $products = $query->paginate(60)->appends($request->all());
+
+        // 3. Daftar Karyawan Shift
         $shiftStaffs = collect();
         if ($activeShift) {
             if ($activeShift->user_ids && is_array($activeShift->user_ids)) {
@@ -66,14 +89,8 @@ class PosController extends Controller
             }
         }
 
-        // Attach nilai current_stock per cabang aktif ke setiap instance produk
-        foreach ($products as $product) {
-            $product->current_stock = $this->getProductStock($storeId, $product->id);
-        }
-
+        // 4. Sinkronisasi Keranjang
         $cart = session()->get('pos_cart', []);
-
-        // Sinkronisasi otomatis: Jika staf di shift cuma 1 orang, langsung assign secara default
         if ($shiftStaffs->count() === 1) {
             $defaultUserId = $shiftStaffs->first()->id;
             $updated = false;
@@ -114,7 +131,6 @@ class PosController extends Controller
         $cart = session()->get('pos_cart', []);
         $isCustom = $request->input('is_custom_amount') == '1';
 
-        // Tentukan ID default jika staf shift hanya 1 orang
         $defaultStaffId = null;
         if ($activeShift) {
             if (is_array($activeShift->user_ids) && count($activeShift->user_ids) === 1) {
@@ -150,7 +166,7 @@ class PosController extends Controller
                 'qty'               => 1,
                 'subtotal'          => $sellingPrice,
                 'profit'            => $adminFee,
-                'served_by_user_id' => null, // Digital tidak butuh bonus penanggung jawab
+                'served_by_user_id' => null,
             ];
 
             session()->put('pos_cart', $cart);
@@ -209,9 +225,6 @@ class PosController extends Controller
         }
     }
 
-    /**
-     * METHOD BARU: Update Karyawan Penanggung Jawab pada Item Keranjang
-     */
     public function assignStaff(Request $request, $key)
     {
         $cart = session()->get('pos_cart', []);
@@ -291,9 +304,6 @@ class PosController extends Controller
             return redirect()->route('shifts.index')->with('error', 'Shift tidak aktif! Buka shift terlebih dahulu.');
         }
 
-        // =========================================================================
-        // VALIDASI AKSESORIS MANDATORI PENANGGUNG JAWAB
-        // =========================================================================
         foreach ($cart as $item) {
             $productType = strtolower(trim($item['type'] ?? 'physical'));
             if ($productType !== 'digital') {
@@ -392,7 +402,6 @@ class PosController extends Controller
             }
 
             DB::commit();
-
             session()->forget('pos_cart');
 
             return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil disimpan!');

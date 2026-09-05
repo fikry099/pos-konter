@@ -102,4 +102,14 @@
         @endforelse
 
     </div>
+
+    <!-- NONTIFIKASI & LINK PAGINATION SERVER-SIDE -->
+    <div class="mt-6 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="text-xs text-slate-500 font-medium">
+            Menampilkan <span class="font-bold text-slate-800">{{ $products->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-800">{{ $products->lastItem() ?? 0 }}</span> dari <span class="font-bold text-indigo-600">{{ $products->total() }}</span> produk
+        </div>
+        <div>
+            {{ $products->links() }}
+        </div>
+    </div>
 </div>
