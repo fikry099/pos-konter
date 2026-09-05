@@ -1,11 +1,11 @@
 FROM php:8.4-fpm
 
-# Install dependencies sistem & ekstensi PHP
+# Install dependencies sistem, ekstensi PHP, dan Nginx
 RUN apt-get update && apt-get install -y \
     git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Konfigurasi Nginx agar mengarah ke folder public Laravel & port dinamis Railway
+# Konfigurasi Nginx untuk Laravel pada port 8080
 RUN rm /etc/nginx/sites-enabled/default
 COPY <<EOF /etc/nginx/sites-available/default
 server {
@@ -19,13 +19,16 @@ server {
 
     location ~ \.php$ {
         include fastcgi_params;
-        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
 }
 EOF
 RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
+# Buat folder run untuk socket PHP-FPM
+RUN mkdir -p /var/run/php
 
 # Copy Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -42,5 +45,5 @@ RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
 
 EXPOSE 8080
 
-# Jalankan PHP-FPM di background dan Nginx di foreground
-CMD service php8.4-fpm start && nginx -g "daemon off;"
+# Jalankan PHP-FPM dan Nginx secara bersamaan
+CMD php-fpm -D && nginx -g "daemon off;"
