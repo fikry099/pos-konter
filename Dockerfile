@@ -1,27 +1,33 @@
-FROM php:8.4-apache
+FROM php:8.4-fpm
 
 # Install dependencies sistem & ekstensi PHP
 RUN apt-get update && apt-get install -y \
-    git unzip libpng-dev libonig-dev libxml2-dev zip curl \
+    git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Paksa hapus file konfigurasi mpm_event dan mpm_worker agar tidak dimuat Apache
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
-    && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
-    && rm -f /etc/apache2/mods-enabled/mpm_worker.load \
-    && rm -f /etc/apache2/mods-enabled/mpm_worker.conf \
-    && a2enmod mpm_prefork rewrite
+# Konfigurasi Nginx agar mengarah ke folder public Laravel & port dinamis Railway
+RUN rm /etc/nginx/sites-enabled/default
+COPY <<EOF /etc/nginx/sites-available/default
+server {
+    listen 8080;
+    index index.php index.html;
+    root /app/public;
 
-# Ubah DocumentRoot Apache ke folder public/
-ENV APACHE_DOCUMENT_ROOT /app/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/conf-available/*.conf
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
 
-# Atur port Apache agar mendengarkan port 8080 secara eksplisit
-RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf
-RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:8080>/g' /etc/apache2/sites-available/000-default.conf
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    }
+}
+EOF
+RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 
-# Copy Composer dari official image
+# Copy Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
@@ -30,10 +36,11 @@ COPY . .
 # Install dependency Laravel
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# Set permission folder storage & cache
+# Set permission storage
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
     && chmod -R 775 /app/storage /app/bootstrap/cache
 
 EXPOSE 8080
 
-CMD ["apache2-foreground"]
+# Jalankan PHP-FPM di background dan Nginx di foreground
+CMD service php8.4-fpm start && nginx -g "daemon off;"
