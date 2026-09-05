@@ -15,24 +15,27 @@ class StoreProductStockSeeder extends Seeder
         StoreProductStock::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // Ambil HANYA produk bertipe FISIK (Voucher, Aksesoris, Perdana)
         $physicalProducts = Product::where('type', 'physical')->get();
 
         foreach ($physicalProducts as $product) {
-            // Registrasi Stok untuk Cabang 1
+            $targetMinStock = (int) ($product->min_stock ?? 5);
+
+            // Cabang 1 (WannCell): Stok Normal
             StoreProductStock::create([
                 'store_id'   => 1,
                 'product_id' => $product->id,
-                'stock'      => $product->stock > 0 ? $product->stock : 10,
-                'min_stock'  => $product->min_stock ?? 3,
+                'stock'      => $product->stock > 0 ? $product->stock : $targetMinStock,
+                'min_stock'  => $targetMinStock,
             ]);
 
-            // Registrasi Stok untuk Cabang 2
+            // Cabang 2 (ArkanCell): Stok dibuat di bawah min_stock agar mentriger reorder
+            $lowStock = max(1, $targetMinStock - 3);
+
             StoreProductStock::create([
                 'store_id'   => 2,
                 'product_id' => $product->id,
-                'stock'      => 5,
-                'min_stock'  => 2,
+                'stock'      => $lowStock, 
+                'min_stock'  => $targetMinStock,
             ]);
         }
     }

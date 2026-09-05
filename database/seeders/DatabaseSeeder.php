@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         // Truncate tabel products secara aman sebelum seeder running
@@ -23,16 +20,16 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             EmployeeSeeder::class,
             CategorySeeder::class,
-            AksesorisSeeder::class, // Kategori level 1-2 khusus aksesoris
+            AksesorisSeeder::class,
 
-            // Seeder Produk Berdasarkan Rumpun Kategori
+            // 1. Buat Data Master Produk Terlebih Dahulu
             PulsaProductSeeder::class,
             VoucherProductSeeder::class,
             PerdanaProductSeeder::class,
             EwalletBankProductSeeder::class,
             AksesorisProductSeeder::class,
 
-            // Synchronize Stok Fisik per Cabang (Dijalankan Paling Akhir)
+            // 2. Generasi Stok Fisik Cabang Berdasarkan Produk yang Sudah Ada
             StoreProductStockSeeder::class,
         ]);
     }

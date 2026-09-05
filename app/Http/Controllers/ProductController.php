@@ -169,9 +169,24 @@ class ProductController extends Controller
             ->where('store_id', $storeId)
             ->whereHas('product', function ($query) {
                 $query->where('type', 'physical')
-                    ->where('is_active', true);
+                    ->where('is_active', true)
+                    // LOGIKA FILTER KATEGORI: Hanya Voucher Internet & Kartu Perdana
+                    ->whereHas('category', function ($catQuery) {
+                        $catQuery->where(function ($q) {
+                            // Cek jika slug/nama kategori adalah voucher-internet atau kartu-perdana
+                            $q->whereIn('slug', ['voucher-internet', 'kartu-perdana'])
+                              ->orWhere('name', 'LIKE', '%Voucher%')
+                              ->orWhere('name', 'LIKE', '%Perdana%')
+                              // Cek juga jika Kategori Induknya (Parent) adalah Voucher Internet / Kartu Perdana
+                              ->orWhereHas('parent', function ($parentQuery) {
+                                  $parentQuery->whereIn('slug', ['voucher-internet', 'kartu-perdana'])
+                                              ->orWhere('name', 'LIKE', '%Voucher%')
+                                              ->orWhere('name', 'LIKE', '%Perdana%');
+                              });
+                        });
+                    });
             })
-            ->whereColumn('stock', '<', 'min_stock') // HANYA TAMPIL JIKA SISA STOK < MIN_STOCK / TARGET STOK
+            ->whereColumn('stock', '<', 'min_stock')
             ->get();
 
         return view('products.reorder', compact('lowStockProducts'));

@@ -238,7 +238,28 @@ function applyProductFilters() {
         let matchProv = true;
         if (selectedProvider !== '') {
             let provKey = selectedProvider.toLowerCase().trim();
-            matchProv = cat.includes(provKey) || name.includes(provKey) || code.includes(provKey);
+
+            // PENCATATAN ALIAS KHUSUS OPERATOR TRI / THREE / 3
+            if (provKey === 'tri' || provKey === 'three' || provKey === '3') {
+                matchProv = cat.includes('tri') || cat.includes('three') || cat.includes('3') ||
+                            name.includes('tri') || name.includes('three') || name.includes(' 3 ') || name.includes('3gb') || name.includes('3h') || name.includes('happy') || name.includes('aon') ||
+                            code.includes('v-3-') || code.includes('tri') || code.includes('three');
+            } 
+            // PENCATATAN ALIAS KHUSUS OPERATOR TELKOMSEL / TSEL / BYU
+            else if (provKey === 'telkomsel' || provKey === 'tsel') {
+                matchProv = cat.includes('telkomsel') || cat.includes('tsel') || cat.includes('byu') ||
+                            name.includes('telkomsel') || name.includes('by.u') || name.includes('tsel') ||
+                            code.includes('tsel') || code.includes('byu');
+            } 
+            // PENCATATAN ALIAS KHUSUS OPERATOR INDOSAT / ISAT / IM3
+            else if (provKey === 'indosat' || provKey === 'isat' || provKey === 'im3') {
+                matchProv = cat.includes('indosat') || cat.includes('isat') || cat.includes('im3') ||
+                            name.includes('indosat') || name.includes('im3') ||
+                            code.includes('isat') || code.includes('indosat');
+            } 
+            else {
+                matchProv = cat.includes(provKey) || name.includes(provKey) || code.includes(provKey);
+            }
         }
 
         let matchSearch = true;

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\StoreProductStock;
 use Illuminate\Database\Seeder;
 
 class VoucherProductSeeder extends Seeder
@@ -155,17 +156,41 @@ class VoucherProductSeeder extends Seeder
     private function seedGroup($catId, array $vouchers)
     {
         foreach ($vouchers as $v) {
-            Product::create([
+            // 1. Buat Master Produk (Global)
+            $product = Product::create([
                 'category_id'   => $catId,
                 'name'          => $v['name'],
                 'code'          => $v['code'],
                 'type'          => 'physical',
                 'cost_price'    => $v['cost'],
                 'selling_price' => $v['sell'],
-                'stock'         => $v['stock'],
-                'min_stock'     => $v['min_stock'],
+                'stock'         => $v['stock'],     // Master fallback
+                'min_stock'     => $v['min_stock'], // Master fallback
                 'is_active'     => true,
             ]);
+
+            // 2. Alokasikan Stok & Min_Stock untuk Store 1 (WannCell)
+            StoreProductStock::updateOrCreate(
+                [
+                    'store_id'   => 1,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'stock'     => $v['stock'],
+                    'min_stock' => $v['min_stock'],
+                ]
+            );
+
+            StoreProductStock::updateOrCreate(
+                [
+                    'store_id'   => 2,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'stock'     => $v['stock'],
+                    'min_stock' => $v['min_stock'],
+                ]
+            );
         }
     }
 }

@@ -40,17 +40,22 @@ class ShiftController extends Controller
             $expectedCash = ($activeShift->cash_initial + $totalCashSales) - $totalExpenses;
         }
 
-        // Ambil ID karyawan yang SUDAH absen di shift aktif
-        $alreadyClockedInUserIds = [];
-        if ($activeShift && is_array($activeShift->user_ids)) {
-            $alreadyClockedInUserIds = $activeShift->user_ids;
-        }
+        // =========================================================================
+        // Ambil ID Karyawan yang SUDAH ABSEN HARI INI DI CABANG MANAPUN
+        // =========================================================================
+        $alreadyClockedInTodayUserIds = Attendance::whereDate('date', now()->toDateString())
+            ->pluck('user_id')
+            ->toArray();
 
-        // Ambil karyawan yang BELUM absen di shift aktif
+        // Ambil SELURUH Karyawan dan tandai apakah sudah absen hari ini
         $users = User::where('role', 'karyawan')
-            ->whereNotIn('id', $alreadyClockedInUserIds)
             ->orderBy('name', 'asc')
-            ->get();
+            ->get()
+            ->map(function ($user) use ($alreadyClockedInTodayUserIds) {
+                // Tambahkan properti penanda status absen
+                $user->has_clocked_in_today = in_array($user->id, $alreadyClockedInTodayUserIds);
+                return $user;
+            });
 
         $shifts = Shift::where('store_id', $storeId)
             ->latest()
@@ -87,6 +92,19 @@ class ShiftController extends Controller
         $currentTime = $now->format('H:i:s');
         $currentDate = $now->toDateString();
 
+        // =========================================================================
+        // DOUBLE CHECK SECURITY: Cek apakah karyawan ini sudah absen hari ini
+        // =========================================================================
+        $hasClockedInToday = Attendance::where('user_id', $request->user_id)
+            ->whereDate('date', $currentDate)
+            ->exists();
+
+        if ($hasClockedInToday) {
+            $user = User::find($request->user_id);
+            $userName = $user ? $user->name : 'Karyawan';
+            return redirect()->back()->with('error', "Gagal! {$userName} sudah melakukan absensi shift hari ini di salah satu cabang.");
+        }
+
         // Tentukan Jenis Shift & Toleransi Keterlambatan Per Individu
         $hour = (int) $now->format('H');
         $shiftType = ($hour < 15) ? 'pagi' : 'sore';
@@ -100,7 +118,7 @@ class ShiftController extends Controller
             $shift = Shift::create([
                 'store_id'     => $storeId,
                 'user_id'      => $request->user_id,
-                'user_ids'     => [$request->user_id],
+                'user_ids'     => [(int) $request->user_id],
                 'cash_initial' => $request->cash_initial,
                 'photo'        => $request->photo,
                 'start_time'   => $now,
@@ -133,7 +151,7 @@ class ShiftController extends Controller
                 'user_ids' => $currentUserIds,
             ]);
 
-            // Catat Absensi Karyawan Susulan (Jam & Keterlambatan dihitung detik ini)
+            // Catat Absensi Karyawan Susulan
             Attendance::create([
                 'store_id'   => $storeId,
                 'shift_id'   => $existingActive->id,

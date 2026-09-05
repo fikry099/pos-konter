@@ -11,12 +11,12 @@ class PulsaProductSeeder extends Seeder
     public function run(): void
     {
         $operators = [
-            'Telkomsel' => ['slug' => 'pulsa-telkomsel', 'code' => 'TSEL', 'margin' => 1800],
-            'Indosat'   => ['slug' => 'pulsa-indosat',   'code' => 'ISAT', 'margin' => 1700],
-            'XL'        => ['slug' => 'pulsa-xl',        'code' => 'XL',   'margin' => 1600],
-            'Tri'       => ['slug' => 'pulsa-tri',       'code' => 'THREE','margin' => 1500],
-            'Axis'      => ['slug' => 'pulsa-axis',      'code' => 'AXIS', 'margin' => 1500],
-            'Smartfren' => ['slug' => 'pulsa-smartfren', 'code' => 'SMART','margin' => 1500],
+            'Telkomsel' => ['slug' => 'pulsa-telkomsel', 'code' => 'TSEL'],
+            'Indosat'   => ['slug' => 'pulsa-indosat',   'code' => 'ISAT'],
+            'XL'        => ['slug' => 'pulsa-xl',        'code' => 'XL'],
+            'Tri'       => ['slug' => 'pulsa-tri',       'code' => 'THREE'],
+            'Axis'      => ['slug' => 'pulsa-axis',      'code' => 'AXIS'],
+            'Smartfren' => ['slug' => 'pulsa-smartfren', 'code' => 'SMART'],
         ];
 
         $denominations = [
@@ -27,6 +27,8 @@ class PulsaProductSeeder extends Seeder
             25  => ['nominal' => '25.000',  'cost' => 24900],
             50  => ['nominal' => '50.000',  'cost' => 49500],
             100 => ['nominal' => '100.000', 'cost' => 98500],
+            150 => ['nominal' => '150.000', 'cost' => 148000],
+            200 => ['nominal' => '200.000', 'cost' => 197000],
         ];
 
         foreach ($operators as $opName => $opData) {
@@ -36,13 +38,19 @@ class PulsaProductSeeder extends Seeder
             if (!$catId) continue;
 
             foreach ($denominations as $k => $denom) {
+                // LOGIKA MARGIN ADMIN:
+                // Jika nominal di bawah 100 (misal 5k - 50k) -> Admin 2.000 (Harga Jual = Nominal + 2.000)
+                // Jika nominal 100k ke atas -> Admin 3.000 (Harga Jual = Nominal + 3.000)
+                $adminFee = ($k < 100) ? 2000 : 3000;
+                $sellingPrice = ($k * 1000) + $adminFee;
+
                 Product::create([
                     'category_id'   => $catId,
                     'name'          => "Pulsa {$opName} {$denom['nominal']}",
                     'code'          => "{$opData['code']}{$k}K",
                     'type'          => 'digital',
                     'cost_price'    => $denom['cost'],
-                    'selling_price' => $denom['cost'] + $opData['margin'],
+                    'selling_price' => $sellingPrice,
                     'stock'         => 0,
                     'min_stock'     => 0,
                     'is_active'     => true,

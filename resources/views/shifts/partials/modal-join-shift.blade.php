@@ -28,10 +28,24 @@
                     
                     <div class="bg-slate-50 border border-slate-300 rounded-2xl p-2.5 max-h-56 overflow-y-auto space-y-2">
                         @forelse($users as $user)
-                            <label class="flex items-center space-x-3 p-2.5 bg-white rounded-xl cursor-pointer transition border border-slate-200 hover:border-indigo-500 hover:shadow-xs">
-                                <input type="radio" name="user_id" value="{{ $user->id }}" required class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-2 focus:ring-indigo-500">
-                                <span class="text-xs font-bold text-slate-800">{{ $user->name }}</span>
-                            </label>
+                            @if($user->has_clocked_in_today)
+                                <!-- TAMPILAN ABU-ABU (DISABLED - SUDAH ABSEN HARI INI) -->
+                                <label class="flex items-center justify-between p-2.5 bg-slate-100 rounded-xl border border-slate-200 opacity-60 cursor-not-allowed select-none">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="radio" name="user_id" value="{{ $user->id }}" disabled class="w-4 h-4 text-slate-400 border-slate-300 focus:ring-0 cursor-not-allowed">
+                                        <span class="text-xs font-bold text-slate-500 line-through decoration-slate-400">{{ $user->name }}</span>
+                                    </div>
+                                    <span class="text-[9px] font-extrabold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md flex items-center">
+                                        <i class="fa-solid fa-circle-check text-emerald-600 mr-1 text-[8px]"></i> Sudah Absen Hari Ini
+                                    </span>
+                                </label>
+                            @else
+                                <!-- TAMPILAN NORMAL (BISA DIKLIK) -->
+                                <label class="flex items-center space-x-3 p-2.5 bg-white rounded-xl cursor-pointer transition border border-slate-200 hover:border-indigo-500 hover:shadow-xs">
+                                    <input type="radio" name="user_id" value="{{ $user->id }}" required class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-2 focus:ring-indigo-500">
+                                    <span class="text-xs font-bold text-slate-800">{{ $user->name }}</span>
+                                </label>
+                            @endif
                         @empty
                             <div class="py-6 text-center text-slate-400 text-xs font-semibold">
                                 <i class="fa-solid fa-user-check text-2xl mb-1 text-slate-300 block"></i>
@@ -104,7 +118,13 @@
 
     function initModalCamera() {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: "user", // Memaksa kamera depan/selfie tablet
+                    width: { ideal: 640 }, 
+                    height: { ideal: 480 } 
+                } 
+            })
                 .then(function(stream) {
                     modalVideo.srcObject = stream;
                     modalVideo.play();

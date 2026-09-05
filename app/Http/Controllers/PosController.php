@@ -46,8 +46,15 @@ class PosController extends Controller
         $storeId = $this->getActiveStoreId();
 
         $activeShift = Shift::getActiveShift($storeId);
-        $categories  = Category::with('products')->get();
-        $products    = Product::where('is_active', true)->get();
+        
+        // Load kategori berserta produk dan parent-nya
+        $categories  = Category::whereNull('parent_id')
+            ->with(['allChildren', 'products'])
+            ->get();
+
+        $products    = Product::where('is_active', true)
+            ->with(['category.parent'])
+            ->get();
 
         // Ambil Daftar Karyawan yang Bertugas pada Shift Aktif Ini
         $shiftStaffs = collect();
@@ -59,6 +66,7 @@ class PosController extends Controller
             }
         }
 
+        // Attach nilai current_stock per cabang aktif ke setiap instance produk
         foreach ($products as $product) {
             $product->current_stock = $this->getProductStock($storeId, $product->id);
         }
