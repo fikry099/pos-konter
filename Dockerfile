@@ -5,8 +5,11 @@ RUN apt-get update && apt-get install -y \
     git unzip libpng-dev libonig-dev libxml2-dev zip curl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Matikan MPM event/worker & paksa hanya gunakan mpm_prefork (mencegah bentrok AH00534)
-RUN a2dismod mpm_event mpm_worker || true \
+# Paksa hapus file konfigurasi mpm_event dan mpm_worker agar tidak dimuat Apache
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.conf \
     && a2enmod mpm_prefork rewrite
 
 # Ubah DocumentRoot Apache ke folder public/
@@ -18,7 +21,7 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/conf-ava
 RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf
 RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:8080>/g' /etc/apache2/sites-available/000-default.conf
 
-# Copy Composer
+# Copy Composer dari official image
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
