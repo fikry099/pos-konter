@@ -1,58 +1,60 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# W&A Cell - Custom POS & Management System
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="https://img.shields.io/badge/Laravel-11.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel Version">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA Ready">
+  <img src="https://img.shields.io/badge/Status-Production_Ready-10B981?style=for-the-badge" alt="Status">
 </p>
 
-## About Laravel
+## 📌 Deskripsi Sistem
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+**W&A Cell POS** adalah aplikasi kasir dan manajemen operasional konter *custom* berbasis Laravel yang dirancang khusus untuk mendukung operasional multi-cabang. Aplikasi ini dilengkapi dengan integrasi Progressive Web App (PWA) agar dapat digunakan di berbagai perangkat (Desktop, Tablet, Mobile) secara responsif dan *offline-ready*.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Sistem ini dibuat untuk menyelesaikan tantangan operasional konter fisik, seperti pencatatan transaksi barang & pulsa, transparansi stok, rekap absensi, perhitungan bonus karyawan otomatis, hingga laporan keuangan real-time untuk Owner.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## ✨ Fitur Unggulan
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 1. 🏪 Manajemen Multi-Cabang & Akses Peran
+- **Pengaturan Cabang:** Mendukung pengolahan data terpisah untuk 2 cabang atau lebih.
+- **Role & Hak Akses:** Pembagian hak akses yang jelas antara **Owner** (Akses penuh pembukuan & laporan) dan **Kasir/Karyawan** (Akses operasional harian).
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 2. 👥 Absensi & Shift Kasir (Blind Closing)
+- **Manajemen Shift Kerja:** Buka shift dengan input modal awal fisik kasir.
+- **Absen Susulan:** Fitur gabung shift untuk kasir pengganti/susulan.
+- **Blind Closing & Validasi Selisih:** Kasir menginput jumlah uang fisik laci tanpa melihat target sistem. Pop-up validasi otomatis mendeteksi kondisi kas **Pas**, **Minus**, atau **Surplus**.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### 3. 🛒 Kasir POS & Katalog Produk
+- **Katalog Produk Dinamis:** Pencarian cepat nama/kode barang, filter rentang harga, dan pemisahan kategori.
+- **Pencetakan Struk Thermal:** Dukungan cetak nota transaksi ke printer thermal 58mm.
+- **Manajemen Retur & Stok:** Penanganan alur retur barang dan pembaruan stok secara otomatis.
 
-## Agentic Development
+### 4. 🎁 Perhitungan Bonus Karyawan Otomatis
+- Rekap otomatis bonus penjualan sebesar **Rp 1.000 / pcs** untuk kategori aksesoris yang langsung terakumulasi pada laporan shift kasir.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 5. 📊 Dashboard Finansial Owner
+- **Laporan Laba Bersih:** Grafik dan ringkasan pendapatan, pengeluaran operasional, serta keuntungan bersih terpisah per cabang.
+- **Sistem Pembukuan Transparan:** Rekap harian, bulanan, dan riwayat shift yang dapat diakses kapan saja secara real-time.
 
-```bash
-composer require laravel/boost --dev
+---
 
-php artisan boost:install
-```
+## 🛠️ Stack Teknologi
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+- **Backend Framework:** Laravel 11.x
+- **Frontend & Styling:** Blade Templates, Tailwind CSS, SweetAlert2, FontAwesome 6
+- **Database:** MySQL / MariaDB
+- **PWA Integration:** Web App Manifest & Service Workers
+- **Environment:** PHP >= 8.2, Laragon / Apache
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🚀 Panduan Instalasi Lokal (Development)
 
-## Code of Conduct
+Untuk menjalankan proyek ini di lingkungan lokal (Laragon/XAMPP):
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. **Clone Repository:**
+   ```bash
+   git clone [https://github.com/fikry099/pos-konter.git](https://github.com/fikry099/pos-konter.git)
+   cd pos-konter
