@@ -1,0 +1,433 @@
+@extends('layouts.app')
+
+@section('content')
+<!-- CSS KHUSUS UNTUK MENYEMBUNYIKAN SCROLLBAR TAPI TETAP BISA DI-SWIPE JARI -->
+<style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<div class="space-y-3 -mt-6 sm:-mt-8">
+
+    <!-- 1. HEADER HALAMAN & TOMBOL TAMBAH -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+            <h1 class="text-base sm:text-xl font-black text-slate-800 flex items-center">
+                <i class="fa-solid fa-boxes-stacked text-indigo-600 mr-2 text-lg sm:text-xl"></i> Kelola Katalog & Stok
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Total {{ count($products) }} produk terdaftar dalam sistem konter</p>
+        </div>
+
+        <a href="{{ route('products.create') }}" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-xl shadow-md shadow-indigo-200 transition flex items-center justify-center space-x-1.5 shrink-0">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Tambah Produk Baru</span>
+        </a>
+    </div>
+
+    <!-- 2. TAB KATEGORI UTAMA (HORIZONTALLY SWIPEABLE WITHOUT SCROLLBAR) -->
+    <div class="bg-white p-1.5 sm:p-2 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+            <button type="button" onclick="switchCategoryTab('all', this)" class="category-tab active-tab bg-indigo-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center space-x-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-border-all text-xs"></i>
+                <span>Semua ({{ count($products) }})</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('pulsa', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-mobile-screen-button text-indigo-500"></i>
+                <span>Pulsa</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('voucher', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-ticket text-blue-500"></i>
+                <span>Voucher</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('perdana', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-sim-card text-rose-500"></i>
+                <span>Perdana</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('ewallet', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-wallet text-emerald-500"></i>
+                <span>E-Wallet</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('bank', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-building-columns text-teal-500"></i>
+                <span>Transfer</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('pln', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-bolt text-amber-500"></i>
+                <span>PLN</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('aksesoris', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-plug text-purple-500"></i>
+                <span>Aksesoris</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. BAR PENCARIAN & SUB-FILTER DINAMIS -->
+    <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
+        <!-- SUB-FILTER CONTAINER (NO SCROLLBAR) -->
+        <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider shrink-0 mr-1" id="filter_label">FILTER:</span>
+            <div id="provider_pills_container" class="flex items-center space-x-1.5 shrink-0">
+                <!-- Tombol Pill digenerate otomatis via JS -->
+            </div>
+        </div>
+
+        <!-- SEARCH INPUT -->
+        <div class="relative w-full">
+            <input type="text" id="search_product_input" onkeyup="filterProductsTable()" placeholder="Cari nama produk / SKU..." class="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-slate-800 transition">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+        </div>
+    </div>
+
+    <!-- 4. TABEL KATALOG PRODUK LENGKAP -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-[11px] font-extrabold uppercase text-slate-500 border-b border-slate-200">
+                        <th class="py-3 px-3">Produk & SKU</th>
+                        <th class="py-3 px-3">Kategori</th>
+                        <th class="py-3 px-3 text-right">Modal / Jual</th>
+                        <th class="py-3 px-3 text-right">Margin</th>
+                        <th class="py-3 px-3 text-center">Stok</th>
+                        <th class="py-3 px-3 text-center">Status</th>
+                        <th class="py-3 px-3 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    @forelse($products as $product)
+                        @php
+                            $currentCat = $product->category;
+                            $parentCat = $currentCat ? $currentCat->parent : null;
+                            $grandParentCat = $parentCat ? $parentCat->parent : null;
+
+                            $catSlug = strtolower($currentCat->slug ?? '');
+                            $catNameLower = strtolower($currentCat->name ?? '');
+                            $parentSlug = strtolower($parentCat->slug ?? '');
+                            $parentNameLower = strtolower($parentCat->name ?? '');
+                            $grandParentSlug = strtolower($grandParentCat->slug ?? '');
+
+                            $catHierarchyText = '';
+                            if ($grandParentCat) { $catHierarchyText .= $grandParentCat->name . ' > '; }
+                            if ($parentCat) { $catHierarchyText .= $parentCat->name . ' > '; }
+                            $catHierarchyText .= $currentCat->name ?? 'Tanpa Kategori';
+
+                            $catSearchData = strtolower($catHierarchyText);
+                            $prodName = strtolower($product->name);
+                            $prodCode = strtolower($product->code ?? '');
+                            $margin = $product->selling_price - $product->cost_price;
+                        @endphp
+                        <tr class="product-row hover:bg-indigo-50/40 transition"
+                            data-category="{{ $catSearchData }}"
+                            data-cat-slug="{{ $catSlug }}"
+                            data-cat-name="{{ $catNameLower }}"
+                            data-parent-slug="{{ $parentSlug }}"
+                            data-parent-name="{{ $parentNameLower }}"
+                            data-grand-parent-slug="{{ $grandParentSlug }}"
+                            data-name="{{ $prodName }}"
+                            data-code="{{ $prodCode }}">
+                            
+                            <!-- NAMA & KODE & BADGE JENIS -->
+                            <td class="py-3 px-3 min-w-[140px]">
+                                <div class="font-extrabold text-slate-800 text-xs leading-snug">{{ $product->name }}</div>
+                                <div class="flex items-center space-x-1 mt-1">
+                                    <span class="text-[10px] font-mono text-slate-400">{{ $product->code ?? '-' }}</span>
+                                    <span class="px-1.5 py-0.5 rounded font-black uppercase text-[9px] {{ $product->type === 'digital' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700' }}">
+                                        {{ $product->type === 'digital' ? 'Digital' : 'Fisik' }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- HIRARKI KATEGORI -->
+                            <td class="py-3 px-3">
+                                <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200 inline-block whitespace-nowrap">
+                                    @if($parentCat)
+                                        <span class="text-slate-400 font-normal">{{ $parentCat->name }} &rsaquo;</span>
+                                    @endif
+                                    <span class="text-indigo-700 font-extrabold">{{ $currentCat->name ?? 'Tanpa Kategori' }}</span>
+                                </span>
+                            </td>
+
+                            <!-- HARGA MODAL & JUAL -->
+                            <td class="py-3 px-3 text-right whitespace-nowrap">
+                                <div class="text-[10px] text-slate-400 font-mono">M: Rp {{ number_format($product->cost_price, 0, ',', '.') }}</div>
+                                <div class="font-black text-indigo-700 font-mono text-xs mt-0.5">J: Rp {{ number_format($product->selling_price, 0, ',', '.') }}</div>
+                            </td>
+
+                            <!-- MARGIN -->
+                            <td class="py-3 px-3 text-right font-bold font-mono text-xs whitespace-nowrap {{ $margin > 0 ? 'text-emerald-600' : 'text-rose-500' }}">
+                                +Rp {{ number_format($margin, 0, ',', '.') }}
+                            </td>
+
+                            <!-- STOK -->
+                            <td class="py-3 px-3 text-center font-bold text-xs whitespace-nowrap">
+                                @if($product->type === 'physical')
+                                    <span class="{{ $product->stock <= $product->min_stock ? 'text-rose-600 font-black animate-pulse' : 'text-slate-800' }}">
+                                        {{ $product->stock }} Pcs
+                                    </span>
+                                @else
+                                    <span class="text-slate-400 font-mono text-base">∞</span>
+                                @endif
+                            </td>
+
+                            <!-- STATUS -->
+                            <td class="py-3 px-3 text-center whitespace-nowrap">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $product->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
+                                    {{ $product->is_active ? 'Aktif' : 'Nonaktif' }}
+                                </span>
+                            </td>
+
+                            <!-- AKSI -->
+                            <td class="py-3 px-3 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center space-x-1">
+                                    <a href="{{ route('products.edit', $product->id) }}" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 transition">
+                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                    </a>
+                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus produk ini?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-100 transition">
+                                            <i class="fa-solid fa-trash-can text-xs"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-slate-400">
+                                <i class="fa-solid fa-box-open text-4xl mb-2 text-slate-300 block"></i>
+                                <p class="text-xs font-bold text-slate-500">Belum ada data produk terdaftar.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- JAVASCRIPT LOGIKA SUB-FILTER BERBASIS STRUKTUR DATABASE -->
+<script>
+    let activeCategory = 'all';
+    let activeSubFilter = '';
+
+    const categoryBrandMap = {
+        'all': {
+            label: 'FILTER:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'Proteksi', key: 'proteksi' },
+                { name: 'Power', key: 'power' },
+                { name: 'Audio', key: 'audio' },
+                { name: 'Penyimpanan', key: 'penyimpanan' },
+                { name: 'Telkomsel', key: 'telkomsel' },
+                { name: 'Indosat', key: 'indosat' },
+                { name: 'XL Axiata', key: 'xl' }
+            ]
+        },
+        'pulsa': {
+            label: 'OPERATOR:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'Telkomsel', key: 'telkomsel' },
+                { name: 'Indosat', key: 'indosat' },
+                { name: 'XL Axiata', key: 'xl' },
+                { name: 'Tri (3)', key: 'three' },
+                { name: 'Axis', key: 'axis' },
+                { name: 'Smartfren', key: 'smartfren' }
+            ]
+        },
+        'voucher': {
+            label: 'OPERATOR:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'Telkomsel', key: 'telkomsel' },
+                { name: 'Indosat', key: 'indosat' },
+                { name: 'XL Axiata', key: 'xl' },
+                { name: 'Tri (3)', key: 'three' },
+                { name: 'Axis', key: 'axis' },
+                { name: 'Smartfren', key: 'smartfren' }
+            ]
+        },
+        'perdana': {
+            label: 'OPERATOR:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'Telkomsel', key: 'telkomsel' },
+                { name: 'Indosat', key: 'indosat' },
+                { name: 'XL Axiata', key: 'xl' },
+                { name: 'Tri (3)', key: 'three' },
+                { name: 'Axis', key: 'axis' },
+                { name: 'Smartfren', key: 'smartfren' }
+            ]
+        },
+        'ewallet': {
+            label: 'PENYEDIA:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'DANA', key: 'dana' },
+                { name: 'OVO', key: 'ovo' },
+                { name: 'GoPay', key: 'gopay' },
+                { name: 'ShopeePay', key: 'shopee' },
+                { name: 'LinkAja', key: 'linkaja' }
+            ]
+        },
+        'bank': {
+            label: 'BANK:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'BCA', key: 'bca' },
+                { name: 'BRI', key: 'bri' },
+                { name: 'Mandiri', key: 'mandiri' },
+                { name: 'BNI', key: 'bni' },
+                { name: 'BSI', key: 'bsi' }
+            ]
+        },
+        'pln': {
+            label: 'LAYANAN:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'PLN Token', key: 'token' },
+                { name: 'PLN Tagihan', key: 'tagihan' }
+            ]
+        },
+        'aksesoris': {
+            label: 'AKSESORIS:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'Proteksi', key: 'proteksi' },
+                { name: 'Power', key: 'power' },
+                { name: 'Audio', key: 'audio' },
+                { name: 'Penyimpanan', key: 'penyimpanan' },
+                { name: 'Mount & Stand', key: 'mount' }
+            ]
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderSubFilterPills('all');
+    });
+
+    function switchCategoryTab(catKey, btnElement) {
+        activeCategory = catKey.toLowerCase();
+        activeSubFilter = '';
+
+        document.querySelectorAll('.category-tab').forEach(btn => {
+            btn.className = 'category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer';
+        });
+        btnElement.className = 'category-tab active-tab bg-indigo-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center space-x-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer';
+
+        renderSubFilterPills(activeCategory);
+        filterProductsTable();
+    }
+
+    function renderSubFilterPills(categoryKey) {
+        let container = document.getElementById('provider_pills_container');
+        let labelEl = document.getElementById('filter_label');
+        
+        let config = categoryBrandMap[categoryKey] || categoryBrandMap['all'];
+        
+        labelEl.innerText = config.label;
+        container.innerHTML = '';
+
+        config.items.forEach((item, index) => {
+            let isDefault = index === 0;
+            let btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('onclick', `filterSubCategory('${item.key}', this)`);
+            btn.className = `prov-pill ${isDefault ? 'bg-indigo-100 text-indigo-800 border border-indigo-200 font-extrabold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'} text-[11px] px-3 py-1.5 rounded-xl shrink-0 transition cursor-pointer active:scale-95`;
+            btn.innerText = item.name;
+            container.appendChild(btn);
+        });
+    }
+
+    function filterSubCategory(subKeyword, btnElement) {
+        activeSubFilter = subKeyword.toLowerCase();
+
+        document.querySelectorAll('.prov-pill').forEach(btn => {
+            btn.className = 'prov-pill bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-3 py-1.5 rounded-xl shrink-0 transition cursor-pointer active:scale-95';
+        });
+
+        btnElement.className = 'prov-pill bg-indigo-100 text-indigo-800 border border-indigo-200 text-[11px] font-extrabold px-3 py-1.5 rounded-xl shrink-0 transition cursor-pointer active:scale-95';
+
+        filterProductsTable();
+    }
+
+    const subCategoryMapping = {
+        'proteksi': ['proteksi', 'casing', 'tempered-glass', 'hydrogel'],
+        'power': ['power', 'charger', 'kabel-data', 'power-bank'],
+        'audio': ['audio', 'tws', 'headset', 'bluetooth-speaker'],
+        'penyimpanan': ['penyimpanan', 'flashdisk', 'memory-card'],
+        'mount': ['mount-stand', 'holder', 'ring-light-tripod']
+    };
+
+    function filterProductsTable() {
+        let searchKeyword = document.getElementById('search_product_input').value.toLowerCase().trim();
+        let rows = document.querySelectorAll('.product-row');
+
+        rows.forEach(row => {
+            let catData = (row.getAttribute('data-category') || '').toLowerCase();
+            let catSlug = (row.getAttribute('data-cat-slug') || '').toLowerCase();
+            let catName = (row.getAttribute('data-cat-name') || '').toLowerCase();
+            let parentSlug = (row.getAttribute('data-parent-slug') || '').toLowerCase();
+            let parentName = (row.getAttribute('data-parent-name') || '').toLowerCase();
+            let grandParentSlug = (row.getAttribute('data-grand-parent-slug') || '').toLowerCase();
+            
+            let name = (row.getAttribute('data-name') || '').toLowerCase();
+            let code = (row.getAttribute('data-code') || '').toLowerCase();
+
+            let matchCat = false;
+            if (activeCategory === 'all') {
+                matchCat = true;
+            } else if (activeCategory === 'perdana') {
+                matchCat = catData.includes('perdana') || catData.includes('kartu') || parentSlug.includes('perdana') || catSlug.includes('perdana');
+            } else if (activeCategory === 'bank') {
+                matchCat = catData.includes('bank') || catData.includes('transfer') || parentSlug.includes('bank');
+            } else if (activeCategory === 'ewallet') {
+                matchCat = catData.includes('ewallet') || catData.includes('wallet') || catData.includes('topup') || parentSlug.includes('ewallet');
+            } else if (activeCategory === 'pln') {
+                matchCat = catData.includes('pln') || catData.includes('token') || parentSlug.includes('pln');
+            } else if (activeCategory === 'aksesoris') {
+                matchCat = catData.includes('aksesoris') || parentSlug.includes('aksesoris') || grandParentSlug.includes('aksesoris') || parentName.includes('aksesoris');
+            } else {
+                matchCat = catData.includes(activeCategory);
+            }
+
+            let matchSub = true;
+            if (activeSubFilter !== '') {
+                let allowedKeys = subCategoryMapping[activeSubFilter] || [activeSubFilter];
+                
+                let isMatched = allowedKeys.some(key => 
+                    catSlug.includes(key) || 
+                    parentSlug.includes(key) || 
+                    catName.includes(key) || 
+                    parentName.includes(key) ||
+                    name.includes(key)
+                );
+                
+                matchSub = isMatched;
+            }
+
+            let matchSearch = true;
+            if (searchKeyword !== '') {
+                matchSearch = name.includes(searchKeyword) || code.includes(searchKeyword) || catData.includes(searchKeyword);
+            }
+
+            if (matchCat && matchSub && matchSearch) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+    }
+</script>
+@endsection

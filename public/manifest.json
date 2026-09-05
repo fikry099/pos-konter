@@ -1,0 +1,24 @@
+{
+    "name": "W&A Cell POS System",
+    "short_name": "W&A POS",
+    "description": "Sistem Kasir & Operasional Terintegrasi Konter Cell",
+    "start_url": "/",
+    "background_color": "#0f172a",
+    "theme_color": "#4f46e5",
+    "display": "standalone",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/img/logo-nobg.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/img/logo-nobg.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

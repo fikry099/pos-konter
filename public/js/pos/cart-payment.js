@@ -1,0 +1,333 @@
+// Variable Global Modal Pembayaran
+let currentCartTotal = 0;
+let selectedPaymentMethod = 'cash';
+let rawPayAmount = 0;
+
+// ==========================================
+// 1. MODAL TAMBAH KE KERANJANG (PRODUK & CUSTOM)
+// ==========================================
+function openAddToCartModal(product) {
+    document.getElementById('modal_product_name').innerText = product.name;
+    document.getElementById('modal_product_id').value = product.id;
+
+    let phoneContainer = document.getElementById('phone_field_container');
+    let phoneInput = document.getElementById('modal_target_phone');
+
+    let bankContainer = document.getElementById('bank_field_container');
+    let accNumberInput = document.getElementById('modal_account_number');
+    let accNameInput = document.getElementById('modal_account_name');
+
+    let qtyContainer = document.getElementById('qty_field_container');
+    let qtyInput = document.getElementById('modal_quantity');
+
+    let customContainer = document.getElementById('custom_amount_container');
+    let isCustomInput = document.getElementById('modal_is_custom_amount');
+    let customPriceInput = document.getElementById('modal_custom_price');
+
+    let prodName = product.name.toLowerCase();
+
+    // Reset nilai awal
+    phoneInput.value = '';
+    accNumberInput.value = '';
+    accNameInput.value = '';
+    qtyInput.value = 1;
+
+    if (customContainer) customContainer.classList.add('hidden');
+    if (isCustomInput) isCustomInput.value = '0';
+    if (customPriceInput) customPriceInput.required = false;
+
+    // Logika tampilan field berdasarkan tipe produk
+    if (prodName.includes('transfer') || prodName.includes('bank')) {
+        bankContainer.classList.remove('hidden');
+        phoneContainer.style.display = 'none';
+        qtyContainer.classList.add('hidden');
+
+        accNumberInput.required = true;
+        accNameInput.required = true;
+        phoneInput.required = false;
+    } else if (product.type === 'digital') {
+        phoneContainer.style.display = 'block';
+        bankContainer.classList.add('hidden');
+        qtyContainer.classList.add('hidden');
+
+        phoneInput.required = true;
+        accNumberInput.required = false;
+        accNameInput.required = false;
+    } else {
+        phoneContainer.style.display = 'none';
+        bankContainer.classList.add('hidden');
+        qtyContainer.classList.remove('hidden');
+
+        phoneInput.required = false;
+        accNumberInput.required = false;
+        accNameInput.required = false;
+    }
+
+    document.getElementById('cartModal').classList.remove('hidden');
+}
+
+function closeAddToCartModal() {
+    document.getElementById('cartModal').classList.add('hidden');
+}
+
+function openCustomAmountModal() {
+    let providerName = (typeof selectedProvider !== 'undefined' && selectedProvider) ? selectedProvider.toUpperCase() : 'TRANSFER / TOP-UP';
+    
+    document.getElementById('modal_product_name').innerText = providerName + ' (Nominal Bebas)';
+    
+    let customProductIdInput = document.getElementById('modal_product_id');
+    let firstProductItem = document.querySelector('.product-item');
+
+    if (customProductIdInput) {
+        if (firstProductItem) {
+            let matchData = firstProductItem.getAttribute('onclick');
+            if (matchData) {
+                let idMatch = matchData.match(/"id":(\d+)/);
+                customProductIdInput.value = (idMatch && idMatch[1]) ? idMatch[1] : 1;
+            } else {
+                customProductIdInput.value = 1;
+            }
+        } else {
+            customProductIdInput.value = 1;
+        }
+    }
+
+    let phoneContainer = document.getElementById('phone_field_container');
+    let phoneInput = document.getElementById('modal_target_phone');
+    let bankContainer = document.getElementById('bank_field_container');
+    let accNumberInput = document.getElementById('modal_account_number');
+    let accNameInput = document.getElementById('modal_account_name');
+    let customContainer = document.getElementById('custom_amount_container');
+    let qtyContainer = document.getElementById('qty_field_container');
+    let isCustomInput = document.getElementById('modal_is_custom_amount');
+    let customPriceInput = document.getElementById('modal_custom_price');
+    let adminFeeInput = document.getElementById('modal_admin_fee');
+
+    if (customPriceInput) {
+        customPriceInput.value = '';
+        customPriceInput.required = true;
+    }
+    if (adminFeeInput) adminFeeInput.value = 2500;
+    if (isCustomInput) isCustomInput.value = '1';
+
+    if (customContainer) customContainer.classList.remove('hidden');
+
+    let currentCategory = typeof selectedCategory !== 'undefined' ? selectedCategory : '';
+    if (currentCategory === 'bank' || currentCategory === 'transfer-bank' || currentCategory === 'transfer') {
+        if (bankContainer) bankContainer.classList.remove('hidden');
+        if (phoneContainer) phoneContainer.style.display = 'none';
+
+        if (accNumberInput) accNumberInput.required = true;
+        if (accNameInput) accNameInput.required = true;
+        if (phoneInput) phoneInput.required = false;
+    } else {
+        if (bankContainer) bankContainer.classList.add('hidden');
+        if (phoneContainer) phoneContainer.style.display = 'block';
+
+        if (phoneInput) phoneInput.required = true;
+        if (accNumberInput) accNumberInput.required = false;
+        if (accNameInput) accNameInput.required = false;
+    }
+
+    if (qtyContainer) qtyContainer.classList.add('hidden');
+
+    document.getElementById('cartModal').classList.remove('hidden');
+}
+
+
+// ==========================================
+// 2. MODAL POPUP PEMBAYARAN (MELAYANG)
+// ==========================================
+function openPaymentModal(totalPrice) {
+    currentCartTotal = totalPrice;
+    document.getElementById('modal_total_display').innerText = 'Rp ' + totalPrice.toLocaleString('id-ID');
+    
+    switchModalPayment('cash');
+    setModalQuickPay(totalPrice);
+
+    const modal = document.getElementById('payment_modal');
+    const modalCard = document.getElementById('payment_modal_card');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modalCard.classList.remove('scale-95', 'opacity-0');
+        modalCard.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closePaymentModal() {
+    const modal = document.getElementById('payment_modal');
+    const modalCard = document.getElementById('payment_modal_card');
+    modalCard.classList.remove('scale-100', 'opacity-100');
+    modalCard.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+
+    // Reset Kamera saat modal ditutup
+    try {
+        Webcam.reset();
+    } catch (e) {}
+}
+
+function switchModalPayment(method) {
+    selectedPaymentMethod = method;
+    const btnCash = document.getElementById('btn_select_cash');
+    const btnQris = document.getElementById('btn_select_qris');
+    const panelCash = document.getElementById('modal_cash_panel');
+    const panelQris = document.getElementById('modal_qris_panel');
+
+    if (method === 'cash') {
+        btnCash.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer bg-white text-indigo-700 shadow-sm border border-indigo-100';
+        btnQris.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer text-slate-500 hover:text-slate-700';
+        panelCash.classList.remove('hidden');
+        panelQris.classList.add('hidden');
+
+        try {
+            Webcam.reset();
+        } catch (e) {}
+    } else {
+        btnQris.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer bg-white text-indigo-700 shadow-sm border border-indigo-100';
+        btnCash.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer text-slate-500 hover:text-slate-700';
+        panelQris.classList.remove('hidden');
+        panelCash.classList.add('hidden');
+
+        rawPayAmount = currentCartTotal;
+
+        // Inisialisasi Webcam untuk QRIS
+        Webcam.set({
+            width: 320,
+            height: 240,
+            image_format: 'jpeg',
+            jpeg_quality: 90
+        });
+        
+        try {
+            Webcam.attach('#qris_camera');
+        } catch (e) {}
+    }
+}
+
+function setModalQuickPay(amount) {
+    rawPayAmount = amount;
+    document.getElementById('modal_pay_input').value = amount.toLocaleString('id-ID');
+    calculateModalChange(amount);
+}
+
+function formatModalCurrency(input) {
+    let value = input.value.replace(/\D/g, '');
+    rawPayAmount = parseInt(value, 10) || 0;
+    input.value = rawPayAmount.toLocaleString('id-ID');
+    calculateModalChange(rawPayAmount);
+}
+
+function calculateModalChange(payAmount) {
+    let change = payAmount - currentCartTotal;
+    let changeDisplay = document.getElementById('modal_change_display');
+
+    if (!changeDisplay) return;
+
+    if (change >= 0) {
+        changeDisplay.innerText = 'Rp ' + change.toLocaleString('id-ID');
+        changeDisplay.className = 'font-bold text-emerald-600 text-sm';
+    } else {
+        changeDisplay.innerText = '- Rp ' + Math.abs(change).toLocaleString('id-ID');
+        changeDisplay.className = 'font-bold text-rose-600 text-sm';
+    }
+}
+
+// ==========================================
+// 3. SNAPSHOT BUKTI QRIS & SUBMIT CHECKOUT
+// ==========================================
+function take_qris_snapshot() {
+    Webcam.snap(function(data_uri) {
+        document.getElementById('qris_result').innerHTML = '<img src="'+data_uri+'" class="w-full h-full object-cover rounded-2xl"/>';
+        document.getElementById('form_payment_proof').value = data_uri;
+
+        document.getElementById('qris_camera').classList.add('hidden');
+        document.getElementById('qris_result').classList.remove('hidden');
+        document.getElementById('btn_snap_qris').classList.add('hidden');
+        document.getElementById('btn_reset_qris').classList.remove('hidden');
+    });
+}
+
+function reset_qris_camera() {
+    document.getElementById('form_payment_proof').value = '';
+    document.getElementById('qris_camera').classList.remove('hidden');
+    document.getElementById('qris_result').classList.add('hidden');
+    document.getElementById('btn_snap_qris').classList.remove('hidden');
+    document.getElementById('btn_reset_qris').classList.add('hidden');
+}
+
+function processFinalCheckout() {
+    if (selectedPaymentMethod === 'cash' && rawPayAmount < currentCartTotal) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Uang Kurang!',
+            text: 'Nominal uang tunai kurang dari total tagihan.',
+            confirmButtonColor: '#4f46e5',
+            customClass: { popup: 'rounded-2xl' }
+        });
+        return;
+    }
+
+    if (selectedPaymentMethod === 'qris' && !document.getElementById('form_payment_proof').value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Bukti Belum Diambil!',
+            text: 'Silakan ampu foto bukti transfer QRIS terlebih dahulu.',
+            confirmButtonColor: '#4f46e5',
+            customClass: { popup: 'rounded-2xl' }
+        });
+        return;
+    }
+
+    document.getElementById('form_payment_method').value = selectedPaymentMethod;
+    document.getElementById('form_pay_amount').value = rawPayAmount;
+
+    document.getElementById('pos_checkout_form').submit();
+}
+
+// ==========================================
+// 4. CONFIRMATION SWEETALERT2
+// ==========================================
+function confirmClearCart() {
+    Swal.fire({
+        title: 'Kosongkan Keranjang?',
+        text: 'Seluruh item transaksi yang ada di keranjang akan dihapus.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Kosongkan!',
+        cancelButtonText: 'Batal',
+        customClass: {
+            container: 'z-[99999]'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = window.clearCartUrl;
+        }
+    });
+}
+
+function confirmRemoveCart(removeUrl, itemName) {
+    Swal.fire({
+        title: 'Hapus Item?',
+        text: 'Hapus "' + itemName + '" dari keranjang?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        customClass: {
+            popup: 'rounded-3xl',
+            confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
+            cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = removeUrl;
+        }
+    });
+}
