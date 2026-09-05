@@ -42,5 +42,5 @@ RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
 
 EXPOSE 8080
 
-# Jalankan PHP-FPM di port 9000 dan Nginx di foreground
-CMD ["sh", "-c", "php-FPM -F -R & nginx -g 'daemon off;'"]
+# Jalankan php-fpm (huruf kecil) di background dan Nginx di foreground
+CMD ["sh", "-c", "php-fpm -F -R & nginx -g 'daemon off;'"]
