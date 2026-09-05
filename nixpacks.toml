@@ -1,0 +1,11 @@
+[providers]
+providers = ['php']
+
+[phases.setup]
+nixPkgs = ['php82', 'php82Extensions.pdo_mysql', 'composer']
+
+[phases.build]
+cmds = ['composer install --optimize-autoloader --no-dev']
+
+[start]
+cmd = 'vendor/bin/heroku-php-nginx -C nginx.conf public/'
