@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Konfigurasi Nginx untuk Laravel pada port 8080
+# Konfigurasi Nginx agar menggunakan TCP port PHP-FPM
 RUN rm /etc/nginx/sites-enabled/default
 COPY <<EOF /etc/nginx/sites-available/default
 server {
@@ -19,16 +19,13 @@ server {
 
     location ~ \.php$ {
         include fastcgi_params;
-        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+        fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
 }
 EOF
 RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
-
-# Buat folder run untuk socket PHP-FPM
-RUN mkdir -p /var/run/php
 
 # Copy Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -45,5 +42,5 @@ RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
 
 EXPOSE 8080
 
-# Jalankan PHP-FPM dan Nginx secara bersamaan
-CMD php-fpm -D && nginx -g "daemon off;"
+# Jalankan PHP-FPM di port 9000 dan Nginx di foreground
+CMD ["sh", "-c", "php-FPM -F -R & nginx -g 'daemon off;'"]
