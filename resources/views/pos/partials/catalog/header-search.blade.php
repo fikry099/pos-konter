@@ -27,14 +27,11 @@
                 </div>
             </div>
 
-            <!-- FORM PENCARIAN SERVER-SIDE + CLIENT-SIDE -->
-            <form action="{{ route('pos.index') }}" method="GET" class="relative w-40 sm:w-60">
-                @if(request('category_id'))
-                    <input type="hidden" name="category_id" value="{{ request('category_id') }}">
-                @endif
-                <input type="text" name="search" id="search_product" value="{{ request('search') }}" onkeyup="filterProducts()" placeholder="Cari & Enter..." class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 text-slate-800 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition font-medium">
+            <!-- INPUT PENCARIAN REALTIME -->
+            <div class="relative w-40 sm:w-60">
+                <input type="text" id="search_product" onkeyup="filterProducts(event)" placeholder="Cari nama / kode..." class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 text-slate-800 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition font-medium">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs sm:text-sm"></i>
-            </form>
+            </div>
             
         </div>
     </div>

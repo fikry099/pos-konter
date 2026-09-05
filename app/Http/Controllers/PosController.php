@@ -85,7 +85,7 @@ class PosController extends Controller
     }
 
     /**
-     * METHOD BARU: API Endpoint Load Produk On-Demand Tanpa Pagination per Kategori/Provider
+     * API ENDPOINT: Load Seluruh Produk Khusus Kategori Utama + Provider yang Diklik
      */
     public function getProductsByCategory(Request $request)
     {
@@ -93,7 +93,7 @@ class PosController extends Controller
         $categoryKey = strtolower(trim($request->input('category', '')));
         $providerKey = strtolower(trim($request->input('provider', '')));
 
-        // Kueri dasar dengan leftJoin stok cabang (Bebas N+1 Query)
+        // Kueri dasar dengan leftJoin stok cabang
         $query = Product::query()
             ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
             ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
@@ -103,18 +103,41 @@ class PosController extends Controller
             ->where('products.is_active', true)
             ->with(['category.parent']);
 
-        // 1. Filter Provider / Operator Spesifik
+        // 1. FILTER KATEGORI UTAMA (Pulsa, Voucher, Perdana, E-Wallet, Bank, PLN, Aksesoris)
+        if (!empty($categoryKey) && $categoryKey !== 'all') {
+            $query->whereHas('category', function ($q) use ($categoryKey) {
+                $q->where(function ($sub) use ($categoryKey) {
+                    $sub->where('slug', 'like', "%{$categoryKey}%")
+                        ->orWhere('name', 'like', "%{$categoryKey}%");
+                })
+                ->orWhereHas('parent', function ($p) use ($categoryKey) {
+                    $p->where('slug', 'like', "%{$categoryKey}%")
+                      ->orWhere('name', 'like', "%{$categoryKey}%");
+                });
+            });
+        }
+
+        // 2. FILTER PROVIDER / OPERATOR (Telkomsel, Indosat, XL, Tri, Smartfren, Axis, dll)
         if (!empty($providerKey)) {
             $query->where(function ($q) use ($providerKey) {
-                $q->where('products.name', 'like', "%{$providerKey}%")
-                  ->orWhere('products.code', 'like', "%{$providerKey}%");
-            });
-        } 
-        // 2. Filter berdasarkan Kategori
-        elseif (!empty($categoryKey) && $categoryKey !== 'all') {
-            $query->whereHas('category', function ($q) use ($categoryKey) {
-                $q->where('slug', 'like', "%{$categoryKey}%")
-                  ->orWhere('name', 'like', "%{$categoryKey}%");
+                if (in_array($providerKey, ['tri', 'three', '3'])) {
+                    $q->where('products.name', 'like', '%tri%')
+                      ->orWhere('products.name', 'like', '%three%')
+                      ->orWhere('products.code', 'like', '%v-3-%')
+                      ->orWhere('products.code', 'like', '%tri%');
+                } elseif (in_array($providerKey, ['telkomsel', 'tsel'])) {
+                    $q->where('products.name', 'like', '%telkomsel%')
+                      ->orWhere('products.name', 'like', '%tsel%')
+                      ->orWhere('products.name', 'like', '%by.u%')
+                      ->orWhere('products.code', 'like', '%tsel%');
+                } elseif (in_array($providerKey, ['indosat', 'isat', 'im3'])) {
+                    $q->where('products.name', 'like', '%indosat%')
+                      ->orWhere('products.name', 'like', '%im3%')
+                      ->orWhere('products.code', 'like', '%isat%');
+                } else {
+                    $q->where('products.name', 'like', "%{$providerKey}%")
+                      ->orWhere('products.code', 'like', "%{$providerKey}%");
+                }
             });
         }
 
