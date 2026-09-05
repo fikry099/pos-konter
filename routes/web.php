@@ -116,6 +116,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pos/cart/clear', [PosController::class, 'clearCart'])->name('pos.cart.clear');
         Route::post('/pos/checkout', [PosController::class, 'store'])->name('pos.checkout');
         Route::post('/pos/cart/assign-staff/{key}', [PosController::class, 'assignStaff'])->name('pos.cart.assign_staff');
+        Route::get('/pos/products/by-category', [App\Http\Controllers\PosController::class, 'getProductsByCategory'])->name('pos.products.by-category');
     });
 
 });

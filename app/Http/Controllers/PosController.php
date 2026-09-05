@@ -39,47 +39,22 @@ class PosController extends Controller
     }
 
     /**
-     * Menampilkan Halaman Transaksi Kasir POS (Super Dioptimalkan)
+     * Menampilkan Halaman Utama Kasir POS (Fast Initial Load Tanpa Produk)
      */
     public function index(Request $request)
     {
         $storeId = $this->getActiveStoreId();
         $activeShift = Shift::getActiveShift($storeId);
 
-        // 1. Ambil Kategori Utama
+        // Load Kategori Utama
         $categories = Category::whereNull('parent_id')
             ->with(['allChildren'])
             ->get();
 
-        // 2. Ambil Produk + Stok Cabang dengan 1 Kueri (Bebas N+1 Problem)
-        $query = Product::query()
-            ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
-            ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
-                $join->on('products.id', '=', 'store_product_stocks.product_id')
-                     ->where('store_product_stocks.store_id', '=', $storeId);
-            })
-            ->where('products.is_active', true)
-            ->with(['category.parent']);
+        // Kosongkan produk awal agar halaman terbuka instan (0.1 detik)
+        $products = collect();
 
-        // Filter Pencarian
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('products.name', 'like', "%{$search}%")
-                  ->orWhere('products.code', 'like', "%{$search}%")
-                  ->orWhere('products.barcode', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter Kategori
-        if ($request->filled('category_id')) {
-            $query->where('products.category_id', $request->input('category_id'));
-        }
-
-        // Terapkan Pagination 60 produk per halaman agar loading < 0.5 detik
-        $products = $query->paginate(60)->appends($request->all());
-
-        // 3. Daftar Karyawan Shift
+        // Ambil Karyawan Shift
         $shiftStaffs = collect();
         if ($activeShift) {
             if ($activeShift->user_ids && is_array($activeShift->user_ids)) {
@@ -89,7 +64,7 @@ class PosController extends Controller
             }
         }
 
-        // 4. Sinkronisasi Keranjang
+        // Sinkronisasi Keranjang
         $cart = session()->get('pos_cart', []);
         if ($shiftStaffs->count() === 1) {
             $defaultUserId = $shiftStaffs->first()->id;
@@ -107,6 +82,46 @@ class PosController extends Controller
         }
 
         return view('pos.index', compact('activeShift', 'categories', 'products', 'cart', 'shiftStaffs'));
+    }
+
+    /**
+     * METHOD BARU: API Endpoint Load Produk On-Demand Tanpa Pagination per Kategori/Provider
+     */
+    public function getProductsByCategory(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+        $categoryKey = strtolower(trim($request->input('category', '')));
+        $providerKey = strtolower(trim($request->input('provider', '')));
+
+        // Kueri dasar dengan leftJoin stok cabang (Bebas N+1 Query)
+        $query = Product::query()
+            ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
+            ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
+                $join->on('products.id', '=', 'store_product_stocks.product_id')
+                     ->where('store_product_stocks.store_id', '=', $storeId);
+            })
+            ->where('products.is_active', true)
+            ->with(['category.parent']);
+
+        // 1. Filter Provider / Operator Spesifik
+        if (!empty($providerKey)) {
+            $query->where(function ($q) use ($providerKey) {
+                $q->where('products.name', 'like', "%{$providerKey}%")
+                  ->orWhere('products.code', 'like', "%{$providerKey}%");
+            });
+        } 
+        // 2. Filter berdasarkan Kategori
+        elseif (!empty($categoryKey) && $categoryKey !== 'all') {
+            $query->whereHas('category', function ($q) use ($categoryKey) {
+                $q->where('slug', 'like', "%{$categoryKey}%")
+                  ->orWhere('name', 'like', "%{$categoryKey}%");
+            });
+        }
+
+        // Ambil SELURUH produk yang sesuai tanpa dipotong pagination
+        $products = $query->get();
+
+        return response()->json($products);
     }
 
     /**
@@ -286,9 +301,6 @@ class PosController extends Controller
         return back()->with('success', 'Keranjang dikosongkan.');
     }
 
-    /**
-     * Simpan Transaksi Penjualan ke Database (Checkout / Bayar)
-     */
     public function store(Request $request)
     {
         $cart = session()->get('pos_cart', []);
@@ -384,7 +396,6 @@ class PosController extends Controller
                     'profit'            => $item['profit'],
                 ]);
 
-                // Potong stok barang fisik
                 if ($productType !== 'digital') {
                     $stock = StoreProductStock::where('store_id', $storeId)
                         ->where('product_id', $item['product_id'])
@@ -402,6 +413,7 @@ class PosController extends Controller
             }
 
             DB::commit();
+
             session()->forget('pos_cart');
 
             return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil disimpan!');

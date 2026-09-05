@@ -16,7 +16,6 @@ function togglePriceFilterVisibility(show) {
         } else {
             priceFilter.classList.remove('flex');
             priceFilter.classList.add('hidden');
-            // Kosongkan nilai input saat disembunyikan/reset
             if (minInput) minInput.value = '';
             if (maxInput) maxInput.value = '';
         }
@@ -32,7 +31,6 @@ function navigateToSubCategory(catType, title) {
     document.getElementById('view_sub_providers').classList.remove('hidden');
     document.getElementById('view_products_grid').classList.add('hidden');
     
-    // Di Level 2 (pilih provider), filter harga belum ditampilkan
     togglePriceFilterVisibility(false);
     
     let backBtn = document.getElementById('btn_back_category');
@@ -66,7 +64,7 @@ function navigateToSubCategory(catType, title) {
     }
 }
 
-// 2. DARI LEVEL 2 KE LEVEL 3 (TAMPILKAN PRODUK SELEPAS FILTER PROVIDER / SUB-AKSESORIS)
+// 2. DARI LEVEL 2 KE LEVEL 3 (LOAD AJAX PRODUK BERDASARKAN PROVIDER / SUB-KATEGORI)
 function selectProviderFilter(providerKey, title) {
     navLevel = 3;
     selectedProvider = providerKey.toLowerCase();
@@ -74,7 +72,6 @@ function selectProviderFilter(providerKey, title) {
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
-    // Masuk ke grid produk, tampilkan filter harga
     togglePriceFilterVisibility(true);
     
     let titleText = document.getElementById('catalog_title_text');
@@ -82,7 +79,7 @@ function selectProviderFilter(providerKey, title) {
         titleText.innerHTML = '<i class="fa-solid fa-boxes-stacked mr-2 text-indigo-600"></i> Produk ' + title;
     }
 
-    applyProductFilters();
+    fetchProductsFromServer(selectedCategory, selectedProvider);
 }
 
 // 3. LANGSUNG KE PRODUK DARI LEVEL 1 (PLN TERPISAH)
@@ -95,7 +92,6 @@ function navigateToDirectCategory(slugKey, title) {
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
-    // Masuk ke grid produk langsung, tampilkan filter harga
     togglePriceFilterVisibility(true);
     
     let backBtn = document.getElementById('btn_back_category');
@@ -106,10 +102,10 @@ function navigateToDirectCategory(slugKey, title) {
         titleText.innerHTML = '<i class="fa-solid fa-boxes-stacked mr-2 text-indigo-600"></i> ' + title;
     }
 
-    applyProductFilters();
+    fetchProductsFromServer(selectedCategory, '');
 }
 
-// 4. TAMPILKAN SEMUA PRODUK
+// 4. TAMPILKAN SEMUA PRODUK (ON-DEMAND)
 function showAllProducts() {
     navLevel = 3;
     selectedCategory = 'all';
@@ -119,7 +115,6 @@ function showAllProducts() {
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
-    // Masuk ke grid semua produk, tampilkan filter harga
     togglePriceFilterVisibility(true);
     
     let backBtn = document.getElementById('btn_back_category');
@@ -130,10 +125,126 @@ function showAllProducts() {
         titleText.innerHTML = '<i class="fa-solid fa-boxes-stacked mr-2 text-indigo-600"></i> Semua Produk';
     }
 
-    applyProductFilters();
+    fetchProductsFromServer('all', '');
 }
 
-// 5. TOMBOL KEMBALI HIERARKI NAVIGASI
+// 5. FUNGSI FETCH AJAX DARI SERVER & RENDER GRID
+function fetchProductsFromServer(category, provider) {
+    let gridView = document.getElementById('view_products_grid');
+    if (!gridView) return;
+
+    // Ambil elemen pembungkus grid di dalam view_products_grid
+    let container = gridView.querySelector('.grid');
+    if (!container) return;
+
+    // Tampilkan Indikator Loading
+    container.innerHTML = `
+        <div class="col-span-full bg-white rounded-3xl p-10 text-center text-indigo-600 border border-indigo-100 shadow-sm">
+            <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+            <p class="text-sm font-bold text-slate-700">Memuat produk...</p>
+        </div>
+    `;
+
+    fetch(`/pos/products/by-category?category=${category}&provider=${provider}`)
+        .then(response => response.json())
+        .then(products => {
+            renderProductsHTML(products, container);
+        })
+        .catch(error => {
+            console.error('Error fetching products:', error);
+            container.innerHTML = `
+                <div class="col-span-full bg-white rounded-3xl p-10 text-center text-rose-500 border border-rose-100">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl mb-2"></i>
+                    <p class="text-sm font-bold">Gagal memuat daftar produk. Silakan coba lagi.</p>
+                </div>
+            `;
+        });
+}
+
+// 6. FUNGSI MERENDER ITEM PRODUK MENJADI CARD HTML
+function renderProductsHTML(products, container) {
+    container.innerHTML = ''; // Bersihkan tampilan loading
+
+    if (!products || products.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full bg-white rounded-3xl p-10 text-center text-gray-400 border border-gray-200">
+                <i class="fa-solid fa-box-open text-4xl mb-2"></i>
+                <p class="text-sm font-semibold">Tidak ada produk yang tersedia pada kategori ini.</p>
+            </div>
+        `;
+        return;
+    }
+
+    products.forEach(product => {
+        let productType = (product.type || 'physical').toLowerCase().trim();
+        let isDigital = (productType === 'digital');
+        let actualStock = parseInt(product.current_stock !== undefined ? product.current_stock : product.stock) || 0;
+        let minStock = parseInt(product.min_stock) || 0;
+        let isOutOfStock = !isDigital && (actualStock <= 0);
+
+        let formattedPrice = new Intl.NumberFormat('id-ID').format(product.selling_price || 0);
+
+        // Class styling
+        let badgeClass = isDigital ? 'bg-blue-100 text-blue-700' : (isOutOfStock ? 'bg-rose-100 text-rose-700' : 'bg-green-100 text-green-700');
+        let stockTextClass = isOutOfStock ? 'text-rose-600 font-black' : (actualStock <= minStock ? 'text-amber-600 font-bold animate-pulse' : 'text-gray-500');
+        let cardBorderClass = isOutOfStock ? 'opacity-60 bg-gray-50 border-rose-200 cursor-not-allowed' : 'hover:border-indigo-500 cursor-pointer active:scale-98 bg-white';
+
+        let clickAttr = !isOutOfStock ? `onclick='openAddToCartModal(${JSON.stringify(product)})'` : '';
+
+        let buttonHTML = isOutOfStock ? `
+            <button type="button" disabled class="w-full bg-gray-200 text-gray-400 text-xs font-bold py-2.5 rounded-xl flex items-center justify-center space-x-1.5 cursor-not-allowed">
+                <i class="fa-solid fa-ban text-xs"></i>
+                <span>Stok Habis</span>
+            </button>
+        ` : `
+            <button type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center space-x-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Tambah</span>
+            </button>
+        `;
+
+        let stockBadgeHTML = !isDigital ? `
+            <span class="text-[11px] font-semibold ${stockTextClass}">
+                ${isOutOfStock ? 'Stok Habis' : 'Stok: ' + actualStock}
+            </span>
+        ` : '';
+
+        let cardHTML = `
+            <div class="product-item cat-${product.category_id} rounded-2xl shadow-sm border border-gray-200/90 p-3.5 flex flex-col justify-between transition group ${cardBorderClass}"
+                 ${clickAttr}
+                 data-name="${(product.name || '').toLowerCase()}"
+                 data-code="${(product.code || '').toLowerCase()}"
+                 data-price="${product.selling_price}">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full ${badgeClass}">
+                            ${isDigital ? 'Digital' : 'Fisik'}
+                        </span>
+                        ${stockBadgeHTML}
+                    </div>
+
+                    <h4 class="font-bold text-gray-800 text-xs md:text-sm line-clamp-2 mb-1 group-hover:text-indigo-600 transition leading-snug">
+                        ${product.name}
+                    </h4>
+                    <p class="text-[11px] text-gray-400 mb-2 font-mono">${product.code || '-'}</p>
+                </div>
+
+                <div>
+                    <div class="text-sm md:text-base font-black text-indigo-700 mb-2">
+                        Rp ${formattedPrice}
+                    </div>
+                    ${buttonHTML}
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', cardHTML);
+    });
+
+    applyProductFilters(); // Terapkan filter harga atau pencarian jika ada yang diketik
+}
+
+// 7. TOMBOL KEMBALI HIERARKI NAVIGASI
 function resetCategoryNavigation() {
     let hasSubLevel = ['pulsa', 'voucher', 'perdana', 'kartu-perdana', 'ewallet', 'bank', 'transfer-bank', 'aksesoris', 'aksesoris-hp'].includes(selectedCategory);
 
@@ -144,7 +255,6 @@ function resetCategoryNavigation() {
         document.getElementById('view_products_grid').classList.add('hidden');
         document.getElementById('view_sub_providers').classList.remove('hidden');
         
-        // Kembali ke Level 2 (pilih sub-kategori), sembunyikan filter harga
         togglePriceFilterVisibility(false);
         
         let titleText = document.getElementById('catalog_title_text');
@@ -165,7 +275,6 @@ function resetCategoryNavigation() {
         document.getElementById('view_sub_providers').classList.add('hidden');
         document.getElementById('view_products_grid').classList.add('hidden');
         
-        // Kembali ke Level 1 (Katalog Utama), sembunyikan filter harga
         togglePriceFilterVisibility(false);
         
         let backBtn = document.getElementById('btn_back_category');
@@ -178,18 +287,18 @@ function resetCategoryNavigation() {
     }
 }
 
-// 6. FUNGSI FORMAT INPUT HARGA OTOMATIS (PISAH TITIK RIBUAN)
+// 8. FUNGSI FORMAT INPUT HARGA OTOMATIS
 function formatPriceInput(input) {
-    let rawValue = input.value.replace(/\D/g, ''); // Ambil angka saja
+    let rawValue = input.value.replace(/\D/g, '');
     if (rawValue === '') {
         input.value = '';
     } else {
         input.value = parseInt(rawValue, 10).toLocaleString('id-ID');
     }
-    filterProducts(); // Jalankan filter realtime otomatis
+    applyProductFilters();
 }
 
-// 7. PENYARINGAN KARTU PRODUK (KATEGORI, PROVIDER, SEARCH & RENTANG HARGA)
+// 9. PENYARINGAN KARTU PRODUK REALTIME (SEARCH LOCAL & HARGA)
 function applyProductFilters() {
     let searchInput = document.getElementById('search_product');
     let searchKeyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -197,79 +306,20 @@ function applyProductFilters() {
     let minPriceInput = document.getElementById('filter_min_price');
     let maxPriceInput = document.getElementById('filter_max_price');
     
-    // Bersihkan titik sebelum di-parse ke float
     let minPrice = minPriceInput && minPriceInput.value !== '' ? parseFloat(minPriceInput.value.replace(/\./g, '')) : 0;
     let maxPrice = maxPriceInput && maxPriceInput.value !== '' ? parseFloat(maxPriceInput.value.replace(/\./g, '')) : Infinity;
 
     let items = document.querySelectorAll('.product-item');
-    let customCard = document.getElementById('card_custom_amount');
-
-    if (customCard) {
-        if (selectedCategory === 'bank' || selectedCategory === 'transfer-bank' || selectedCategory === 'ewallet') {
-            customCard.classList.remove('hidden');
-        } else {
-            customCard.classList.add('hidden');
-        }
-    }
 
     items.forEach(item => {
-        let cat = (item.getAttribute('data-category') || '').toLowerCase();
         let name = (item.getAttribute('data-name') || '').toLowerCase();
         let code = (item.getAttribute('data-code') || '').toLowerCase();
         let price = parseFloat(item.getAttribute('data-price')) || 0;
 
-        let matchCat = false;
-        if (selectedCategory === '' || selectedCategory === 'all') {
-            matchCat = true;
-        } else if (selectedCategory === 'perdana' || selectedCategory === 'kartu-perdana') {
-            matchCat = cat.includes('perdana') || cat.includes('kartu') || name.includes('perdana');
-        } else if (selectedCategory === 'ewallet') {
-            matchCat = cat.includes('ewallet') || cat.includes('wallet') || cat.includes('topup');
-        } else if (selectedCategory === 'bank' || selectedCategory === 'transfer-bank' || selectedCategory === 'transfer') {
-            matchCat = cat.includes('bank') || cat.includes('transfer') || cat.includes('kirim');
-        } else if (selectedCategory === 'token-pln' || selectedCategory === 'pln') {
-            matchCat = cat.includes('pln') || cat.includes('token');
-        } else if (selectedCategory === 'aksesoris-hp' || selectedCategory === 'aksesoris') {
-            matchCat = cat.includes('aksesoris') || cat.includes('acc') || cat.includes('proteksi') || cat.includes('power') || cat.includes('audio') || cat.includes('penyimpanan') || cat.includes('mount');
-        } else {
-            matchCat = cat.includes(selectedCategory);
-        }
-
-        let matchProv = true;
-        if (selectedProvider !== '') {
-            let provKey = selectedProvider.toLowerCase().trim();
-
-            // PENCATATAN ALIAS KHUSUS OPERATOR TRI / THREE / 3
-            if (provKey === 'tri' || provKey === 'three' || provKey === '3') {
-                matchProv = cat.includes('tri') || cat.includes('three') || cat.includes('3') ||
-                            name.includes('tri') || name.includes('three') || name.includes(' 3 ') || name.includes('3gb') || name.includes('3h') || name.includes('happy') || name.includes('aon') ||
-                            code.includes('v-3-') || code.includes('tri') || code.includes('three');
-            } 
-            // PENCATATAN ALIAS KHUSUS OPERATOR TELKOMSEL / TSEL / BYU
-            else if (provKey === 'telkomsel' || provKey === 'tsel') {
-                matchProv = cat.includes('telkomsel') || cat.includes('tsel') || cat.includes('byu') ||
-                            name.includes('telkomsel') || name.includes('by.u') || name.includes('tsel') ||
-                            code.includes('tsel') || code.includes('byu');
-            } 
-            // PENCATATAN ALIAS KHUSUS OPERATOR INDOSAT / ISAT / IM3
-            else if (provKey === 'indosat' || provKey === 'isat' || provKey === 'im3') {
-                matchProv = cat.includes('indosat') || cat.includes('isat') || cat.includes('im3') ||
-                            name.includes('indosat') || name.includes('im3') ||
-                            code.includes('isat') || code.includes('indosat');
-            } 
-            else {
-                matchProv = cat.includes(provKey) || name.includes(provKey) || code.includes(provKey);
-            }
-        }
-
-        let matchSearch = true;
-        if (searchKeyword !== '') {
-            matchSearch = name.includes(searchKeyword) || code.includes(searchKeyword) || cat.includes(searchKeyword);
-        }
-
+        let matchSearch = searchKeyword === '' || name.includes(searchKeyword) || code.includes(searchKeyword);
         let matchPrice = (price >= minPrice && price <= maxPrice);
 
-        if (matchCat && matchProv && matchSearch && matchPrice) {
+        if (matchSearch && matchPrice) {
             item.classList.remove('hidden');
         } else {
             item.classList.add('hidden');
@@ -277,42 +327,7 @@ function applyProductFilters() {
     });
 }
 
-// 8. PENCARIAN REALTIME & SERVER-SIDE FALLBACK
+// 10. EVENT PENCARIAN REALTIME
 function filterProducts(event) {
-    let searchInput = document.getElementById('search_product');
-    let searchKeyword = searchInput ? searchInput.value.trim() : '';
-    
-    let minPriceInput = document.getElementById('filter_min_price');
-    let maxPriceInput = document.getElementById('filter_max_price');
-    let hasPriceFilter = (minPriceInput && minPriceInput.value !== '') || (maxPriceInput && maxPriceInput.value !== '');
-
-    // Jika pengguna menekan tombol Enter pada input pencarian, kirim request pencarian ke Server
-    if (event && event.key === 'Enter') {
-        let form = searchInput.closest('form');
-        if (form) {
-            form.submit();
-            return;
-        }
-    }
-
-    if ((searchKeyword.length > 0 || hasPriceFilter) && navLevel !== 3) {
-        navLevel = 3;
-        selectedCategory = 'all';
-        selectedProvider = '';
-        
-        let mainCat = document.getElementById('view_main_categories');
-        let subProv = document.getElementById('view_sub_providers');
-        let prodGrid = document.getElementById('view_products_grid');
-
-        if (mainCat) mainCat.classList.add('hidden');
-        if (subProv) subProv.classList.add('hidden');
-        if (prodGrid) prodGrid.classList.remove('hidden');
-        
-        togglePriceFilterVisibility(true);
-        
-        let backBtn = document.getElementById('btn_back_category');
-        if (backBtn) backBtn.classList.remove('hidden');
-    }
-
     applyProductFilters();
 }
