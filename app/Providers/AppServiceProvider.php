@@ -3,8 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
-use App\Models\Shift;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,10 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Bagikan data $activeShift ke seluruh file Blade view secara global
-        View::composer('*', function ($view) {
-            $activeShift = Shift::getActiveShift(); // Ambil shift yang berstatus 'open'
-            $view->with('activeShift', $activeShift);
-        });
+        // Force semua route, asset, dan form action menggunakan HTTPS di environment produksi
+        if (config('app.env') === 'production' || request()->header('X-Forwarded-Proto') === 'https') {
+            URL::forceScheme('https');
+        }
     }
 }

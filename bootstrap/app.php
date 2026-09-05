@@ -11,14 +11,15 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        // MENDAFTARKAN ALIAS MIDDLEWARE OWNER & ENSURE SHIFT
-        $middleware->alias([
-            'owner' => \App\Http\Middleware\EnsureUserIsOwner::class,
-        ]);
-    })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+    ->withMiddleware(function (Middleware $middleware) {
+        // Percayai semua proxy/load balancer dari Railway
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR |
+            Request::HEADER_X_FORWARDED_HOST |
+            Request::HEADER_X_FORWARDED_PORT |
+            Request::HEADER_X_FORWARDED_PROTO |
+            Request::HEADER_X_FORWARDED_AWS_ELB
         );
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        //
     })->create();
