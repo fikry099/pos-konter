@@ -3,7 +3,8 @@ let currentCartTotal = 0;
 let selectedPaymentMethod = 'cash';
 let rawPayAmount = 0;
 let qrisMediaStream = null;
-let currentFacingMode = 'environment'; // Default: Kamera Belakang
+let videoDevices = [];
+let currentDeviceIndex = 0;
 
 // ==========================================
 // 1. MODAL TAMBAH KE KERANJANG (PRODUK & CUSTOM)
@@ -171,10 +172,13 @@ function closePaymentModal() {
 }
 
 /**
- * STRATEGI AKSES KAMERA HP (NATIVE MEDIA)
+ * STRATEGI PENCEGANHAN LOCKOUT KAMERA HP (NATIVE WEBRTC)
  */
-async function startQrisCamera(facing = 'environment') {
+async function startQrisCamera() {
     stopQrisCamera();
+
+    // Jeda 200ms agar hardware kamera HP bebas dari kunci kueri sebelumnya
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const videoElem = document.getElementById('qris_video');
     const placeholder = document.getElementById('qris_placeholder');
@@ -185,12 +189,55 @@ async function startQrisCamera(facing = 'environment') {
     }
 
     try {
-        let constraints = {
-            video: { facingMode: facing },
-            audio: false
-        };
+        // Ambil pendaftaran seluruh sensor kamera jika belum terbaca
+        if (videoDevices.length === 0) {
+            try {
+                // Trigger awal untuk meminta izin pembacaan sensor
+                const initStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                initStream.getTracks().forEach(track => track.stop());
+            } catch (e) {}
 
-        let stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+            // Cari indeks kamera belakang secara otomatis
+            let backIndex = videoDevices.findIndex(d => {
+                let lbl = d.label.toLowerCase();
+                return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('belakang');
+            });
+
+            if (backIndex !== -1) {
+                currentDeviceIndex = backIndex;
+            }
+        }
+
+        let constraints = {};
+
+        // 1. Prioritaskan penggunaan Device ID Spesifik
+        if (videoDevices.length > 0 && videoDevices[currentDeviceIndex]) {
+            constraints = {
+                video: { deviceId: { exact: videoDevices[currentDeviceIndex].deviceId } },
+                audio: false
+            };
+        } else {
+            // 2. Fallback constraint facingMode 'environment'
+            constraints = {
+                video: { facingMode: 'environment' },
+                audio: false
+            };
+        }
+
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (errFallback) {
+            // 3. Fallback standar tanpa constraint ketat
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+        }
+
         qrisMediaStream = stream;
 
         if (videoElem) {
@@ -201,34 +248,27 @@ async function startQrisCamera(facing = 'environment') {
         if (placeholder) placeholder.classList.add('hidden');
 
     } catch (err) {
-        console.warn("Gagal membuka kamera mode " + facing + ":", err);
-        // Fallback jika mode ditolak
-        try {
-            let fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            qrisMediaStream = fallbackStream;
-            if (videoElem) {
-                videoElem.srcObject = fallbackStream;
-                videoElem.play();
-                videoElem.classList.remove('hidden');
-            }
-            if (placeholder) placeholder.classList.add('hidden');
-        } catch(e) {
-            alert("Gagal mengakses kamera HP. Mohon izinkan akses kamera di browser Anda.");
-        }
+        console.error("Gagal membuka kamera:", err);
+        alert("Gagal mengakses kamera. Silakan periksa izin kamera pada browser Anda.");
     }
 }
 
 /**
- * TOGGLE BALIK KAMERA DEPAN / BELAKANG
+ * TOGGLE SIRKULASI BALIK KAMERA
  */
 function toggleQrisCameraFacing() {
-    currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
-    startQrisCamera(currentFacingMode);
+    if (videoDevices.length > 1) {
+        currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+    }
+    startQrisCamera();
 }
 
 function stopQrisCamera() {
     if (qrisMediaStream) {
-        qrisMediaStream.getTracks().forEach(track => track.stop());
+        qrisMediaStream.getTracks().forEach(track => {
+            track.stop();
+            if (qrisMediaStream) qrisMediaStream.removeTrack(track);
+        });
         qrisMediaStream = null;
     }
     const videoElem = document.getElementById('qris_video');
@@ -262,9 +302,8 @@ function switchModalPayment(method) {
 
         rawPayAmount = currentCartTotal;
 
-        // Default: Kamera Belakang ('environment')
-        currentFacingMode = 'environment';
-        startQrisCamera(currentFacingMode);
+        // Jalankan Kamera Belakang Secara Otomatis
+        startQrisCamera();
     }
 }
 
@@ -330,7 +369,7 @@ function reset_qris_camera() {
     document.getElementById('btn_snap_qris').classList.remove('hidden');
     document.getElementById('btn_reset_qris').classList.add('hidden');
 
-    startQrisCamera(currentFacingMode);
+    startQrisCamera();
 }
 
 function processFinalCheckout() {
