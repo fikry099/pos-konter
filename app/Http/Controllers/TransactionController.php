@@ -44,15 +44,19 @@ class TransactionController extends Controller
             $query->where('shift_id', $request->shift_id);
         }
 
-        // Filter 4: Kategori Produk / Katalog (Termasuk Anak & Cucu Kategori)
+        // Filter 4: Kategori Produk / Katalog (Optimasi Query via Pluck ID)
         if ($request->filled('category_id')) {
             $catId = $request->category_id;
-            $query->whereHas('details.product.category', function ($qc) use ($catId) {
-                $qc->where('id', $catId)
-                   ->orWhere('parent_id', $catId)
-                   ->orWhereHas('parent', function ($qparent) use ($catId) {
-                       $qparent->where('parent_id', $catId);
-                   });
+
+            $categoryIds = Category::where('id', $catId)
+                ->orWhere('parent_id', $catId)
+                ->orWhereHas('parent', function ($qp) use ($catId) {
+                    $qp->where('parent_id', $catId);
+                })
+                ->pluck('id');
+
+            $query->whereHas('details.product', function ($qp) use ($categoryIds) {
+                $qp->whereIn('category_id', $categoryIds);
             });
         }
 

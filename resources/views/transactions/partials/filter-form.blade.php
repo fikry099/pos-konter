@@ -11,7 +11,7 @@
             </div>
         </div>
 
-        <!-- 2. INPUT FILTER TANGGAL (IKON BAWAAN BROWSER DI-HIDE) -->
+        <!-- 2. INPUT FILTER TANGGAL -->
         <div class="md:col-span-2 space-y-1">
             <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Filter Tanggal</label>
             <div class="relative flex items-center">
@@ -25,22 +25,25 @@
             </div>
         </div>
 
-        <!-- 3. SELECT FILTER SHIFT KERJA (DENGAN NAMA KASIR) -->
+        <!-- 3. SELECT FILTER SHIFT KERJA -->
         <div class="md:col-span-2 space-y-1">
             <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Shift Kerja</label>
             <select name="shift_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition cursor-pointer">
                 <option value="">-- Semua Shift --</option>
                 @if(isset($shifts))
                     @foreach($shifts as $shift)
+                        @php
+                            $cashierName = $shift->staff_names ?? $shift->user->name ?? 'Kasir Cabang';
+                        @endphp
                         <option value="{{ $shift->id }}" {{ request('shift_id') == $shift->id ? 'selected' : '' }}>
-                            Shift #{{ $shift->id }} ({{ $shift->staff_names }})
+                            Shift #{{ $shift->id }} ({{ $cashierName }})
                         </option>
                     @endforeach
                 @endif
             </select>
         </div>
 
-        <!-- 4. SELECT FILTER KATEGORI / KATALOG -->
+        <!-- 4. SELECT FILTER KATEGORI -->
         <div class="md:col-span-3 space-y-1">
             <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Kategori / Katalog</label>
             <select name="category_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition cursor-pointer">
@@ -62,7 +65,8 @@
                 <span>Filter</span>
             </button>
 
-            <a href="{{ route('transactions.export_excel', request()->all()) }}" 
+            <!-- DIPERBAIKI: Menggunakan route exportExcel yang konsisten -->
+            <a href="{{ route('transactions.exportExcel', request()->all()) }}" 
                class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-2.5 rounded-xl transition flex items-center justify-center space-x-1 shadow-sm active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-file-excel text-xs"></i>
                 <span>Excel</span>
