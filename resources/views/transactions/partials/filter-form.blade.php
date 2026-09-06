@@ -11,12 +11,12 @@
             </div>
         </div>
 
-        <!-- 2. INPUT FILTER TANGGAL BER-IKON -->
+        <!-- 2. INPUT FILTER TANGGAL (IKON BAWAAN BROWSER DI-HIDE) -->
         <div class="md:col-span-2 space-y-1">
             <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Filter Tanggal</label>
             <div class="relative flex items-center">
                 <input type="date" id="filter_date_input" name="date" value="{{ request('date') }}" 
-                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-9 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition cursor-pointer">
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-9 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden">
                 <button type="button" 
                         onclick="document.getElementById('filter_date_input').showPicker ? document.getElementById('filter_date_input').showPicker() : document.getElementById('filter_date_input').focus()" 
                         class="absolute right-3 text-indigo-600 hover:text-indigo-800 cursor-pointer p-1">

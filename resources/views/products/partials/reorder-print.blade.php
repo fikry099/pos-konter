@@ -142,6 +142,9 @@
 </style>
 
 @push('scripts')
+<!-- Library SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         if (typeof calculateTotals === "function") {
@@ -182,8 +185,20 @@
     // FUNGSI UNTUK MENAMPILKAN MODAL RESI RESTOK PO
     function printOrderReceipt() {
         let rows = document.querySelectorAll('.item-row');
+        
+        // 1. Jika tabel kosong sama sekali
         if (rows.length === 0) {
-            alert("Tidak ada barang yang perlu dipesan.");
+            Swal.fire({
+                icon: 'info',
+                title: 'Tidak Ada Barang!',
+                text: 'Tidak ada barang yang perlu dipesan saat ini.',
+                confirmButtonColor: '#4f46e5',
+                confirmButtonText: 'Mengerti',
+                customClass: {
+                    popup: 'rounded-3xl',
+                    confirmButton: 'rounded-xl text-xs font-bold px-5 py-2.5'
+                }
+            });
             return;
         }
 
@@ -230,15 +245,26 @@
             }
         });
 
+        // 2. Jika ada baris tapi kuantitas order masih 0 semua
         if (totalItems === 0) {
-            alert("Jumlah barang diorder masih 0. Masukkan jumlah order terlebih dahulu.");
+            Swal.fire({
+                icon: 'warning',
+                title: 'Kuantitas Masih 0!',
+                text: 'Masukkan jumlah order terlebih dahulu sebelum mencetak struk.',
+                confirmButtonColor: '#4f46e5',
+                confirmButtonText: 'Paham',
+                customClass: {
+                    popup: 'rounded-3xl',
+                    confirmButton: 'rounded-xl text-xs font-bold px-5 py-2.5'
+                }
+            });
             return;
         }
 
         document.getElementById('print_total_items').innerText = totalItems + ' Item';
         document.getElementById('print_total_pcs').innerText = totalPcs + ' Pcs';
 
-        // TAMPILKAN MODAL
+        // TAMPILKAN MODAL RESI
         document.getElementById('reorderReceiptModal').classList.remove('hidden');
     }
 

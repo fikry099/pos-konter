@@ -6,16 +6,17 @@ use App\Models\Shift;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Expense;
+use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Attendance;
+use Illuminate\Support\Facades\DB;
 
 class ShiftController extends Controller
 {
     private function getActiveStoreId()
     {
         $user = Auth::user();
-        if ($user->store_id) {
+        if ($user && $user->store_id) {
             return $user->store_id;
         }
         return session('selected_store_id') ?? 1;
@@ -40,9 +41,7 @@ class ShiftController extends Controller
             $expectedCash = ($activeShift->cash_initial + $totalCashSales) - $totalExpenses;
         }
 
-        // =========================================================================
         // Ambil ID Karyawan yang SUDAH ABSEN HARI INI DI CABANG MANAPUN
-        // =========================================================================
         $alreadyClockedInTodayUserIds = Attendance::whereDate('date', now()->toDateString())
             ->pluck('user_id')
             ->toArray();
@@ -52,12 +51,13 @@ class ShiftController extends Controller
             ->orderBy('name', 'asc')
             ->get()
             ->map(function ($user) use ($alreadyClockedInTodayUserIds) {
-                // Tambahkan properti penanda status absen
                 $user->has_clocked_in_today = in_array($user->id, $alreadyClockedInTodayUserIds);
                 return $user;
             });
 
-        $shifts = Shift::where('store_id', $storeId)
+        // Optimasi N+1 Query dengan eager loading relasi user
+        $shifts = Shift::with(['user'])
+            ->where('store_id', $storeId)
             ->latest()
             ->paginate(10);
 
@@ -74,14 +74,12 @@ class ShiftController extends Controller
 
         // SYARAT VALIDASI BERDASARKAN APAKAH SUDAH ADA SHIFT AKTIF
         if (!$existingActive) {
-            // Jika BELUM ADA shift aktif: Wajib input modal awal
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'cash_initial' => 'required|numeric|min:0',
                 'photo'        => 'required',
             ]);
         } else {
-            // Jika SUDAH ADA shift aktif: Hanya butuh user_id dan foto
             $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'photo'   => 'required',
@@ -92,9 +90,7 @@ class ShiftController extends Controller
         $currentTime = $now->format('H:i:s');
         $currentDate = $now->toDateString();
 
-        // =========================================================================
         // DOUBLE CHECK SECURITY: Cek apakah karyawan ini sudah absen hari ini
-        // =========================================================================
         $hasClockedInToday = Attendance::where('user_id', $request->user_id)
             ->whereDate('date', $currentDate)
             ->exists();
@@ -111,58 +107,61 @@ class ShiftController extends Controller
         $threshold = ($shiftType === 'pagi') ? '07:05:00' : '15:05:00';
         $isOnTime = ($currentTime <= $threshold);
 
-        if (!$existingActive) {
-            // ==========================================
-            // KONDISI A: BUKA SHIFT BARU (ORANG PERTAMA)
-            // ==========================================
-            $shift = Shift::create([
-                'store_id'     => $storeId,
-                'user_id'      => $request->user_id,
-                'user_ids'     => [(int) $request->user_id],
-                'cash_initial' => $request->cash_initial,
-                'photo'        => $request->photo,
-                'start_time'   => $now,
-                'status'       => 'open',
-            ]);
+        DB::beginTransaction();
+        try {
+            if (!$existingActive) {
+                // KONDISI A: BUKA SHIFT BARU (ORANG PERTAMA)
+                $shift = Shift::create([
+                    'store_id'     => $storeId,
+                    'user_id'      => $request->user_id,
+                    'user_ids'     => [(int) $request->user_id],
+                    'cash_initial' => $request->cash_initial,
+                    'photo'        => $request->photo,
+                    'start_time'   => $now,
+                    'status'       => 'open',
+                ]);
 
-            // Catat Absensi Pembuka Shift
-            Attendance::create([
-                'store_id'   => $storeId,
-                'shift_id'   => $shift->id,
-                'user_id'    => $request->user_id,
-                'date'       => $currentDate,
-                'shift_type' => $shiftType,
-                'check_in'   => $currentTime,
-                'is_on_time' => $isOnTime,
-            ]);
+                // Catat Absensi Pembuka Shift
+                Attendance::create([
+                    'store_id'   => $storeId,
+                    'shift_id'   => $shift->id,
+                    'user_id'    => $request->user_id,
+                    'date'       => $currentDate,
+                    'shift_type' => $shiftType,
+                    'check_in'   => $currentTime,
+                    'is_on_time' => $isOnTime,
+                ]);
 
-            return redirect()->route('pos.index')->with('success', 'Shift berhasil dibuka dan absensi kasir pertama dicatat!');
-        } else {
-            // ==========================================
-            // KONDISI B: KARYAWAN MENYUSUL (JOIN SHIFT)
-            // ==========================================
-            $currentUserIds = $existingActive->user_ids ?? [];
-            if (!in_array($request->user_id, $currentUserIds)) {
-                $currentUserIds[] = (int) $request->user_id;
+                DB::commit();
+                return redirect()->route('pos.index')->with('success', 'Shift berhasil dibuka dan absensi kasir pertama dicatat!');
+            } else {
+                // KONDISI B: KARYAWAN MENYUSUL (JOIN SHIFT)
+                $currentUserIds = $existingActive->user_ids ?? [];
+                if (!in_array($request->user_id, $currentUserIds)) {
+                    $currentUserIds[] = (int) $request->user_id;
+                }
+
+                $existingActive->update([
+                    'user_ids' => $currentUserIds,
+                ]);
+
+                // Catat Absensi Karyawan Susulan
+                Attendance::create([
+                    'store_id'   => $storeId,
+                    'shift_id'   => $existingActive->id,
+                    'user_id'    => $request->user_id,
+                    'date'       => $currentDate,
+                    'shift_type' => $shiftType,
+                    'check_in'   => $currentTime,
+                    'is_on_time' => $isOnTime,
+                ]);
+
+                DB::commit();
+                return redirect()->back()->with('success', 'Absensi karyawan susulan berhasil dicatat ke shift aktif!');
             }
-
-            // Update array user_ids di shift aktif
-            $existingActive->update([
-                'user_ids' => $currentUserIds,
-            ]);
-
-            // Catat Absensi Karyawan Susulan
-            Attendance::create([
-                'store_id'   => $storeId,
-                'shift_id'   => $existingActive->id,
-                'user_id'    => $request->user_id,
-                'date'       => $currentDate,
-                'shift_type' => $shiftType,
-                'check_in'   => $currentTime,
-                'is_on_time' => $isOnTime,
-            ]);
-
-            return redirect()->back()->with('success', 'Absensi karyawan susulan berhasil dicatat ke shift aktif!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses shift/absensi: ' . $e->getMessage());
         }
     }
 
@@ -174,9 +173,14 @@ class ShiftController extends Controller
 
         $shift = Shift::findOrFail($id);
 
-        $totalSales = Transaction::where('shift_id', $shift->id)->sum('total_price');
+        // PERBAIKAN BUG: Hitung Penjualan Khusus TUNAI (cash) Agar Akurat dengan Laci Kas
+        $totalCashSales = Transaction::where('shift_id', $shift->id)
+            ->where('payment_method', 'cash')
+            ->sum('total_price');
+
         $totalExpenses = Expense::where('shift_id', $shift->id)->sum('amount');
-        $expectedCash = ($shift->cash_initial + $totalSales) - $totalExpenses;
+        
+        $expectedCash = ($shift->cash_initial + $totalCashSales) - $totalExpenses;
         $difference = $request->cash_actual - $expectedCash;
 
         $shift->update([

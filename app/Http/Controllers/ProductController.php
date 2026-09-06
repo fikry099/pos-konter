@@ -173,11 +173,9 @@ class ProductController extends Controller
                     // LOGIKA FILTER KATEGORI: Hanya Voucher Internet & Kartu Perdana
                     ->whereHas('category', function ($catQuery) {
                         $catQuery->where(function ($q) {
-                            // Cek jika slug/nama kategori adalah voucher-internet atau kartu-perdana
                             $q->whereIn('slug', ['voucher-internet', 'kartu-perdana'])
                               ->orWhere('name', 'LIKE', '%Voucher%')
                               ->orWhere('name', 'LIKE', '%Perdana%')
-                              // Cek juga jika Kategori Induknya (Parent) adalah Voucher Internet / Kartu Perdana
                               ->orWhereHas('parent', function ($parentQuery) {
                                   $parentQuery->whereIn('slug', ['voucher-internet', 'kartu-perdana'])
                                               ->orWhere('name', 'LIKE', '%Voucher%')
@@ -188,6 +186,11 @@ class ProductController extends Controller
             })
             ->whereColumn('stock', '<', 'min_stock')
             ->get();
+
+        // OPTIONAL: Jika tidak ada stok yang tipis, kirim pesan info ke SweetAlert2
+        if ($lowStockProducts->isEmpty()) {
+            session()->flash('info', 'Semua stok voucher & kartu perdana di cabang ini masih mencukupi.');
+        }
 
         return view('products.reorder', compact('lowStockProducts'));
     }

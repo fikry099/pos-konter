@@ -8,11 +8,11 @@ use App\Models\Transaction;
 use App\Models\Product;
 use App\Models\StoreProductStock;
 use App\Models\Shift;
+use App\Models\Category;
+use App\Models\TransactionDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\Category;
-use App\Models\TransactionDetail;
 
 class ReturnController extends Controller
 {
@@ -63,14 +63,16 @@ class ReturnController extends Controller
     }
 
     /**
-     * Halaman Form Penukaran Barang
+     * Halaman Form Penukaran Barang (OPTIMASI RINGAN)
      */
     public function create()
     {
-        $storeId = $this->getActiveStoreId();
-        
         $categories = Category::with(['children.children'])->whereNull('parent_id')->get();
-        $products = Product::where('is_active', true)->get();
+        
+        // OPTIMASI: Pilih hanya kolom yang dibutuhkan untuk form retur agar RAM/Server tidak terbebankan
+        $products = Product::where('is_active', true)
+            ->select('id', 'category_id', 'name', 'code', 'type', 'cost_price', 'selling_price')
+            ->get();
 
         return view('returns.create', compact('categories', 'products'));
     }
@@ -102,13 +104,29 @@ class ReturnController extends Controller
         try {
             $transaction = Transaction::findOrFail($request->transaction_id);
 
+            // OPTIMASI N+1: Ambil semua ID produk yang terlibat (retur + pengganti) sekaligus
+            $allProductIds = collect($request->returned_items)->pluck('id')
+                ->merge(collect($request->replacement_items)->pluck('id'))
+                ->unique()
+                ->toArray();
+
+            // Load seluruh objek produk terkait dalam 1 kueri
+            $productsList = Product::whereIn('id', $allProductIds)->get()->keyBy('id');
+
+            // Load stok cabang untuk produk-produk terkait dalam 1 kueri
+            $storeStocks = StoreProductStock::where('store_id', $storeId)
+                ->whereIn('product_id', $allProductIds)
+                ->pluck('stock', 'product_id');
+
             // 1. Hitung Nilai & Buat Data Barang yang Dikembalikan
             $returnedTotal = 0;
             $returnedDetailsData = [];
             foreach ($request->returned_items as $item) {
                 if (!isset($item['id']) || !isset($item['qty'])) continue;
 
-                $product = Product::findOrFail($item['id']);
+                $product = $productsList->get($item['id']);
+                if (!$product) continue;
+
                 $subtotal = $product->selling_price * $item['qty'];
                 $returnedTotal += $subtotal;
 
@@ -130,16 +148,14 @@ class ReturnController extends Controller
             foreach ($request->replacement_items as $item) {
                 if (!isset($item['id']) || !isset($item['qty'])) continue;
 
-                $product = Product::findOrFail($item['id']);
+                $product = $productsList->get($item['id']);
+                if (!$product) continue;
+
                 $qty = (int) $item['qty'];
 
-                // VALIDASI STOK DENGAN MEMPERHATIKAN ITEM DENGAN PRODUCT_ID YANG SAMA DALAM RETUR
+                // VALIDASI STOK DENGAN MEMPERHATIKAN ITEM RETUR
                 if (strtolower(trim($product->type ?? 'physical')) === 'physical') {
-                    $storeStock = StoreProductStock::where('store_id', $storeId)
-                        ->where('product_id', $product->id)
-                        ->value('stock');
-
-                    $currentStock = $storeStock !== null ? (int)$storeStock : (int)$product->stock;
+                    $currentStock = $storeStocks->has($product->id) ? (int)$storeStocks->get($product->id) : (int)$product->stock;
 
                     // Tambahkan stok dari barang yang dikembalikan jika produknya sama
                     $returnedSameProductQty = 0;
@@ -182,11 +198,11 @@ class ReturnController extends Controller
                 return back()->with('error', 'Gagal memproses retur! Nominal barang pengganti (Rp ' . number_format($replacementTotal, 0, ',', '.') . ') tidak boleh lebih murah dari barang yang dikembalikan (Rp ' . number_format($returnedTotal, 0, ',', '.') . ').');
             }
 
-            // 4. Buat Record Retur Utama (PERBAIKAN: Menggunakan user_id dari transaksi asal)
+            // 4. Buat Record Retur Utama
             $productReturn = ProductReturn::create([
                 'store_id'          => $storeId,
                 'transaction_id'    => $transaction->id,
-                'user_id'           => $transaction->user_id ?? Auth::id(), // Dipertahankan dari kasir asli transaksi
+                'user_id'           => $transaction->user_id ?? Auth::id(),
                 'shift_id'          => $activeShift->id,
                 'return_code'       => 'RET-' . date('YmdHis') . '-' . rand(100, 999),
                 'returned_total'    => $returnedTotal,
@@ -196,7 +212,7 @@ class ReturnController extends Controller
                 'reason'            => $request->reason ?? 'Penukaran barang customer',
             ]);
 
-            // 5. Simpan Detail Retur & Update Stok Fisik (Toko & Master)
+            // 5. Simpan Detail Retur & Update Stok Fisik
             foreach (array_merge($returnedDetailsData, $replacementDetailsData) as $detail) {
                 ReturnDetail::create([
                     'return_id'  => $productReturn->id,
@@ -212,7 +228,7 @@ class ReturnController extends Controller
                         ['store_id' => $storeId, 'product_id' => $detail['product_id']],
                         ['stock' => 0]
                     );
-                    $masterProduct = Product::find($detail['product_id']);
+                    $masterProduct = $productsList->get($detail['product_id']);
 
                     if ($detail['type'] === 'returned') {
                         $storeStock->increment('stock', $detail['qty']);
@@ -269,6 +285,7 @@ class ReturnController extends Controller
                 }
             }
 
+            // Update Total Nota Asli
             $updatedDetails = TransactionDetail::where('transaction_id', $transaction->id)->get();
 
             $newTotalCost   = $updatedDetails->sum(fn($d) => $d->cost_price * $d->qty);

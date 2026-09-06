@@ -1,8 +1,8 @@
 <!-- ========================================== -->
-<!-- MODAL POPUP PEMBAYARAN (COMPACT NO-SCROLL) -->
+<!-- MODAL POPUP PEMBAYARAN (POSISI DI TENGAH LAYAR) -->
 <!-- ========================================== -->
-<div id="payment_modal" class="fixed inset-0 z-[9999] hidden bg-slate-900/60 backdrop-blur-md flex items-center justify-start pl-3 sm:pl-8 lg:pl-12 pr-3 lg:pr-[420px] p-2 sm:p-4 transition-all duration-300">
-    <div class="bg-white w-full max-w-sm sm:max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95 opacity-0 my-auto mx-auto lg:mx-0" id="payment_modal_card">
+<div id="payment_modal" class="fixed inset-0 z-[9999] hidden bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 transition-all duration-300">
+    <div class="bg-white w-full max-w-sm sm:max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95 opacity-0 my-auto" id="payment_modal_card">
         
         <!-- HEADER MODAL -->
         <div class="px-4 pt-3.5 pb-2 bg-white flex items-center justify-between rounded-t-2xl border-b border-slate-100">

@@ -1,5 +1,5 @@
-<!-- MODAL ADD TO CART (DIPERBAIKI POSISI AGAR TIDAK TERTUTUP DRAWER KERANJANG) -->
-<div id="cartModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center lg:justify-start lg:pl-16 xl:pl-32 p-4 transition-opacity">
+<!-- MODAL ADD TO CART (POSISI DITENGAH KANVAS) -->
+<div id="cartModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
         
         <!-- HEADER MODAL -->

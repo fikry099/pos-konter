@@ -10,26 +10,20 @@ use Illuminate\Support\Facades\Auth;
 
 class TransactionController extends Controller
 {
+    /**
+     * Helper privat untuk menentukan store_id cabang yang aktif
+     */
     private function getActiveStoreId()
     {
         return Auth::user()->store_id ?? session('selected_store_id') ?? 1;
     }
 
     /**
-     * Halaman Utama Riwayat Transaksi Penjualan
+     * Helper privat untuk menerapkan seluruh filter transaksi (Reuseable)
      */
-    public function index(Request $request)
+    private function applyTransactionFilters($query, Request $request)
     {
-        $storeId = $this->getActiveStoreId();
-
-        $categories = Category::whereNull('parent_id')->get();
-        $shifts = Shift::where('store_id', $storeId)->latest()->get();
-
-        // Eager load details.servedBy untuk mengambil nama karyawan penanggung jawab aksesoris
-        $query = Transaction::forStore($storeId)
-            ->with(['user', 'shift', 'details.product.category', 'details.servedBy']);
-
-        // Filter 1: Search Nota / No HP
+        // Filter 1: Search Nota / No HP Target
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
@@ -40,7 +34,7 @@ class TransactionController extends Controller
             });
         }
 
-        // Filter 2: Tanggal
+        // Filter 2: Tanggal Transaksi
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->date);
         }
@@ -50,7 +44,7 @@ class TransactionController extends Controller
             $query->where('shift_id', $request->shift_id);
         }
 
-        // Filter 4: Kategori Produk / Katalog
+        // Filter 4: Kategori Produk / Katalog (Termasuk Anak & Cucu Kategori)
         if ($request->filled('category_id')) {
             $catId = $request->category_id;
             $query->whereHas('details.product.category', function ($qc) use ($catId) {
@@ -62,12 +56,37 @@ class TransactionController extends Controller
             });
         }
 
-        $transactions = $query->latest()->paginate(15)->withQueryString();
+        return $query;
+    }
 
+    /**
+     * Halaman Utama Riwayat Transaksi Penjualan
+     */
+    public function index(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+
+        $categories = Category::whereNull('parent_id')->get();
+        
+        // Filter shift khusus cabang aktif
+        $shifts = Shift::where('store_id', $storeId)->latest()->get();
+
+        // Kueri Dasar Filter
+        $baseQuery = Transaction::forStore($storeId);
+        $this->applyTransactionFilters($baseQuery, $request);
+
+        // Calculate Summary secara cepat langsung dari database
         $summary = [
-            'total_omset'  => (clone $query)->sum('total_price'),
-            'total_profit' => (clone $query)->sum('total_profit'),
+            'total_omset'  => (clone $baseQuery)->sum('total_price'),
+            'total_profit' => (clone $baseQuery)->sum('total_profit'),
         ];
+
+        // Eager load relasi HANYA saat mengambil data transaksi paginasi
+        $transactions = $baseQuery
+            ->with(['user', 'shift', 'details.product.category', 'details.servedBy'])
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
 
         return view('transactions.index', compact('transactions', 'categories', 'shifts', 'summary'));
     }
@@ -82,34 +101,7 @@ class TransactionController extends Controller
         $query = Transaction::forStore($storeId)
             ->with(['user', 'shift', 'details.product.category', 'details.servedBy']);
 
-        if ($request->filled('search')) {
-            $search = trim($request->search);
-            $query->where(function ($q) use ($search) {
-                $q->where('invoice_code', 'like', "%{$search}%")
-                  ->orWhereHas('details', function ($qd) use ($search) {
-                      $qd->where('target_phone', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
-        }
-
-        if ($request->filled('shift_id')) {
-            $query->where('shift_id', $request->shift_id);
-        }
-
-        if ($request->filled('category_id')) {
-            $catId = $request->category_id;
-            $query->whereHas('details.product.category', function ($qc) use ($catId) {
-                $qc->where('id', $catId)
-                   ->orWhere('parent_id', $catId)
-                   ->orWhereHas('parent', function ($qparent) use ($catId) {
-                       $qparent->where('parent_id', $catId);
-                   });
-            });
-        }
+        $this->applyTransactionFilters($query, $request);
 
         $transactions = $query->latest()->get();
 
@@ -128,6 +120,9 @@ class TransactionController extends Controller
         ]);
     }
 
+    /**
+     * API Detail Transaksi (Modal Pop-Up Detail)
+     */
     public function show($id)
     {
         $storeId = $this->getActiveStoreId();

@@ -195,12 +195,17 @@ function switchModalPayment(method) {
 
         rawPayAmount = currentCartTotal;
 
-        // Inisialisasi Webcam untuk QRIS
+        // Inisialisasi Webcam khusus Kamera Belakang (environment)
         Webcam.set({
             width: 320,
             height: 240,
             image_format: 'jpeg',
-            jpeg_quality: 90
+            jpeg_quality: 90,
+            constraints: {
+                video: {
+                    facingMode: 'environment'
+                }
+            }
         });
         
         try {
@@ -258,6 +263,11 @@ function reset_qris_camera() {
     document.getElementById('qris_result').classList.add('hidden');
     document.getElementById('btn_snap_qris').classList.remove('hidden');
     document.getElementById('btn_reset_qris').classList.add('hidden');
+
+    // Re-attach kamera belakang
+    try {
+        Webcam.attach('#qris_camera');
+    } catch (e) {}
 }
 
 function processFinalCheckout() {
@@ -276,7 +286,7 @@ function processFinalCheckout() {
         Swal.fire({
             icon: 'warning',
             title: 'Bukti Belum Diambil!',
-            text: 'Silakan ampu foto bukti transfer QRIS terlebih dahulu.',
+            text: 'Silakan ambil foto bukti transfer QRIS terlebih dahulu.',
             confirmButtonColor: '#4f46e5',
             customClass: { popup: 'rounded-2xl' }
         });

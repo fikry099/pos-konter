@@ -31,6 +31,25 @@
 @endsection
 
 @push('scripts')
-    <!-- 4. SUB-KOMPONEN: AREA CETAK PO & SCRIPT JAVASCRIPT -->
+    <!-- SUB-KOMPONEN: AREA CETAK PO & SCRIPT JAVASCRIPT -->
     @include('products.partials.reorder-print')
+
+    <!-- SCRIPT POPUP AUTOMATIS SWEETALERT2 SAAT DATA REORDER KOSONG -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            @if(session('info') || session('warning') || session('error') || session('success'))
+                Swal.fire({
+                    icon: "{{ session('error') ? 'error' : (session('warning') ? 'warning' : (session('success') ? 'success' : 'info')) }}",
+                    title: 'Informasi Restok',
+                    text: "{{ session('info') ?? session('warning') ?? session('error') ?? session('success') }}",
+                    confirmButtonColor: '#4f46e5',
+                    confirmButtonText: 'Mengerti',
+                    customClass: {
+                        popup: 'rounded-3xl',
+                        confirmButton: 'rounded-xl text-xs font-bold px-5 py-2.5'
+                    }
+                });
+            @endif
+        });
+    </script>
 @endpush
