@@ -2,7 +2,8 @@
 let currentCartTotal = 0;
 let selectedPaymentMethod = 'cash';
 let rawPayAmount = 0;
-let qrisMediaStream = null; // Stream langsung untuk kamera belakang
+let qrisMediaStream = null;
+let currentFacingMode = 'environment'; // Default: Kamera Belakang
 
 // ==========================================
 // 1. MODAL TAMBAH KE KERANJANG (PRODUK & CUSTOM)
@@ -139,7 +140,7 @@ function openCustomAmountModal() {
 
 
 // ==========================================
-// 2. MODAL POPUP PEMBAYARAN (MELAYANG)
+// 2. MODAL POPUP PEMBAYARAN & KAMERA
 // ==========================================
 function openPaymentModal(totalPrice) {
     currentCartTotal = totalPrice;
@@ -166,14 +167,14 @@ function closePaymentModal() {
         modal.classList.add('hidden');
     }, 200);
 
-    stopQrisRearCamera();
+    stopQrisCamera();
 }
 
 /**
- * STRATEGI TERBALIK: Buka Kamera Belakang Menggunakan Native MediaDevices API
+ * STRATEGI AKSES KAMERA HP (NATIVE MEDIA)
  */
-async function startQrisRearCamera() {
-    stopQrisRearCamera(); // Matikan stream aktif jika ada
+async function startQrisCamera(facing = 'environment') {
+    stopQrisCamera();
 
     const videoElem = document.getElementById('qris_video');
     const placeholder = document.getElementById('qris_placeholder');
@@ -184,19 +185,14 @@ async function startQrisRearCamera() {
     }
 
     try {
-        // 1. Minta akses dengan constraint 'environment' terlebih dahulu
-        let stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { exact: "environment" } },
+        let constraints = {
+            video: { facingMode: facing },
             audio: false
-        }).catch(async () => {
-            // 2. Fallback jika mode 'exact' gagal pada beberapa tipe HP
-            return await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" },
-                audio: false
-            });
-        });
+        };
 
+        let stream = await navigator.mediaDevices.getUserMedia(constraints);
         qrisMediaStream = stream;
+
         if (videoElem) {
             videoElem.srcObject = stream;
             videoElem.play();
@@ -205,12 +201,32 @@ async function startQrisRearCamera() {
         if (placeholder) placeholder.classList.add('hidden');
 
     } catch (err) {
-        console.error("Gagal membuka kamera belakang:", err);
-        alert("Gagal membuka kamera belakang! Pastikan izin kamera telah diberikan.");
+        console.warn("Gagal membuka kamera mode " + facing + ":", err);
+        // Fallback jika mode ditolak
+        try {
+            let fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            qrisMediaStream = fallbackStream;
+            if (videoElem) {
+                videoElem.srcObject = fallbackStream;
+                videoElem.play();
+                videoElem.classList.remove('hidden');
+            }
+            if (placeholder) placeholder.classList.add('hidden');
+        } catch(e) {
+            alert("Gagal mengakses kamera HP. Mohon izinkan akses kamera di browser Anda.");
+        }
     }
 }
 
-function stopQrisRearCamera() {
+/**
+ * TOGGLE BALIK KAMERA DEPAN / BELAKANG
+ */
+function toggleQrisCameraFacing() {
+    currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+    startQrisCamera(currentFacingMode);
+}
+
+function stopQrisCamera() {
     if (qrisMediaStream) {
         qrisMediaStream.getTracks().forEach(track => track.stop());
         qrisMediaStream = null;
@@ -237,7 +253,7 @@ function switchModalPayment(method) {
         panelCash.classList.remove('hidden');
         panelQris.classList.add('hidden');
 
-        stopQrisRearCamera();
+        stopQrisCamera();
     } else {
         btnQris.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer bg-white text-indigo-700 shadow-sm border border-indigo-100';
         btnCash.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer text-slate-500 hover:text-slate-700';
@@ -246,8 +262,9 @@ function switchModalPayment(method) {
 
         rawPayAmount = currentCartTotal;
 
-        // Jalankan Kamera Belakang Native
-        startQrisRearCamera();
+        // Default: Kamera Belakang ('environment')
+        currentFacingMode = 'environment';
+        startQrisCamera(currentFacingMode);
     }
 }
 
@@ -303,7 +320,7 @@ function take_qris_snapshot() {
     document.getElementById('btn_snap_qris').classList.add('hidden');
     document.getElementById('btn_reset_qris').classList.remove('hidden');
 
-    stopQrisRearCamera();
+    stopQrisCamera();
 }
 
 function reset_qris_camera() {
@@ -313,7 +330,7 @@ function reset_qris_camera() {
     document.getElementById('btn_snap_qris').classList.remove('hidden');
     document.getElementById('btn_reset_qris').classList.add('hidden');
 
-    startQrisRearCamera();
+    startQrisCamera(currentFacingMode);
 }
 
 function processFinalCheckout() {

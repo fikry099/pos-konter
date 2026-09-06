@@ -80,13 +80,19 @@
                 </div>
             </div>
 
-            <!-- PANEL 2: QRIS (WEBCAM BUKTI - COMPACT) -->
+            <!-- PANEL 2: QRIS (WEBCAM BUKTI) -->
             <div id="modal_qris_panel" class="hidden space-y-2 text-center">
-                <span class="text-[11px] font-bold text-slate-700 block">Ambil Foto Bukti Transfer QRIS</span>
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-[11px] font-bold text-slate-700 block">Ambil Foto Bukti Transfer QRIS</span>
+                    <button type="button" onclick="toggleQrisCameraFacing()" class="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg transition flex items-center space-x-1 cursor-pointer">
+                        <i class="fa-solid fa-camera-rotate text-[11px]"></i>
+                        <span>Balik Kamera</span>
+                    </button>
+                </div>
                 
                 <div id="qris_camera" class="w-full h-48 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden mx-auto shadow-inner relative">
                     <video id="qris_video" autoplay playsinline class="w-full h-full object-cover hidden"></video>
-                    <span id="qris_placeholder" class="text-[10px] text-slate-400 font-medium">Menyiapkan Kamera Belakang...</span>
+                    <span id="qris_placeholder" class="text-[10px] text-slate-400 font-medium">Menyiapkan Kamera...</span>
                 </div>
                 <div id="qris_result" class="hidden w-full h-48 rounded-xl border overflow-hidden mx-auto shadow-sm"></div>
 
