@@ -2,6 +2,7 @@
 let currentCartTotal = 0;
 let selectedPaymentMethod = 'cash';
 let rawPayAmount = 0;
+let qrisMediaStream = null; // Stream langsung untuk kamera belakang
 
 // ==========================================
 // 1. MODAL TAMBAH KE KERANJANG (PRODUK & CUSTOM)
@@ -165,83 +166,62 @@ function closePaymentModal() {
         modal.classList.add('hidden');
     }, 200);
 
-    // Reset Kamera saat modal ditutup
-    try {
-        Webcam.reset();
-    } catch (e) {}
+    stopQrisRearCamera();
 }
 
 /**
- * HELPER: Cari Kamera Belakang secara Otomatis
+ * STRATEGI TERBALIK: Buka Kamera Belakang Menggunakan Native MediaDevices API
  */
-function initRearWebcam() {
-    try {
-        Webcam.reset();
-    } catch(e) {}
+async function startQrisRearCamera() {
+    stopQrisRearCamera(); // Matikan stream aktif jika ada
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        // Fallback standard jika enumerateDevices tidak didukung
-        Webcam.set({
-            width: 320,
-            height: 240,
-            image_format: 'jpeg',
-            jpeg_quality: 90,
-            constraints: { video: { facingMode: { exact: "environment" } } }
-        });
-        try { Webcam.attach('#qris_camera'); } catch(e) {}
+    const videoElem = document.getElementById('qris_video');
+    const placeholder = document.getElementById('qris_placeholder');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Browser Anda tidak mendukung akses kamera.");
         return;
     }
 
-    // Cari ID Kamera Belakang spesifik dari perangkat HP
-    navigator.mediaDevices.enumerateDevices().then(function(devices) {
-        let backCameraId = null;
-
-        // Iterasi mencari kamera belakang (label 'back', 'rear', atau 'environment')
-        devices.forEach(function(device) {
-            if (device.kind === 'videoinput') {
-                let label = device.label.toLowerCase();
-                if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
-                    backCameraId = device.deviceId;
-                }
-            }
-        });
-
-        // Konfigurasi Webcam.js dengan Device ID Kamera Belakang jika ditemukan
-        let videoConstraints = backCameraId 
-            ? { deviceId: { exact: backCameraId } }
-            : { facingMode: { exact: "environment" } };
-
-        Webcam.set({
-            width: 320,
-            height: 240,
-            image_format: 'jpeg',
-            jpeg_quality: 90,
-            constraints: { video: videoConstraints }
-        });
-
-        try {
-            Webcam.attach('#qris_camera');
-        } catch (e) {
-            // Fallback jika 'exact' ditolak oleh browser
-            Webcam.set({
-                width: 320,
-                height: 240,
-                image_format: 'jpeg',
-                jpeg_quality: 90,
-                constraints: { video: { facingMode: 'environment' } }
+    try {
+        // 1. Minta akses dengan constraint 'environment' terlebih dahulu
+        let stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { exact: "environment" } },
+            audio: false
+        }).catch(async () => {
+            // 2. Fallback jika mode 'exact' gagal pada beberapa tipe HP
+            return await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
             });
-            Webcam.attach('#qris_camera');
-        }
-    }).catch(function(err) {
-        Webcam.set({
-            width: 320,
-            height: 240,
-            image_format: 'jpeg',
-            jpeg_quality: 90,
-            constraints: { video: { facingMode: 'environment' } }
         });
-        try { Webcam.attach('#qris_camera'); } catch(e) {}
-    });
+
+        qrisMediaStream = stream;
+        if (videoElem) {
+            videoElem.srcObject = stream;
+            videoElem.play();
+            videoElem.classList.remove('hidden');
+        }
+        if (placeholder) placeholder.classList.add('hidden');
+
+    } catch (err) {
+        console.error("Gagal membuka kamera belakang:", err);
+        alert("Gagal membuka kamera belakang! Pastikan izin kamera telah diberikan.");
+    }
+}
+
+function stopQrisRearCamera() {
+    if (qrisMediaStream) {
+        qrisMediaStream.getTracks().forEach(track => track.stop());
+        qrisMediaStream = null;
+    }
+    const videoElem = document.getElementById('qris_video');
+    if (videoElem) {
+        videoElem.srcObject = null;
+        videoElem.classList.add('hidden');
+    }
+    const placeholder = document.getElementById('qris_placeholder');
+    if (placeholder) placeholder.classList.remove('hidden');
 }
 
 function switchModalPayment(method) {
@@ -257,9 +237,7 @@ function switchModalPayment(method) {
         panelCash.classList.remove('hidden');
         panelQris.classList.add('hidden');
 
-        try {
-            Webcam.reset();
-        } catch (e) {}
+        stopQrisRearCamera();
     } else {
         btnQris.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer bg-white text-indigo-700 shadow-sm border border-indigo-100';
         btnCash.className = 'py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer text-slate-500 hover:text-slate-700';
@@ -268,8 +246,8 @@ function switchModalPayment(method) {
 
         rawPayAmount = currentCartTotal;
 
-        // Panggil penangan Kamera Belakang
-        initRearWebcam();
+        // Jalankan Kamera Belakang Native
+        startQrisRearCamera();
     }
 }
 
@@ -305,15 +283,27 @@ function calculateModalChange(payAmount) {
 // 3. SNAPSHOT BUKTI QRIS & SUBMIT CHECKOUT
 // ==========================================
 function take_qris_snapshot() {
-    Webcam.snap(function(data_uri) {
-        document.getElementById('qris_result').innerHTML = '<img src="'+data_uri+'" class="w-full h-full object-cover rounded-2xl"/>';
-        document.getElementById('form_payment_proof').value = data_uri;
+    const videoElem = document.getElementById('qris_video');
+    if (!videoElem || !qrisMediaStream) return;
 
-        document.getElementById('qris_camera').classList.add('hidden');
-        document.getElementById('qris_result').classList.remove('hidden');
-        document.getElementById('btn_snap_qris').classList.add('hidden');
-        document.getElementById('btn_reset_qris').classList.remove('hidden');
-    });
+    const canvas = document.createElement('canvas');
+    canvas.width = videoElem.videoWidth || 640;
+    canvas.height = videoElem.videoHeight || 480;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+
+    const data_uri = canvas.toDataURL('image/jpeg', 0.85);
+
+    document.getElementById('qris_result').innerHTML = '<img src="'+data_uri+'" class="w-full h-full object-cover rounded-2xl"/>';
+    document.getElementById('form_payment_proof').value = data_uri;
+
+    document.getElementById('qris_camera').classList.add('hidden');
+    document.getElementById('qris_result').classList.remove('hidden');
+    document.getElementById('btn_snap_qris').classList.add('hidden');
+    document.getElementById('btn_reset_qris').classList.remove('hidden');
+
+    stopQrisRearCamera();
 }
 
 function reset_qris_camera() {
@@ -323,7 +313,7 @@ function reset_qris_camera() {
     document.getElementById('btn_snap_qris').classList.remove('hidden');
     document.getElementById('btn_reset_qris').classList.add('hidden');
 
-    initRearWebcam();
+    startQrisRearCamera();
 }
 
 function processFinalCheckout() {

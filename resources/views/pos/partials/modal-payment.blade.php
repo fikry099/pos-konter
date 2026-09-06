@@ -84,8 +84,9 @@
             <div id="modal_qris_panel" class="hidden space-y-2 text-center">
                 <span class="text-[11px] font-bold text-slate-700 block">Ambil Foto Bukti Transfer QRIS</span>
                 
-                <div id="qris_camera" class="w-full h-48 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden mx-auto shadow-inner [&>video]:w-full [&>video]:h-full [&>video]:object-cover">
-                    <span class="text-[10px] text-slate-400 font-medium">Menyiapkan Kamera Belakang...</span>
+                <div id="qris_camera" class="w-full h-48 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden mx-auto shadow-inner relative">
+                    <video id="qris_video" autoplay playsinline class="w-full h-full object-cover hidden"></video>
+                    <span id="qris_placeholder" class="text-[10px] text-slate-400 font-medium">Menyiapkan Kamera Belakang...</span>
                 </div>
                 <div id="qris_result" class="hidden w-full h-48 rounded-xl border overflow-hidden mx-auto shadow-sm"></div>
 
