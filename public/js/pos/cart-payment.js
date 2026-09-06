@@ -171,6 +171,79 @@ function closePaymentModal() {
     } catch (e) {}
 }
 
+/**
+ * HELPER: Cari Kamera Belakang secara Otomatis
+ */
+function initRearWebcam() {
+    try {
+        Webcam.reset();
+    } catch(e) {}
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        // Fallback standard jika enumerateDevices tidak didukung
+        Webcam.set({
+            width: 320,
+            height: 240,
+            image_format: 'jpeg',
+            jpeg_quality: 90,
+            constraints: { video: { facingMode: { exact: "environment" } } }
+        });
+        try { Webcam.attach('#qris_camera'); } catch(e) {}
+        return;
+    }
+
+    // Cari ID Kamera Belakang spesifik dari perangkat HP
+    navigator.mediaDevices.enumerateDevices().then(function(devices) {
+        let backCameraId = null;
+
+        // Iterasi mencari kamera belakang (label 'back', 'rear', atau 'environment')
+        devices.forEach(function(device) {
+            if (device.kind === 'videoinput') {
+                let label = device.label.toLowerCase();
+                if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+                    backCameraId = device.deviceId;
+                }
+            }
+        });
+
+        // Konfigurasi Webcam.js dengan Device ID Kamera Belakang jika ditemukan
+        let videoConstraints = backCameraId 
+            ? { deviceId: { exact: backCameraId } }
+            : { facingMode: { exact: "environment" } };
+
+        Webcam.set({
+            width: 320,
+            height: 240,
+            image_format: 'jpeg',
+            jpeg_quality: 90,
+            constraints: { video: videoConstraints }
+        });
+
+        try {
+            Webcam.attach('#qris_camera');
+        } catch (e) {
+            // Fallback jika 'exact' ditolak oleh browser
+            Webcam.set({
+                width: 320,
+                height: 240,
+                image_format: 'jpeg',
+                jpeg_quality: 90,
+                constraints: { video: { facingMode: 'environment' } }
+            });
+            Webcam.attach('#qris_camera');
+        }
+    }).catch(function(err) {
+        Webcam.set({
+            width: 320,
+            height: 240,
+            image_format: 'jpeg',
+            jpeg_quality: 90,
+            constraints: { video: { facingMode: 'environment' } }
+        });
+        try { Webcam.attach('#qris_camera'); } catch(e) {}
+    });
+}
+
 function switchModalPayment(method) {
     selectedPaymentMethod = method;
     const btnCash = document.getElementById('btn_select_cash');
@@ -195,22 +268,8 @@ function switchModalPayment(method) {
 
         rawPayAmount = currentCartTotal;
 
-        // Inisialisasi Webcam khusus Kamera Belakang (environment)
-        Webcam.set({
-            width: 320,
-            height: 240,
-            image_format: 'jpeg',
-            jpeg_quality: 90,
-            constraints: {
-                video: {
-                    facingMode: 'environment'
-                }
-            }
-        });
-        
-        try {
-            Webcam.attach('#qris_camera');
-        } catch (e) {}
+        // Panggil penangan Kamera Belakang
+        initRearWebcam();
     }
 }
 
@@ -264,10 +323,7 @@ function reset_qris_camera() {
     document.getElementById('btn_snap_qris').classList.remove('hidden');
     document.getElementById('btn_reset_qris').classList.add('hidden');
 
-    // Re-attach kamera belakang
-    try {
-        Webcam.attach('#qris_camera');
-    } catch (e) {}
+    initRearWebcam();
 }
 
 function processFinalCheckout() {
