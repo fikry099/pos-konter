@@ -65,8 +65,8 @@
                 <span>Filter</span>
             </button>
 
-            <!-- DIPERBAIKI: Menggunakan route exportExcel yang konsisten -->
-            <a href="{{ route('transactions.exportExcel', request()->all()) }}" 
+            <!-- DIPERBAIKI: Menggunakan nama route 'transactions.export_excel' -->
+            <a href="{{ route('transactions.export_excel', request()->all()) }}" 
                class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-2.5 rounded-xl transition flex items-center justify-center space-x-1 shadow-sm active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-file-excel text-xs"></i>
                 <span>Excel</span>

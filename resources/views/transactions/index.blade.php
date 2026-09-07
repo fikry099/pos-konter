@@ -14,8 +14,9 @@
         </div>
 
         <!-- METRICS CARD RINGKASAN OMSET & PROFIT -->
-        <div class="grid grid-cols-2 gap-2.5 w-full sm:w-auto shrink-0">
-            <!-- CARD TOTAL OMSET -->
+        {{-- DYNAMIC GRID: grid-cols-2 JIKA OWNER, grid-cols-1 JIKA KARYAWAN --}}
+        <div class="grid {{ auth()->check() && auth()->user()->role === 'owner' ? 'grid-cols-2' : 'grid-cols-1' }} gap-2.5 w-full sm:w-auto shrink-0">
+            <!-- CARD TOTAL OMSET (TAMPIL UNTUK SEMUA ROLE) -->
             <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center space-x-2.5 min-w-0">
                 <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm shrink-0">
                     <i class="fa-solid fa-cash-register"></i>
@@ -28,18 +29,20 @@
                 </div>
             </div>
 
-            <!-- CARD TOTAL PROFIT -->
-            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center space-x-2.5 min-w-0">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm shrink-0">
-                    <i class="fa-solid fa-chart-line"></i>
+            <!-- CARD TOTAL PROFIT (HANYA TAMPIL JIKA ROLE OWNER) -->
+            @if(auth()->check() && auth()->user()->role === 'owner')
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center space-x-2.5 min-w-0">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="text-[9px] text-slate-400 block font-bold uppercase tracking-wider truncate">Total Profit</span>
+                        <span class="text-xs sm:text-sm font-black text-emerald-600 font-mono block truncate">
+                            Rp {{ number_format($summary['total_profit'] ?? 0, 0, ',', '.') }}
+                        </span>
+                    </div>
                 </div>
-                <div class="min-w-0 flex-1">
-                    <span class="text-[9px] text-slate-400 block font-bold uppercase tracking-wider truncate">Total Profit</span>
-                    <span class="text-xs sm:text-sm font-black text-emerald-600 font-mono block truncate">
-                        Rp {{ number_format($summary['total_profit'] ?? 0, 0, ',', '.') }}
-                    </span>
-                </div>
-            </div>
+            @endif
         </div>
     </div>
 
@@ -52,7 +55,6 @@
 </div>
 @endsection
 
-{{-- DIPINDAHKAN KE LUAR SECTION CONTENT SUPAYA DI-RENDER DI TINGKAT TERATAS LAYOUT --}}
 @push('scripts')
     @include('transactions.partials.modal-receipt')
 @endpush

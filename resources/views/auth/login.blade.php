@@ -7,7 +7,7 @@
     <!-- 1. BACKGROUND ANIMATED -->
     <div class="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden flex items-center justify-center">
         <div class="w-[115%] h-[115%] bg-cover bg-center bg-no-repeat animate-sway-slow opacity-60"
-             style="background-image: url('{{ asset('img/bg-login.png') }}');">
+            style="background-image: url('{{ asset('img/bg-login.webp') }}');">
         </div>
     </div>
 

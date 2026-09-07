@@ -2,7 +2,8 @@
     
     @php
         $user = auth()->user();
-        $currentStoreId = $user->store_id ?? session('selected_store_id');
+        // PERBAIKAN: Berikan fallback default ID jika session masih null saat pertama kali login
+        $currentStoreId = session('selected_store_id') ?? $user->store_id ?? 1;
         $headerActiveShift = \App\Models\Shift::getActiveShift($currentStoreId);
         $allStores = $user->isOwner() ? \App\Models\Store::where('is_active', true)->get() : collect();
     @endphp
@@ -40,13 +41,14 @@
         <div class="w-full overflow-x-auto no-scrollbar pt-0.5">
             <form action="{{ route('stores.switch') }}" method="POST" id="header_store_form" class="flex items-center w-full">
                 @csrf
-                <input type="hidden" name="store_id" id="selected_store_id_input" value="{{ session('selected_store_id') }}">
+                <input type="hidden" name="store_id" id="selected_store_id_input" value="{{ $currentStoreId }}">
 
                 <!-- CONTAINER TAB PILLS FULL WIDTH -->
                 <div class="inline-flex items-center w-full bg-slate-100 p-1 rounded-2xl border border-slate-200/80 shadow-inner gap-1">
                     @foreach($allStores as $store)
                         @php
-                            $isSelected = (session('selected_store_id') == $store->id);
+                            // PERBAIKAN: Pengecekan status terpilih menggunakan $currentStoreId yang memiliki fallback default
+                            $isSelected = ($currentStoreId == $store->id);
                         @endphp
                         <button type="button" 
                                 onclick="submitStoreSwitch('{{ $store->id }}')" 

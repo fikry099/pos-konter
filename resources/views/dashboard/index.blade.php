@@ -2,9 +2,6 @@
 
 @section('content')
 <div class="space-y-3.5">
-    
-    <!-- 1. SUB-KOMPONEN: HEADER DASHBOARD & SHIFT AKTIF -->
-    @include('dashboard.partials.header-shift')
 
     <!-- 2. SUB-KOMPONEN: METRICS CARDS (FINANSIAL HARI INI & BULAN INI) -->
     @include('dashboard.partials.metrics-cards')

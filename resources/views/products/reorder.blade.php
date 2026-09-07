@@ -7,7 +7,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div>
             <h1 class="text-base sm:text-xl font-black text-slate-800 flex items-center">
-                <i class="fa-solid fa-cart-flatbed text-amber-500 mr-2 text-lg sm:text-xl"></i> Rekap Restok & Order Supplier
+                <i class="fa-solid fa-cart-flatbed text-amber-500 mr-2 text-lg sm:text-xl"></i> Reorder Vocer Internet
             </h1>
             <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Estimasi jumlah voucher & produk fisik yang harus dipesan agar kembali ke batas Stok Maksimum cabang.</p>
         </div>

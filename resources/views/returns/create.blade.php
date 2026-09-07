@@ -24,7 +24,7 @@
     </div>
 
     <!-- PADA ONSUBMIT, KITA PANGGIL FUNGSI REINDEX AGAR AMAN DIKIRIM KE CONTROLLER -->
-    <form action="{{ route('returns.store') }}" method="POST" id="returnForm" onsubmit="return prepareAndValidateForm()" class="space-y-3.5">
+    <form action="{{ route('returns.store') }}" method="POST" id="returnForm" autocomplete="off" onsubmit="return prepareAndValidateForm()" class="space-y-3.5">
         @csrf
         <input type="hidden" name="transaction_id" id="input_transaction_id">
 
@@ -32,7 +32,7 @@
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 space-y-3">
             <h3 class="text-[10px] sm:text-xs font-extrabold text-slate-700 uppercase tracking-wider">1. Cari Nota / Invoice Asli Pembelian</h3>
             <div class="flex gap-2">
-                <input type="text" id="search_invoice_input" placeholder="Contoh: TRX-20260902-1234" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="text" id="search_invoice_input" autocomplete="off" placeholder="Contoh: TRX-20260902-1234" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <button type="button" onclick="searchInvoice()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-extrabold transition shadow-md shadow-indigo-200 cursor-pointer whitespace-nowrap">
                     Cari Nota
                 </button>
@@ -83,7 +83,7 @@
 
             <div>
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan Penukaran / Retur</label>
-                <input type="text" name="reason" required placeholder="Contoh: Salah tipe casing, tidak muat di HP orang tua" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="text" name="reason" required autocomplete="off" placeholder="Contoh: Salah tipe casing, tidak muat di HP orang tua" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
 
             <button type="submit" id="submit_btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-xs sm:text-sm transition shadow-md shadow-indigo-200 cursor-pointer">
@@ -175,7 +175,7 @@
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-xs font-mono text-slate-500">Qty:</span>
-                                    <input type="number" id="ret_qty_${idx}" value="${det.qty}" min="1" max="${det.qty}" onchange="calculateTotals()" onkeyup="calculateTotals()" class="ret-qty-input w-14 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center">
+                                    <input type="number" id="ret_qty_${idx}" value="${det.qty}" min="1" max="${det.qty}" autocomplete="off" onchange="calculateTotals()" onkeyup="calculateTotals()" class="ret-qty-input w-14 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center">
                                 </div>
                             </div>
                         `;
@@ -258,7 +258,7 @@
                     <span class="text-xs font-bold text-indigo-600" id="rep_price_info_${replacementIndex}">Harga: Rp 0</span>
                     <div class="flex items-center space-x-2">
                         <span class="text-xs font-mono text-slate-500 font-bold">Qty:</span>
-                        <input type="number" id="rep_qty_${replacementIndex}" value="1" min="1" onchange="calculateTotals()" onkeyup="calculateTotals()" class="replacement-qty-input w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-center">
+                        <input type="number" id="rep_qty_${replacementIndex}" value="1" min="1" autocomplete="off" onchange="calculateTotals()" onkeyup="calculateTotals()" class="replacement-qty-input w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-center">
                     </div>
                 </div>
             </div>

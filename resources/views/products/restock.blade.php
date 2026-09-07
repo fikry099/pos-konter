@@ -39,19 +39,43 @@
     <!-- 4. TABEL KATALOG PRODUK -->
     @include('products.restock.partials.product-table')
 
+    <!-- 5. CONTAINER PAGINASI (DINAMIS DARI JAVASCRIPT) -->
+    <div id="pagination_container" class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-slate-600">
+        <div class="flex items-center space-x-2">
+            <span>Tampilkan</span>
+            <select id="items_per_page" onchange="changePerPage()" class="bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 font-bold text-slate-800 focus:outline-none cursor-pointer">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span>baris per halaman</span>
+        </div>
+
+        <div id="pagination_info" class="text-slate-500 font-medium text-[11px] sm:text-xs">
+            Menampilkan 0 dari 0 item
+        </div>
+
+        <div id="pagination_buttons" class="flex items-center space-x-1">
+            <!-- Tombol halaman akan di-generate otomatis via JS -->
+        </div>
+    </div>
+
 </div>
 @endsection
 
-{{-- DITARUH DI BAGIAN SCRIPT/MODAL STACK AGAR RENDER DI LUAR LAYOUT DENGAN CLEAN --}}
 @push('scripts')
-<!-- 5. MODAL POPUP RESTOK -->
+<!-- MODAL POPUP RESTOK -->
 @include('products.restock.partials.restock-modal')
 
 <script>
     let activeCategory = 'all';
     let activeSubFilter = '';
 
-    // --- LOGIKA FILTER TABEL KATALOG ---
+    // --- VARIABEL UTAMA PAGINASI ---
+    let currentPage = 1;
+    let itemsPerPage = 10;
+    let visibleRows = [];
 
     const categoryBrandMap = {
         'all': {
@@ -105,6 +129,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         renderSubFilterPills('all');
+        filterProductsTable();
     });
 
     function switchCategoryTab(catKey, btnElement) {
@@ -161,6 +186,8 @@
     function filterProductsTable() {
         let searchKeyword = document.getElementById('search_product_input').value.toLowerCase().trim();
         let rows = document.querySelectorAll('.product-row');
+        
+        visibleRows = [];
 
         rows.forEach(row => {
             let catData = (row.getAttribute('data-category') || '').toLowerCase();
@@ -199,11 +226,95 @@
             }
 
             if (matchCat && matchSub && matchSearch) {
-                row.classList.remove('hidden');
+                visibleRows.push(row);
             } else {
                 row.classList.add('hidden');
             }
         });
+
+        currentPage = 1;
+        renderPagination();
+    }
+
+    // --- SISTEM PAGINASI CLIENT-SIDE ---
+
+    function renderPagination() {
+        let totalItems = visibleRows.length;
+        let totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        let start = (currentPage - 1) * itemsPerPage;
+        let end = start + itemsPerPage;
+
+        // Sembunyikan semua baris terlebih dahulu
+        document.querySelectorAll('.product-row').forEach(row => row.classList.add('hidden'));
+
+        // Tampilkan hanya baris yang masuk ke halaman aktif
+        visibleRows.slice(start, end).forEach(row => row.classList.remove('hidden'));
+
+        // Update teks informasi item
+        let infoEl = document.getElementById('pagination_info');
+        if (totalItems === 0) {
+            infoEl.innerText = 'Menampilkan 0 dari 0 item';
+        } else {
+            let showingStart = start + 1;
+            let showingEnd = Math.min(end, totalItems);
+            infoEl.innerText = `Menampilkan ${showingStart} - ${showingEnd} dari ${totalItems} item`;
+        }
+
+        // Render tombol angka paginasi
+        let btnContainer = document.getElementById('pagination_buttons');
+        btnContainer.innerHTML = '';
+
+        // Tombol Prev
+        let prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => goToPage(currentPage - 1);
+        prevBtn.className = `px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold transition cursor-pointer ${currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white hover:bg-slate-50 text-slate-700'}`;
+        prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left text-[10px]"></i>';
+        btnContainer.appendChild(prevBtn);
+
+        // Angka Halaman
+        for (let i = 1; i <= totalPages; i++) {
+            if (totalPages > 5 && (i < currentPage - 1 || i > currentPage + 1) && i !== 1 && i !== totalPages) {
+                if (i === currentPage - 2 || i === currentPage + 2) {
+                    let dots = document.createElement('span');
+                    dots.className = 'px-1.5 text-xs text-slate-400';
+                    dots.innerText = '...';
+                    btnContainer.appendChild(dots);
+                }
+                continue;
+            }
+
+            let pageBtn = document.createElement('button');
+            pageBtn.type = 'button';
+            pageBtn.onclick = () => goToPage(i);
+            pageBtn.className = `px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${i === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'}`;
+            pageBtn.innerText = i;
+            btnContainer.appendChild(pageBtn);
+        }
+
+        // Tombol Next
+        let nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.disabled = currentPage === totalPages || totalItems === 0;
+        nextBtn.onclick = () => goToPage(currentPage + 1);
+        nextBtn.className = `px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold transition cursor-pointer ${(currentPage === totalPages || totalItems === 0) ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white hover:bg-slate-50 text-slate-700'}`;
+        nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right text-[10px]"></i>';
+        btnContainer.appendChild(nextBtn);
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderPagination();
+    }
+
+    function changePerPage() {
+        itemsPerPage = parseInt(document.getElementById('items_per_page').value) || 10;
+        currentPage = 1;
+        renderPagination();
     }
 
     // --- LOGIKA CASCADE HIRARKI KATEGORI DI MODAL RESTOK ---

@@ -1,4 +1,4 @@
-<div id="view_products_grid" class="hidden">
+<div id="view_products_grid" class="hidden space-y-4">
     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-3.5">
         
         <!-- KARTU NOMINAL BEBAS -->
@@ -102,4 +102,33 @@
         @endforelse
 
     </div>
+
+    <!-- NAVBAR PAGINASI GRID POS DINAMIS -->
+<div id="pos_pagination_container" class="bg-white p-3 rounded-2xl border border-gray-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-start gap-4 text-xs font-semibold text-gray-600">
+    <!-- Pilihan Per Halaman -->
+    <div class="flex items-center space-x-2">
+        <span>Tampilkan</span>
+        <select id="pos_items_per_page" onchange="changePosPerPage()" class="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 font-bold text-gray-800 focus:outline-none cursor-pointer">
+            <option value="10" selected>10</option>
+            <option value="12">12</option>
+            <option value="24">24</option>
+            <option value="48">48</option>
+        </select>
+        <span>produk</span>
+    </div>
+
+    <div class="h-4 w-px bg-gray-200 hidden sm:block"></div>
+
+    <!-- Tombol Angka Paginasi -->
+    <div id="pos_pagination_buttons" class="flex items-center space-x-1">
+        <!-- Tombol halaman di-render via JS -->
+    </div>
+
+    <div class="h-4 w-px bg-gray-200 hidden sm:block"></div>
+
+    <!-- Info Teks -->
+    <div id="pos_pagination_info" class="text-gray-500 font-medium text-[11px] sm:text-xs">
+        Menampilkan 0 dari 0 produk
+    </div>
+</div>
 </div>

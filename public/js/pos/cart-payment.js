@@ -7,6 +7,172 @@ let videoDevices = [];
 let currentDeviceIndex = 0;
 
 // ==========================================
+// 0. HELPER MODAL CUSTOM SELECT & PEMFORMATAN RUPIAH
+// ==========================================
+function openSelectModal(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.remove('hidden');
+    }
+}
+
+function closeSelectModal(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.add('hidden');
+    }
+}
+
+// ==========================================
+// FUNGSI UPDATE SERVER INSTAN DARI MODAL
+// ==========================================
+function selectServerAndSubmit(url, providerValue, qty, modalId, key, providerLabel) {
+    closeSelectModal(modalId);
+
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                    document.querySelector('input[name="_token"]')?.value || '';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            qty: qty,
+            digital_provider: providerValue
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        // Update Teks Tombol Utama di Keranjang
+        let displayElem = document.getElementById('provider_display_' + key);
+        if (displayElem) {
+            displayElem.innerText = providerLabel || providerValue;
+        }
+
+        // Update State Warna & Centang pada Opsi Modal
+        document.querySelectorAll('.server-option-btn-' + key).forEach(btn => {
+            let isSelected = btn.getAttribute('data-provider-val') === providerValue;
+            let checkIcon = btn.querySelector('.fa-check');
+
+            if (isSelected) {
+                btn.className = 'server-option-btn-' + key + ' w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer bg-indigo-600 text-white shadow-md';
+                if (checkIcon) checkIcon.classList.remove('hidden');
+            } else {
+                btn.className = 'server-option-btn-' + key + ' w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer bg-slate-50 text-slate-700 hover:bg-slate-100';
+                if (checkIcon) checkIcon.classList.add('hidden');
+            }
+        });
+    })
+    .catch(err => console.error('Gagal update server:', err));
+}
+
+// ==========================================
+// FUNGSI UPDATE PENJUAL INSTAN DARI MODAL
+// ==========================================
+function selectSellerAndSubmit(url, staffId, staffName, modalId, key) {
+    closeSelectModal(modalId);
+
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                    document.querySelector('input[name="_token"]')?.value || '';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            served_by_user_id: staffId
+        })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('Gagal update penjual via AJAX');
+        return res.json();
+    })
+    .then(data => {
+        // 1. Update Teks Label Penjual di Keranjang
+        let displayElem = document.getElementById('seller_display_' + key);
+        if (displayElem) {
+            displayElem.innerText = staffName;
+        }
+
+        // 2. Update Tampilan Tombol Terpilih & Centang di Modal
+        document.querySelectorAll('.seller-option-btn-' + key).forEach(btn => {
+            let isSelected = btn.getAttribute('data-staff-id') === staffId.toString();
+            let checkIcon = btn.querySelector('.fa-check');
+
+            if (isSelected) {
+                btn.className = 'seller-option-btn-' + key + ' w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer bg-amber-500 text-white shadow-md';
+                if (checkIcon) checkIcon.classList.remove('hidden');
+            } else {
+                btn.className = 'seller-option-btn-' + key + ' w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer bg-slate-50 text-slate-700 hover:bg-slate-100';
+                if (checkIcon) checkIcon.classList.add('hidden');
+            }
+        });
+    })
+    .catch(err => {
+        console.warn('AJAX Penjual gagal, beralih ke form submit fallback...', err);
+        
+        // FALLBACK FORM SUBMIT
+        let form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        let tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = '_token';
+        tokenInput.value = csrfToken;
+        form.appendChild(tokenInput);
+
+        let staffInput = document.createElement('input');
+        staffInput.type = 'hidden';
+        staffInput.name = 'served_by_user_id';
+        staffInput.value = staffId;
+        form.appendChild(staffInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    });
+}
+
+// Format Teks Input ke Rupiah (Titik Ribuan)
+function formatRupiahInput(element) {
+    let value = element.value.replace(/[^,\d]/g, '').toString();
+    let split = value.split(',');
+    let sisa = split[0].length % 3;
+    let rupiah = split[0].substr(0, sisa);
+    let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+    if (ribuan) {
+        let separator = sisa ? '.' : '';
+        rupiah += separator + ribuan.join('.');
+    }
+
+    rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+    element.value = rupiah;
+}
+
+// Bersihkan Titik Ribuan Sebelum Submit ke Laravel
+function prepareCleanNumbers(e) {
+    let customPriceInput = document.getElementById('modal_custom_price');
+    let adminFeeInput = document.getElementById('modal_admin_fee');
+
+    if (customPriceInput && customPriceInput.value) {
+        customPriceInput.value = customPriceInput.value.replace(/[^0-9]/g, '');
+    }
+
+    if (adminFeeInput && adminFeeInput.value) {
+        adminFeeInput.value = adminFeeInput.value.replace(/[^0-9]/g, '');
+    }
+}
+
+// ==========================================
 // 1. MODAL TAMBAH KE KERANJANG (PRODUK & CUSTOM)
 // ==========================================
 function openAddToCartModal(product) {
@@ -73,28 +239,41 @@ function closeAddToCartModal() {
     document.getElementById('cartModal').classList.add('hidden');
 }
 
-function openCustomAmountModal() {
-    let providerName = (typeof selectedProvider !== 'undefined' && selectedProvider) ? selectedProvider.toUpperCase() : 'TRANSFER / TOP-UP';
-    
+function openCustomAmountModal(providerParam) {
+    let providerName = providerParam || window.selectedProviderTitle || selectedProvider || 'TRANSFER / TOP-UP';
+    providerName = providerName.toUpperCase();
+
     let modalTitle = document.getElementById('modal_product_name');
     if (modalTitle) modalTitle.innerText = providerName + ' (Nominal Bebas)';
-    
-    let customProductIdInput = document.getElementById('modal_product_id');
-    let firstProductItem = document.querySelector('.product-item');
 
-    if (customProductIdInput) {
-        let assignedId = 1;
-        if (firstProductItem) {
-            let matchData = firstProductItem.getAttribute('onclick');
-            if (matchData) {
-                let idMatch = matchData.match(/"id":(\d+)/);
-                if (idMatch && idMatch[1]) {
-                    assignedId = idMatch[1];
-                }
-            }
+    let cartModal = document.getElementById('cartModal');
+    let formModal = cartModal ? cartModal.querySelector('form') : null;
+
+    if (formModal) {
+        // 1. Set nama bank/wallet ke field service_type
+        let serviceTypeInput = formModal.querySelector('input[name="service_type"]');
+        if (!serviceTypeInput) {
+            serviceTypeInput = document.createElement('input');
+            serviceTypeInput.type = 'hidden';
+            serviceTypeInput.name = 'service_type';
+            formModal.appendChild(serviceTypeInput);
         }
-        customProductIdInput.value = assignedId;
+        serviceTypeInput.value = providerName;
+
+        // 2. Set default server PPOB ke field digital_provider
+        let hiddenInput = formModal.querySelector('input[name="digital_provider"]');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'digital_provider';
+            formModal.appendChild(hiddenInput);
+        }
+        hiddenInput.value = 'Propana';
     }
+
+    // Sisanya tetap sama...
+    let customProductIdInput = document.getElementById('modal_product_id');
+    if (customProductIdInput) customProductIdInput.value = 1;
 
     let phoneContainer = document.getElementById('phone_field_container');
     let phoneInput = document.getElementById('modal_target_phone');
@@ -102,43 +281,31 @@ function openCustomAmountModal() {
     let accNumberInput = document.getElementById('modal_account_number');
     let accNameInput = document.getElementById('modal_account_name');
     let customContainer = document.getElementById('custom_amount_container');
-    let qtyContainer = document.getElementById('qty_field_container');
     let isCustomInput = document.getElementById('modal_is_custom_amount');
     let customPriceInput = document.getElementById('modal_custom_price');
-    let adminFeeInput = document.getElementById('modal_admin_fee');
 
-    if (customPriceInput) {
-        customPriceInput.value = '';
-        customPriceInput.required = true;
-    }
-    if (adminFeeInput) adminFeeInput.value = 2500;
+    if (customPriceInput) customPriceInput.value = '';
     if (isCustomInput) isCustomInput.value = '1';
-
     if (customContainer) customContainer.classList.remove('hidden');
 
-    let currentCategory = typeof selectedCategory !== 'undefined' ? selectedCategory : '';
-    if (currentCategory === 'bank' || currentCategory === 'transfer-bank' || currentCategory === 'transfer') {
+    let isBankType = providerName.includes('BANK') || providerName.includes('BRI') || providerName.includes('BCA') || providerName.includes('MANDIRI') || providerName.includes('BNI');
+
+    if (isBankType) {
         if (bankContainer) bankContainer.classList.remove('hidden');
         if (phoneContainer) phoneContainer.style.display = 'none';
-
         if (accNumberInput) accNumberInput.required = true;
         if (accNameInput) accNameInput.required = true;
         if (phoneInput) phoneInput.required = false;
     } else {
         if (bankContainer) bankContainer.classList.add('hidden');
         if (phoneContainer) phoneContainer.style.display = 'block';
-
         if (phoneInput) phoneInput.required = true;
         if (accNumberInput) accNumberInput.required = false;
         if (accNameInput) accNameInput.required = false;
     }
 
-    if (qtyContainer) qtyContainer.classList.add('hidden');
-
-    let cartModal = document.getElementById('cartModal');
     if (cartModal) cartModal.classList.remove('hidden');
 }
-
 
 // ==========================================
 // 2. MODAL POPUP PEMBAYARAN & KAMERA
@@ -172,12 +339,11 @@ function closePaymentModal() {
 }
 
 /**
- * STRATEGI PENCEGANHAN LOCKOUT KAMERA HP (NATIVE WEBRTC)
+ * STRATEGI PENCEGAHAN LOCKOUT KAMERA HP (NATIVE WEBRTC)
  */
 async function startQrisCamera() {
     stopQrisCamera();
 
-    // Jeda 200ms agar hardware kamera HP bebas dari kunci kueri sebelumnya
     await new Promise(resolve => setTimeout(resolve, 200));
 
     const videoElem = document.getElementById('qris_video');
@@ -189,10 +355,8 @@ async function startQrisCamera() {
     }
 
     try {
-        // Ambil pendaftaran seluruh sensor kamera jika belum terbaca
         if (videoDevices.length === 0) {
             try {
-                // Trigger awal untuk meminta izin pembacaan sensor
                 const initStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 initStream.getTracks().forEach(track => track.stop());
             } catch (e) {}
@@ -200,7 +364,6 @@ async function startQrisCamera() {
             const devices = await navigator.mediaDevices.enumerateDevices();
             videoDevices = devices.filter(d => d.kind === 'videoinput');
 
-            // Cari indeks kamera belakang secara otomatis
             let backIndex = videoDevices.findIndex(d => {
                 let lbl = d.label.toLowerCase();
                 return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('belakang');
@@ -213,14 +376,12 @@ async function startQrisCamera() {
 
         let constraints = {};
 
-        // 1. Prioritaskan penggunaan Device ID Spesifik
         if (videoDevices.length > 0 && videoDevices[currentDeviceIndex]) {
             constraints = {
                 video: { deviceId: { exact: videoDevices[currentDeviceIndex].deviceId } },
                 audio: false
             };
         } else {
-            // 2. Fallback constraint facingMode 'environment'
             constraints = {
                 video: { facingMode: 'environment' },
                 audio: false
@@ -231,7 +392,6 @@ async function startQrisCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (errFallback) {
-            // 3. Fallback standar tanpa constraint ketat
             stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' },
                 audio: false
@@ -253,9 +413,6 @@ async function startQrisCamera() {
     }
 }
 
-/**
- * TOGGLE SIRKULASI BALIK KAMERA
- */
 function toggleQrisCameraFacing() {
     if (videoDevices.length > 1) {
         currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
@@ -302,7 +459,6 @@ function switchModalPayment(method) {
 
         rawPayAmount = currentCartTotal;
 
-        // Jalankan Kamera Belakang Secara Otomatis
         startQrisCamera();
     }
 }
@@ -444,4 +600,104 @@ function confirmRemoveCart(removeUrl, itemName) {
             window.location.href = removeUrl;
         }
     });
+}
+
+// ==========================================
+// 5. FUNGSI UPDATE SERVER DIGITAL VIA FORM SUBMIT AUTOMATIC
+// ==========================================
+function updateDigitalProvider(url, providerValue, qty, key) {
+    let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    let csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+
+    if (!csrfToken) {
+        let inputToken = document.querySelector('input[name="_token"]');
+        if (inputToken) csrfToken = inputToken.value;
+    }
+
+    // Kirim Request AJAX Fetch Tanpa Reload Halaman
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            qty: qty,
+            digital_provider: providerValue
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Gagal memperbarui server');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // Update Teks Nama Server pada Tombol Pemicu di Cart secara Instan
+            let displayLabel = document.getElementById('provider_display_' + key);
+            if (displayLabel) {
+                displayLabel.innerText = providerValue;
+            }
+
+            // Tampilkan Notifikasi Toast
+            if (typeof Swal !== 'undefined') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Server diganti ke ' + providerValue
+                });
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal memperbarui server provider',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        }
+    });
+}
+
+// Helper Fallback Form Submit
+function submitViaFormFallback(url, providerValue, qty, csrfToken) {
+    let form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+
+    let tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = '_token';
+    tokenInput.value = csrfToken || '';
+    form.appendChild(tokenInput);
+
+    let qtyInput = document.createElement('input');
+    qtyInput.type = 'hidden';
+    qtyInput.name = 'qty';
+    qtyInput.value = qty || 1;
+    form.appendChild(qtyInput);
+
+    let providerInput = document.createElement('input');
+    providerInput.type = 'hidden';
+    providerInput.name = 'digital_provider';
+    providerInput.value = providerValue;
+    form.appendChild(providerInput);
+
+    document.body.appendChild(form);
+    form.submit();
 }

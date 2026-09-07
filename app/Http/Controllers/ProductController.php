@@ -199,16 +199,15 @@ class ProductController extends Controller
 
     /**
      * Menampilkan Halaman Restok Khusus Karyawan & Owner
-     * OPTIMASI SANGAT PENTING: Memangkas waktu load dari 27 detik menjadi < 1 detik!
      */
     public function restockView()
     {
         $storeId = $this->getActiveStoreId();
 
-        // 1. Ambil stok produk fisik cabang tanpa eager load 4 tingkat ('product.category.parent.parent')
+        // 1. Ambil stok produk fisik cabang (Pastikan 'selling_price' ikut ter-select!)
         $stocks = StoreProductStock::with([
                 'product' => function ($q) {
-                    $q->select('id', 'category_id', 'name', 'code', 'type', 'is_active')
+                    $q->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'is_active')
                        ->with('category:id,name,parent_id');
                 }
             ])
@@ -242,7 +241,7 @@ class ProductController extends Controller
 
         $storeId = $this->getActiveStoreId();
 
-        // Cari record stok fisik cabang ini, jika belum ada otomatis dibuatkan
+        // 1. Cari atau buat record stok fisik cabang ini
         $storeStock = StoreProductStock::firstOrCreate(
             [
                 'store_id'   => $storeId,
@@ -254,8 +253,24 @@ class ProductController extends Controller
             ]
         );
 
-        // Increment stok fisik cabang aktif
+        // 2. Increment stok fisik cabang aktif
         $storeStock->increment('stock', $request->qty_add);
+
+        // 3. AMBIL HARGA MODAL DARI MASTER PRODUK UNTUK KALKULASI TOTAL MODAL
+        $product = \App\Models\Product::find($request->product_id);
+        $costPrice = $product ? (float) $product->cost_price : 0;
+        $totalCost = $costPrice * (int) $request->qty_add;
+
+        // 4. CATAT DOKUMEN HISTORI RESTOK
+        \App\Models\Restock::create([
+            'store_id'   => $storeId,
+            'product_id' => $request->product_id,
+            'user_id'    => auth()->id(),
+            'qty_add'    => (int) $request->qty_add,
+            'cost_price' => $costPrice,
+            'total_cost' => $totalCost,
+            'notes'      => $request->notes,
+        ]);
 
         return redirect()->back()->with('success', "Berhasil menambahkan {$request->qty_add} pcs stok untuk {$storeStock->product->name}. Stok cabang sekarang: {$storeStock->stock} pcs.");
     }

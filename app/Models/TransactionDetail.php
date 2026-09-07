@@ -10,7 +10,8 @@ class TransactionDetail extends Model
     protected $fillable = [
         'transaction_id',
         'product_id',
-        'served_by_user_id', // BARU
+        'custom_name',      // <-- PASTIKAN ADA DI SINI
+        'served_by_user_id', 
         'target_phone',
         'digital_provider',
         'qty',
@@ -27,19 +28,16 @@ class TransactionDetail extends Model
         'profit'        => 'decimal:2',
     ];
 
-    // Relasi: Detail milik 1 Transaksi
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(Transaction::class);
     }
 
-    // Relasi: Detail mengacu pada 1 Produk
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    // RELASI BARU: Karyawan penanggung jawab aksesoris
     public function servedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'served_by_user_id');

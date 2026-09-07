@@ -21,28 +21,28 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $storeId = $this->getActiveStoreId();
+        $activeStoreId = $this->getActiveStoreId(); // <--- Dapatkan ID Store Aktif
 
         $today = Carbon::today();
         $startOfMonth = Carbon::now()->startOfMonth();
 
         // 1. STATISTIK HARI INI (FILTER BY STORE_ID)
-        $todaySales = Transaction::forStore($storeId)->whereDate('created_at', $today)->sum('total_price');
-        $todayProfit = Transaction::forStore($storeId)->whereDate('created_at', $today)->sum('total_profit');
+        $todaySales = Transaction::forStore($activeStoreId)->whereDate('created_at', $today)->sum('total_price');
+        $todayProfit = Transaction::forStore($activeStoreId)->whereDate('created_at', $today)->sum('total_profit');
         
-        $todayExpenses = Expense::where('store_id', $storeId)->whereDate('created_at', $today)->sum('amount');
+        $todayExpenses = Expense::where('store_id', $activeStoreId)->whereDate('created_at', $today)->sum('amount');
         $todayNetProfit = $todayProfit - $todayExpenses;
 
         // 2. STATISTIK BULAN INI (FILTER BY STORE_ID)
-        $monthSales = Transaction::forStore($storeId)->whereDate('created_at', '>=', $startOfMonth)->sum('total_price');
-        $monthProfit = Transaction::forStore($storeId)->whereDate('created_at', '>=', $startOfMonth)->sum('total_profit');
+        $monthSales = Transaction::forStore($activeStoreId)->whereDate('created_at', '>=', $startOfMonth)->sum('total_price');
+        $monthProfit = Transaction::forStore($activeStoreId)->whereDate('created_at', '>=', $startOfMonth)->sum('total_profit');
 
         // 3. SHIFT SAAT INI / SHIFT TERAKHIR (FILTER BY STORE_ID)
-        $activeShift = Shift::getActiveShift($storeId);
-        $recentShifts = Shift::where('store_id', $storeId)->with('user')->latest()->take(5)->get();
+        $activeShift = Shift::getActiveShift($activeStoreId);
+        $recentShifts = Shift::where('store_id', $activeStoreId)->with('user')->latest()->take(5)->get();
 
         // 4. TRANSAKSI TERBARU (FILTER BY STORE_ID)
-        $latestTransactions = Transaction::forStore($storeId)->with(['user', 'details.product'])->latest()->take(5)->get();
+        $latestTransactions = Transaction::forStore($activeStoreId)->with(['user', 'details.product'])->latest()->take(5)->get();
 
         // 5. DATA GRAFIK PENJUALAN & PROFIT 6 BULAN TERAKHIR (FILTER BY STORE_ID)
         $monthlyChartData = [];
@@ -51,12 +51,12 @@ class DashboardController extends Controller
             $year = $date->year;
             $month = $date->month;
 
-            $sales = Transaction::forStore($storeId)
+            $sales = Transaction::forStore($activeStoreId)
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->sum('total_price');
 
-            $profit = Transaction::forStore($storeId)
+            $profit = Transaction::forStore($activeStoreId)
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->sum('total_profit');
@@ -69,6 +69,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard.index', compact(
+            'activeStoreId', // <--- Kirim ke View
             'todaySales',
             'todayProfit',
             'todayExpenses',

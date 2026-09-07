@@ -101,11 +101,24 @@ class ShiftController extends Controller
             return redirect()->back()->with('error', "Gagal! {$userName} sudah melakukan absensi shift hari ini di salah satu cabang.");
         }
 
-        // Tentukan Jenis Shift & Toleransi Keterlambatan Per Individu
+        // =========================================================================
+        // LOGIKA PENENTUAN SHIFT & KETERLAMBATAN (TERMASUK JAM DINI HARI 00:00 - 04:59)
+        // =========================================================================
         $hour = (int) $now->format('H');
-        $shiftType = ($hour < 15) ? 'pagi' : 'sore';
-        $threshold = ($shiftType === 'pagi') ? '07:05:00' : '15:05:00';
-        $isOnTime = ($currentTime <= $threshold);
+
+        if ($hour >= 0 && $hour < 5) {
+            // Kasus Jam 00:00 - 04:59 (Dini hari / Melewati batas shift sore)
+            $shiftType = 'sore';
+            $isOnTime  = false; // Dini hari pasti terlambat dari shift sore sebelumnya
+        } elseif ($hour >= 5 && $hour < 15) {
+            // Shift Pagi (05:00 - 14:59) -> Tepat waktu jika <= 07:05:00
+            $shiftType = 'pagi';
+            $isOnTime  = ($currentTime >= '05:00:00' && $currentTime <= '07:05:00');
+        } else {
+            // Shift Sore (15:00 - 23:59) -> Tepat waktu jika <= 15:05:00
+            $shiftType = 'sore';
+            $isOnTime  = ($currentTime <= '15:05:00');
+        }
 
         DB::beginTransaction();
         try {

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('transaction_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->constrained();
+            $table->string('custom_name')->nullable(); // <-- Hapus ->after(...) di sini
             $table->foreignId('served_by_user_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('target_phone')->nullable();
             $table->string('digital_provider')->nullable();

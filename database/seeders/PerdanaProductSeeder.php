@@ -20,7 +20,7 @@ class PerdanaProductSeeder extends Seeder
         $catIdTri = $getCatId('perdana-tri');
         if ($catIdTri) {
             $triPerdana = [
-                ['name' => 'Perdana Tri 3GB', 'code' => 'SP-3-3GB', 'cost' => 12000, 'sell' => 15000, 'stock' => 5, 'min_stock' => 5],
+                ['name' => 'Perdana Tri 3GB', 'code' => 'SP-3-3GB', 'cost' => 15000, 'sell' => 35000, 'stock' => 5, 'min_stock' => 5],
             ];
             $this->seedGroup($catIdTri, $triPerdana);
         }

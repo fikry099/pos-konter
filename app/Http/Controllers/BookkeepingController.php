@@ -9,6 +9,7 @@ use App\Models\TransactionDetail;
 use App\Models\Expense;
 use App\Models\Store;
 use App\Models\Attendance;
+use App\Models\Restock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -48,7 +49,7 @@ class BookkeepingController extends Controller
                     return $shift->user_id == $employee->id;
                 })->count();
 
-            // Data Absensi (Lepas filter store_id agar karyawan store_id = null tetap terbaca)
+            // Data Absensi
             $attendancesQuery = Attendance::where('user_id', $employee->id)
                 ->whereYear('date', $year)
                 ->whereMonth('date', $month);
@@ -57,15 +58,26 @@ class BookkeepingController extends Controller
             $totalLate      = (clone $attendancesQuery)->where('is_on_time', false)->count();
             $attendanceList = (clone $attendancesQuery)->latest('date')->latest('check_in')->get();
 
-            // Total Aksesoris Terjual
+            // Total Aksesoris Terjual (KHUSUS KATEGORI AKSESORIS)
             $accessoryQuery = TransactionDetail::whereHas('transaction', function ($q) use ($storeId, $year, $month) {
                     $q->where('store_id', $storeId)
-                    ->whereYear('created_at', $year)
-                    ->whereMonth('created_at', $month);
+                      ->whereYear('created_at', $year)
+                      ->whereMonth('created_at', $month);
                 })
                 ->where('served_by_user_id', $employee->id)
-                ->whereHas('product', function ($p) {
-                    $p->where('type', '!=', 'digital');
+                ->whereHas('product.category', function ($c) {
+                    $c->where(function ($q) {
+                        $q->where('slug', 'LIKE', '%aksesoris%')
+                          ->orWhere('name', 'LIKE', '%Aksesoris%')
+                          ->orWhereHas('parent', function ($parentQuery) {
+                              $parentQuery->where('slug', 'LIKE', '%aksesoris%')
+                                          ->orWhere('name', 'LIKE', '%Aksesoris%')
+                                          ->orWhereHas('parent', function ($grandParentQuery) {
+                                              $grandParentQuery->where('slug', 'LIKE', '%aksesoris%')
+                                                               ->orWhere('name', 'LIKE', '%Aksesoris%');
+                                          });
+                          });
+                    });
                 });
 
             $totalAccessoriesQty   = (int) $accessoryQuery->sum('qty');
@@ -87,7 +99,7 @@ class BookkeepingController extends Controller
             ];
         });
 
-        // Pembukuan Keuangan
+        // 2. Pembukuan Keuangan
         $trxQuery = Transaction::forStore($storeId)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month);
@@ -113,8 +125,25 @@ class BookkeepingController extends Controller
             'net_profit'             => $netProfit,
         ];
 
+        // 3. AMBIL HISTORI RESTOK BARANG PERIODE INI
+        $restockHistories = Restock::where('store_id', $storeId)
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->with(['product', 'user'])
+            ->latest()
+            ->get();
+
+        $totalRestockCost = $restockHistories->sum('total_cost');
+
+        // MENGGUNAKAN 'owner.bookkeeping.index' SESUAI LOKASI FILE BLADE
         return view('owner.bookkeeping.index', compact(
-            'selectedStore', 'month', 'year', 'employeeReport', 'financialSummary'
+            'selectedStore', 
+            'month', 
+            'year', 
+            'employeeReport', 
+            'financialSummary', 
+            'restockHistories', 
+            'totalRestockCost'
         ));
     }
 
@@ -129,7 +158,6 @@ class BookkeepingController extends Controller
         $startDate = "{$year}-{$month}-01";
         $endDate   = \Carbon\Carbon::parse($startDate)->endOfMonth()->toDateString();
 
-        // Query absensi murni berdasarkan User ID
         $baseQuery = Attendance::where('user_id', $user->id)
             ->whereBetween('date', [$startDate, $endDate]);
 
@@ -146,5 +174,4 @@ class BookkeepingController extends Controller
             'user', 'attendances', 'month', 'year', 'totalOnTime', 'totalLate'
         ));
     }
-
 }

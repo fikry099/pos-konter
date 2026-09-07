@@ -219,32 +219,65 @@
                 if (dateEl) dateEl.innerText = dateStr;
 
                 // 4. RENDER ITEM BELANJA MENGGUNAKAN TABEL FORMAL THERMAL
-                let detailsContainer = document.getElementById('res_details');
-                detailsContainer.innerHTML = '';
+let detailsContainer = document.getElementById('res_details');
+detailsContainer.innerHTML = '';
 
-                if (data.details && data.details.length > 0) {
-                    data.details.forEach(item => {
-                        let prodName = item.product ? item.product.name : 'Produk';
-                        let subtotalVal = formatRupiahIDR(item.subtotal);
-                        
-                        detailsContainer.innerHTML += `
-                            <div class="py-1 border-b border-black/20 last:border-none">
-                                <table class="trx-receipt-table">
-                                    <tr>
-                                        <td class="lbl">
-                                            <div class="font-extrabold uppercase text-[9px] leading-tight text-black">${prodName} x${item.qty}</div>
-                                            ${item.target_phone ? `<div class="text-[8px] text-black font-bold mt-0.5">NO: ${item.target_phone}</div>` : ''}
-                                            ${item.digital_provider ? `<div class="text-[8px] text-black font-bold">SERVER: ${item.digital_provider}</div>` : ''}
-                                        </td>
-                                        <td class="val font-black text-[9px] text-black">
-                                            ${subtotalVal}
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                        `;
-                    });
-                }
+if (data.details && data.details.length > 0) {
+    data.details.forEach(item => {
+        let rawName = item.custom_name ? item.custom_name : (item.product ? item.product.name : 'Produk');
+        let subtotalVal = formatRupiahIDR(item.subtotal);
+        let numericSubtotal = formatRupiahIDR(item.subtotal); // Nominal transaksi untuk resi
+        
+        // Deteksi jenis transaksi berdasarkan digital_provider atau nama produk
+        let provider = (item.digital_provider || '').toLowerCase();
+        let nameLower = rawName.toLowerCase();
+        
+        let formattedReceiptName = rawName; // Default
+
+        // Jika ini transaksi nominal bebas (transfer / top-up)
+        if (nameLower.includes('transfer') || nameLower.includes('top-up') || nameLower.includes('nominal bebas')) {
+            // Cek apakah masuk kategori E-Wallet (Dana, Ovo, Gopay, ShopeePay, LinkAja)
+            let isEwallet = provider.includes('dana') || provider.includes('ovo') || provider.includes('gopay') || provider.includes('shopee') || provider.includes('linkaja') || provider.includes('propana') || nameLower.includes('dana') || nameLower.includes('ovo') || nameLower.includes('gopay');
+            
+            // Cek apakah masuk kategori Bank (BCA, BRI, Mandiri, BNI, Transfer Bank)
+            let isBank = provider.includes('bank') || provider.includes('bca') || provider.includes('bri') || provider.includes('mandiri') || provider.includes('bni') || nameLower.includes('bank') || nameLower.includes('bca') || nameLower.includes('bri');
+
+            // Ambil nama pemilik akun di dalam kurung jika ada (Contoh: "(Fara)")
+            let accMatch = rawName.match(/\(([^)]+)\)/);
+            let accNameSuffix = accMatch ? ` (${accMatch[1]})` : '';
+
+            if (isEwallet && !provider.includes('bank')) {
+                // Format E-Wallet khusus Resi: Top-Up [Provider] [Nominal] (Nama)
+                let walletName = item.digital_provider ? item.digital_provider : 'E-Wallet';
+                formattedReceiptName = `Top-Up ${walletName} ${numericSubtotal}${accNameSuffix}`;
+            } else if (isBank || provider.includes('m-banking') || provider.includes('transfer')) {
+                // Format Bank khusus Resi: Transfer [Bank] [Nominal] (Nama)
+                let bankName = item.digital_provider ? item.digital_provider : 'Bank';
+                formattedReceiptName = `Transfer ${bankName} ${numericSubtotal}${accNameSuffix}`;
+            }
+        }
+
+        let isTransferOrTopup = formattedReceiptName.toLowerCase().includes('transfer') || formattedReceiptName.toLowerCase().includes('top-up');
+        let targetLabel = isTransferOrTopup ? 'TUJUAN/REK' : 'NO';
+
+        detailsContainer.innerHTML += `
+            <div class="py-1 border-b border-black/20 last:border-none">
+                <table class="trx-receipt-table">
+                    <tr>
+                        <td class="lbl">
+                            <div class="font-extrabold uppercase text-[9px] leading-tight text-black">${formattedReceiptName} x${item.qty}</div>
+                            ${item.target_phone ? `<div class="text-[8px] text-black font-bold mt-0.5">${targetLabel}: ${item.target_phone}</div>` : ''}
+                            ${item.digital_provider ? `<div class="text-[8px] text-black font-bold">SERVER: ${item.digital_provider}</div>` : ''}
+                        </td>
+                        <td class="val font-black text-[9px] text-black">
+                            ${subtotalVal}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `;
+    });
+}
 
                 // 5. METODE BAYAR & BUKTI QRIS
                 let methodEl = document.getElementById('res_method');

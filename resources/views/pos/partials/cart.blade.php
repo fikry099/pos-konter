@@ -64,7 +64,8 @@
                 $grandParentName = strtolower($grandParentCat?->name ?? '');
                 $grandParentSlug = strtolower($grandParentCat?->slug ?? '');
 
-                $itemName = strtolower($item['name'] ?? $cartProduct?->name ?? '');
+                $rawName = $item['name'] ?? $cartProduct?->name ?? '';
+                $itemName = strtolower($rawName);
                 $itemType = strtolower($item['type'] ?? $cartProduct?->type ?? 'physical');
 
                 $allCatString = $catName . ' ' . $catSlug . ' ' . $parentName . ' ' . $parentSlug . ' ' . $grandParentName . ' ' . $grandParentSlug;
@@ -84,12 +85,17 @@
                                        str_contains($itemName, 'headset');
 
                 $isAccessory = ($itemType === 'physical' && !$isVoucherOrPerdana) || $isAccessoryKeyword;
+
+                // =========================================================
+                // GUNAKAN NAMA UTUH LANGSUNG DARI SESSION/CONTROLLER
+                // =========================================================
+                $cartDisplayName = $rawName;
             @endphp
 
             <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-2 shadow-sm hover:border-indigo-200 transition">
                 <div class="flex items-start justify-between space-x-2.5">
                     <div class="flex-1 min-w-0">
-                        <h5 class="text-xs font-extrabold text-slate-800 truncate">{{ $item['name'] }}</h5>
+                        <h5 class="text-xs font-extrabold text-slate-800 truncate">{{ $cartDisplayName }}</h5>
                         
                         @if(!empty($item['target_phone']))
                             <span class="text-[10px] font-mono bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md font-bold inline-block mt-0.5">
@@ -107,83 +113,139 @@
                             @csrf
                             <input type="number" name="qty" value="{{ $item['qty'] }}" min="1" onchange="this.form.submit()" class="w-11 text-center text-xs bg-white text-slate-800 border border-slate-300 rounded-lg py-1 font-black focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         </form>
-                        <button type="button" onclick="confirmRemoveCart('{{ route('pos.cart.remove', $key) }}', '{{ $item['name'] }}')" class="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition cursor-pointer">
+                        <button type="button" onclick="confirmRemoveCart('{{ route('pos.cart.remove', $key) }}', '{{ addslashes($cartDisplayName) }}')" class="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition cursor-pointer">
                             <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- PENANGGUNG JAWAB PENJUAL (AKSESORIS) -->
+                <!-- 1. SELEKSI PENJUAL (AKSESORIS) -->
                 @if($isAccessory)
-                    <div class="pt-2 border-t border-slate-200/60">
+                    <div class="pt-2 border-t border-slate-200/60 space-y-1.5">
                         @php $staffList = $shiftStaffs ?? collect([]); @endphp
 
+                        <label class="text-[11px] font-extrabold text-amber-800 uppercase flex items-center">
+                            <i class="fa-solid fa-user-tag text-amber-600 mr-1.5"></i> Penjual Aksesoris:
+                        </label>
+
                         @if($staffList->count() > 1)
-                            <form action="{{ route('pos.cart.assign_staff', $key) }}" method="POST" class="flex items-center justify-between gap-2">
-                                @csrf
-                                <span class="text-[10px] font-extrabold text-amber-800 uppercase flex items-center shrink-0">
-                                    <i class="fa-solid fa-user-tag text-amber-600 mr-1"></i> Penjual:
+                            @php
+                                $selectedStaffId = $item['served_by_user_id'] ?? '';
+                                $selectedStaff = $staffList->firstWhere('id', $selectedStaffId);
+                                $staffDisplayName = $selectedStaff ? $selectedStaff->name : 'Pilih Karyawan Penjual';
+                            @endphp
+
+                            <button type="button" 
+                                    onclick="openSelectModal('seller_modal_{{ $key }}')"
+                                    class="w-full text-xs font-black bg-amber-50 border-2 border-amber-300 hover:border-amber-400 text-amber-950 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer active:scale-98 transition-all shadow-xs">
+                                <span class="flex items-center space-x-2 truncate">
+                                    <span>👤</span>
+                                    <span id="seller_display_{{ $key }}" class="truncate">{{ $staffDisplayName }}</span>
                                 </span>
-                                <select name="served_by_user_id" onchange="this.form.submit()" class="w-full text-[11px] font-bold bg-amber-50/80 border border-amber-300 text-amber-900 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-sm">
-                                    <option value="">-- Pilih Karyawan Penjual --</option>
-                                    @foreach($staffList as $staff)
-                                        <option value="{{ $staff->id }}" {{ ($item['served_by_user_id'] ?? '') == $staff->id ? 'selected' : '' }}>
-                                            👤 {{ $staff->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </form>
-                        @elseif($staffList->count() === 1)
-                            <div class="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-2.5 py-1 flex items-center justify-between">
+                                <i class="fa-solid fa-chevron-down text-amber-700 text-xs shrink-0 ml-2"></i>
+                            </button>
+
+                            @push('cart_modals')
+                                <div id="seller_modal_{{ $key }}" class="fixed inset-0 z-[100000] hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                                    <div class="absolute inset-0" onclick="closeSelectModal('seller_modal_{{ $key }}')"></div>
+                                    <div class="bg-white rounded-3xl w-full max-w-sm p-5 space-y-3 shadow-2xl border border-amber-100 relative z-10">
+                                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                            <h4 class="font-black text-slate-800 text-sm flex items-center">
+                                                <i class="fa-solid fa-user-tag text-amber-600 mr-2"></i> Pilih Karyawan Penjual
+                                            </h4>
+                                            <button type="button" onclick="closeSelectModal('seller_modal_{{ $key }}')" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                                                <i class="fa-solid fa-xmark text-base"></i>
+                                            </button>
+                                        </div>
+
+                                        <div class="space-y-2 max-h-60 overflow-y-auto pt-1">
+                                            @foreach($staffList as $staff)
+                                                <button type="button" 
+                                                        onclick="selectSellerAndSubmit('{{ route('pos.cart.assign_staff', $key) }}', '{{ $staff->id }}', '{{ addslashes($staff->name) }}', 'seller_modal_{{ $key }}', '{{ $key }}')"
+                                                        class="seller-option-btn-{{ $key }} w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer active:scale-95
+                                                        {{ $selectedStaffId == $staff->id ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-50 text-slate-700 hover:bg-slate-100' }}"
+                                                        data-staff-id="{{ $staff->id }}">
+                                                    <span>👤 {{ $staff->name }}</span>
+                                                    <i class="fa-solid fa-check text-xs {{ $selectedStaffId == $staff->id ? '' : 'hidden' }}"></i>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            @endpush
+                        @else
+                            <div class="text-xs font-black text-emerald-800 bg-emerald-50 border-2 border-emerald-200 rounded-2xl px-4 py-3 flex items-center justify-between">
                                 <span class="flex items-center">
-                                    <i class="fa-solid fa-user-check text-emerald-600 mr-1.5"></i>
-                                    Penjual: {{ $staffList->first()->name }}
+                                    <i class="fa-solid fa-user-check text-emerald-600 mr-2"></i>
+                                    Penjual: {{ $staffList->first()->name ?? auth()->user()->name }}
                                 </span>
                                 <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i>
                             </div>
-                        @else
-                            <form action="{{ route('pos.cart.assign_staff', $key) }}" method="POST" class="flex items-center justify-between gap-2">
-                                @csrf
-                                <span class="text-[10px] font-extrabold text-amber-800 uppercase flex items-center shrink-0">
-                                    <i class="fa-solid fa-user-tag text-amber-600 mr-1"></i> Penjual:
-                                </span>
-                                <select name="served_by_user_id" onchange="this.form.submit()" class="w-full text-[11px] font-bold bg-amber-50/80 border border-amber-300 text-amber-900 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-sm">
-                                    <option value="{{ auth()->id() }}" selected>👤 {{ auth()->user()->name }}</option>
-                                </select>
-                            </form>
                         @endif
                     </div>
                 @endif
 
-                <!-- DROPDOWN SELEKSI SERVER PPOB (MENGGUNAKAN AJAX) -->
+                <!-- 2. SELEKSI SERVER PPOB ASLI (PROPANA, DIGIPOS, TOPINDO, DLL) -->
                 @if($itemType === 'digital')
                     @php
                         $isEwalletOrBank = str_contains($itemName, 'transfer') || str_contains($itemName, 'top-up') || str_contains($itemName, 'dana') || str_contains($itemName, 'gopay') || str_contains($itemName, 'ovo') || str_contains($itemName, 'shopee') || str_contains($itemName, 'bca') || str_contains($itemName, 'bank');
-                        $currentProvider = $item['digital_provider'] ?? ($isEwalletOrBank ? 'Propana' : 'Digipos');
+                        
+                        // SERVER PPOB MURNI (Sesuai Bawaan Asli)
+                        $providers = $isEwalletOrBank 
+                            ? ['Propana' => '💳 Propana', 'Mitra Shopee' => '💳 Mitra Shopee', 'Seabank' => '💳 Seabank']
+                            : ['Digipos' => '📱 Digipos (Telkomsel)', 'Rita' => '📱 Rita (Three)', 'Dompul' => '📱 Dompul (XL/Axis)', 'Simpel' => '📱 Simpel (indosat)', 'Propana' => '📱 Propana (Smartfren)'];
+
+                        // JIKA 'digital_provider' DI SESSION BUKAN KUNCI SERVER YANG VALID, DEFAULTKAN KE 'Propana' ATAU 'Digipos'
+                        $savedProvider = $item['digital_provider'] ?? '';
+                        if (array_key_exists($savedProvider, $providers)) {
+                            $currentProvider = $savedProvider;
+                        } else {
+                            $currentProvider = $isEwalletOrBank ? 'Propana' : 'Digipos';
+                        }
                     @endphp
 
-                    <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-2">
-                        <span class="text-[10px] font-extrabold text-slate-500 uppercase flex items-center shrink-0">
-                            <i class="fa-solid fa-server text-indigo-600 mr-1.5"></i> Server:
-                        </span>
-                        
-                        <div class="flex-1">
-                            <select onchange="updateDigitalProvider('{{ route('pos.cart.update', $key) }}', this.value, {{ $item['qty'] }})" class="w-full text-[11px] font-bold bg-white border border-indigo-200 text-indigo-900 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
-                                @if($isEwalletOrBank)
-                                    <option value="Propana" {{ $currentProvider === 'Propana' ? 'selected' : '' }}>💳 Propana</option>
-                                    <option value="Mitra Shopee" {{ $currentProvider === 'Mitra Shopee' ? 'selected' : '' }}>💳 Mitra Shopee</option>
-                                    <option value="Orderkuota" {{ $currentProvider === 'Orderkuota' ? 'selected' : '' }}>💳 Orderkuota</option>
-                                    <option value="Topindo" {{ $currentProvider === 'Topindo' ? 'selected' : '' }}>💳 Topindo</option>
-                                    <option value="Bank Transfer / M-Banking" {{ $currentProvider === 'Bank Transfer / M-Banking' ? 'selected' : '' }}>🏦 M-Banking / Transfer</option>
-                                @else
-                                    <option value="Digipos" {{ $currentProvider === 'Digipos' ? 'selected' : '' }}>📱 Digipos (Telkomsel)</option>
-                                    <option value="Rita" {{ $currentProvider === 'Rita' ? 'selected' : '' }}>📱 Rita / Tri</option>
-                                    <option value="Dompul" {{ $currentProvider === 'Dompul' ? 'selected' : '' }}>📱 Dompul (XL/Axis)</option>
-                                    <option value="Orderkuota" {{ $currentProvider === 'Orderkuota' ? 'selected' : '' }}>📱 Orderkuota</option>
-                                    <option value="Propana" {{ $currentProvider === 'Propana' ? 'selected' : '' }}>📱 Propana</option>
-                                @endif
-                            </select>
-                        </div>
+                    <div class="pt-2 border-t border-slate-200/60 space-y-1.5">
+                        <label class="text-[11px] font-extrabold text-indigo-900 uppercase flex items-center">
+                            <i class="fa-solid fa-server text-indigo-600 mr-1.5"></i> Server / Provider:
+                        </label>
+
+                        <!-- TOMBOL PEMICU MODAL PILIH SERVER -->
+                        <button type="button" 
+                                onclick="openSelectModal('server_modal_{{ $key }}')"
+                                class="w-full text-xs font-black bg-indigo-50 border-2 border-indigo-200 hover:border-indigo-400 text-indigo-950 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer active:scale-98 transition-all shadow-xs">
+                            <span id="provider_display_{{ $key }}" class="truncate">{{ $providers[$currentProvider] ?? $currentProvider }}</span>
+                            <i class="fa-solid fa-chevron-down text-indigo-600 text-xs shrink-0 ml-2"></i>
+                        </button>
+
+                        @push('cart_modals')
+                            <!-- MODAL SERVER OPTIONS -->
+                            <div id="server_modal_{{ $key }}" class="fixed inset-0 z-[100000] hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                                <div class="absolute inset-0" onclick="closeSelectModal('server_modal_{{ $key }}')"></div>
+                                <div class="bg-white rounded-3xl w-full max-w-sm p-5 space-y-3 shadow-2xl border border-indigo-100 relative z-10">
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                        <h4 class="font-black text-slate-800 text-sm flex items-center">
+                                            <i class="fa-solid fa-server text-indigo-600 mr-2"></i> Pilih Server PPOB
+                                        </h4>
+                                        <button type="button" onclick="closeSelectModal('server_modal_{{ $key }}')" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                                            <i class="fa-solid fa-xmark text-base"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="space-y-2 max-h-72 overflow-y-auto pt-1">
+                                        @foreach($providers as $val => $label)
+                                            <button type="button" 
+                                                    onclick="selectServerAndSubmit('{{ route('pos.cart.update', $key) }}', '{{ $val }}', {{ $item['qty'] }}, 'server_modal_{{ $key }}', '{{ $key }}', '{{ addslashes($label) }}')"
+                                                    class="server-option-btn-{{ $key }} w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer active:scale-95
+                                                    {{ $currentProvider === $val ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 hover:bg-slate-100' }}"
+                                                    data-provider-val="{{ $val }}">
+                                                <span>{{ $label }}</span>
+                                                <i class="fa-solid fa-check text-xs {{ $currentProvider === $val ? '' : 'hidden' }}"></i>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endpush
                     </div>
                 @endif
             </div>
@@ -226,6 +288,9 @@
         </form>
     </div>
 </div>
+
+<!-- CONTAINER UNTUK SELURUH MODAL ITEM KERANJANG -->
+@stack('cart_modals')
 
 <!-- INCLUDE PARTIAL MODAL PEMBAYARAN -->
 @include('pos.partials.modal-payment')

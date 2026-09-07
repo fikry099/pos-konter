@@ -39,7 +39,38 @@ class PosController extends Controller
     }
 
     /**
-     * Menampilkan Halaman Utama Kasir POS (Fast Initial Load Tanpa Produk)
+     * Helper untuk mendapatkan biaya perak modal e-wallet/bank
+     */
+    private function getEwalletFeePerak(string $providerName): int
+    {
+        $provider = strtolower($providerName);
+
+        if (str_contains($provider, 'dana')) return 101;
+        if (str_contains($provider, 'gopay')) return 910;
+        if (str_contains($provider, 'shopee')) return 75;
+        if (str_contains($provider, 'ovo')) return 631;
+
+        return 0; // Default untuk Bank / Transfer / Provider lainnya
+    }
+
+    /**
+     * Helper menghitung Biaya Admin Standar
+     */
+    private function calculateAdminFee(float $nominal): float
+    {
+        $nominalInThousand = $nominal / 1000;
+
+        if ($nominalInThousand < 100) {
+            return 2000; // < 100rb = Admin 2.000
+        } elseif ($nominalInThousand >= 100 && $nominalInThousand < 400) {
+            return 3000; // 100rb - 399rb = Admin 3.000
+        } else {
+            return $nominal * 0.01; // >= 400rb = Admin 1%
+        }
+    }
+
+    /**
+     * Menampilkan Halaman Utama Kasir POS
      */
     public function index(Request $request)
     {
@@ -51,7 +82,6 @@ class PosController extends Controller
             ->with(['allChildren'])
             ->get();
 
-        // Kosongkan produk awal agar halaman terbuka instan (0.1 detik)
         $products = collect();
 
         // Ambil Karyawan Shift
@@ -85,7 +115,7 @@ class PosController extends Controller
     }
 
     /**
-     * API ENDPOINT: Load Seluruh Produk Khusus Kategori Utama + Provider yang Diklik
+     * API ENDPOINT: Load Produk Berdasarkan Kategori
      */
     public function getProductsByCategory(Request $request)
     {
@@ -93,7 +123,6 @@ class PosController extends Controller
         $categoryKey = strtolower(trim($request->input('category', '')));
         $providerKey = strtolower(trim($request->input('provider', '')));
 
-        // Kueri dasar dengan leftJoin stok cabang
         $query = Product::query()
             ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
             ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
@@ -103,47 +132,105 @@ class PosController extends Controller
             ->where('products.is_active', true)
             ->with(['category.parent']);
 
-        // 1. FILTER KATEGORI UTAMA (Pulsa, Voucher, Perdana, E-Wallet, Bank, PLN, Aksesoris)
-        if (!empty($categoryKey) && $categoryKey !== 'all') {
-            $query->whereHas('category', function ($q) use ($categoryKey) {
-                $q->where(function ($sub) use ($categoryKey) {
-                    $sub->where('slug', 'like', "%{$categoryKey}%")
-                        ->orWhere('name', 'like', "%{$categoryKey}%");
-                })
-                ->orWhereHas('parent', function ($p) use ($categoryKey) {
-                    $p->where('slug', 'like', "%{$categoryKey}%")
-                      ->orWhere('name', 'like', "%{$categoryKey}%");
+        $isAksesorisContext = str_contains($categoryKey, 'aksesoris') || str_contains($providerKey, 'aksesoris');
+
+        if ($isAksesorisContext) {
+            $query->whereHas('category', function ($q) {
+                $q->where('slug', 'like', '%aksesoris%')
+                  ->orWhere('name', 'like', '%aksesoris%')
+                  ->orWhereHas('parent', function ($p) {
+                      $p->where('slug', 'like', '%aksesoris%')
+                        ->orWhere('name', 'like', '%aksesoris%');
+                  });
+            });
+
+            if (!empty($providerKey) && !in_array($providerKey, ['aksesoris', 'aksesoris-hp', 'all'])) {
+                $query->where(function ($q) use ($providerKey) {
+                    if ($providerKey === 'power') {
+                        $q->where('products.name', 'like', '%charger%')
+                          ->orWhere('products.name', 'like', '%kabel%')
+                          ->orWhere('products.name', 'like', '%power%')
+                          ->orWhere('products.name', 'like', '%batok%')
+                          ->orWhere('products.name', 'like', '%pb%')
+                          ->orWhere('products.code', 'like', '%acc-charger%')
+                          ->orWhere('products.code', 'like', '%acc-typec%')
+                          ->orWhere('products.code', 'like', '%acc-iphone%');
+                    } elseif ($providerKey === 'proteksi') {
+                        $q->where('products.name', 'like', '%case%')
+                          ->orWhere('products.name', 'like', '%casing%')
+                          ->orWhere('products.name', 'like', '%tg%')
+                          ->orWhere('products.name', 'like', '%hydrogel%')
+                          ->orWhere('products.name', 'like', '%tempered%')
+                          ->orWhere('products.code', 'like', '%acc-case%');
+                    } elseif ($providerKey === 'audio') {
+                        $q->where('products.name', 'like', '%headset%')
+                          ->orWhere('products.name', 'like', '%tws%')
+                          ->orWhere('products.name', 'like', '%speaker%')
+                          ->orWhere('products.name', 'like', '%audio%')
+                          ->orWhere('products.code', 'like', '%acc-headset%');
+                    } elseif ($providerKey === 'penyimpanan') {
+                        $q->where('products.name', 'like', '%flashdisk%')
+                          ->orWhere('products.name', 'like', '%microsd%')
+                          ->orWhere('products.name', 'like', '%memory%');
+                    } elseif ($providerKey === 'mount-stand') {
+                        $q->where('products.name', 'like', '%holder%')
+                          ->orWhere('products.name', 'like', '%tripod%')
+                          ->orWhere('products.name', 'like', '%stand%');
+                    } else {
+                        $cleanSearch = str_replace('-', ' ', $providerKey);
+                        $q->where('products.name', 'like', "%{$providerKey}%")
+                          ->orWhere('products.name', 'like', "%{$cleanSearch}%")
+                          ->orWhere('products.code', 'like', "%{$providerKey}%");
+                    }
                 });
-            });
+            }
+
+        } else {
+            if (!empty($categoryKey) && $categoryKey !== 'all') {
+                $query->whereHas('category', function ($q) use ($categoryKey) {
+                    $q->where(function ($sub) use ($categoryKey) {
+                        $sub->where('slug', 'like', "%{$categoryKey}%")
+                            ->orWhere('name', 'like', "%{$categoryKey}%");
+                    })
+                    ->orWhereHas('parent', function ($p) use ($categoryKey) {
+                        $p->where('slug', 'like', "%{$categoryKey}%")
+                          ->orWhere('name', 'like', "%{$categoryKey}%");
+                    });
+                });
+            }
+
+            if (!empty($providerKey)) {
+                $cleanProviderSearch = str_replace('-', ' ', $providerKey);
+
+                $query->where(function ($q) use ($providerKey, $cleanProviderSearch) {
+                    if (in_array($providerKey, ['tri', 'three', '3'])) {
+                        $q->where('products.name', 'like', '%tri%')
+                          ->orWhere('products.name', 'like', '%three%')
+                          ->orWhere('products.code', 'like', '%v-3-%')
+                          ->orWhere('products.code', 'like', '%tri%');
+                    } elseif (in_array($providerKey, ['telkomsel', 'tsel'])) {
+                        $q->where('products.name', 'like', '%telkomsel%')
+                          ->orWhere('products.name', 'like', '%tsel%')
+                          ->orWhere('products.name', 'like', '%by.u%')
+                          ->orWhere('products.code', 'like', '%tsel%');
+                    } elseif (in_array($providerKey, ['indosat', 'isat', 'im3'])) {
+                        $q->where('products.name', 'like', '%indosat%')
+                          ->orWhere('products.name', 'like', '%im3%')
+                          ->orWhere('products.code', 'like', '%isat%');
+                    } else {
+                        $q->whereHas('category', function ($catQ) use ($providerKey) {
+                            $catQ->where('slug', 'like', "%{$providerKey}%")
+                                 ->orWhere('name', 'like', "%{$providerKey}%");
+                        })
+                        ->orWhere('products.name', 'like', "%{$providerKey}%")
+                        ->orWhere('products.name', 'like', "%{$cleanProviderSearch}%")
+                        ->orWhere('products.code', 'like', "%{$providerKey}%");
+                    }
+                });
+            }
         }
 
-        // 2. FILTER PROVIDER / OPERATOR (Telkomsel, Indosat, XL, Tri, Smartfren, Axis, dll)
-        if (!empty($providerKey)) {
-            $query->where(function ($q) use ($providerKey) {
-                if (in_array($providerKey, ['tri', 'three', '3'])) {
-                    $q->where('products.name', 'like', '%tri%')
-                      ->orWhere('products.name', 'like', '%three%')
-                      ->orWhere('products.code', 'like', '%v-3-%')
-                      ->orWhere('products.code', 'like', '%tri%');
-                } elseif (in_array($providerKey, ['telkomsel', 'tsel'])) {
-                    $q->where('products.name', 'like', '%telkomsel%')
-                      ->orWhere('products.name', 'like', '%tsel%')
-                      ->orWhere('products.name', 'like', '%by.u%')
-                      ->orWhere('products.code', 'like', '%tsel%');
-                } elseif (in_array($providerKey, ['indosat', 'isat', 'im3'])) {
-                    $q->where('products.name', 'like', '%indosat%')
-                      ->orWhere('products.name', 'like', '%im3%')
-                      ->orWhere('products.code', 'like', '%isat%');
-                } else {
-                    $q->where('products.name', 'like', "%{$providerKey}%")
-                      ->orWhere('products.code', 'like', "%{$providerKey}%");
-                }
-            });
-        }
-
-        // Ambil SELURUH produk yang sesuai tanpa dipotong pagination
         $products = $query->get();
-
         return response()->json($products);
     }
 
@@ -162,6 +249,7 @@ class PosController extends Controller
             'account_name'     => 'nullable|string',
             'quantity'         => 'nullable|integer|min:1',
             'qty'              => 'nullable|integer|min:1',
+            'digital_provider' => 'nullable|string',
         ]);
 
         $storeId = $this->getActiveStoreId();
@@ -178,39 +266,64 @@ class PosController extends Controller
             }
         }
 
-        if ($isCustom) {
-            $customPrice  = (float) $request->input('custom_price', 0);
-            $adminFee     = (float) $request->input('admin_fee', 2500);
-            $sellingPrice = $customPrice + $adminFee;
-            $costPrice    = $customPrice;
+if ($isCustom) {
+    $customPrice = (float) $request->input('custom_price', 0);
+    
+    // 1. Tangkap nama bank/wallet dari 'service_type' ATAU 'digital_provider'
+    $serviceType = $request->input('service_type') ?? $request->input('digital_provider');
+    if (!$serviceType || strtolower($serviceType) === 'transfer / top-up' || strtolower($serviceType) === 'transfer') {
+        $serviceType = 'Nominal Bebas';
+    }
 
-            $targetNum = $request->input('account_number') ?? $request->input('target_number');
-            $accName   = $request->input('account_name');
+    // 2. Hitung Modal (Cost Price)
+    $feePerak  = $this->getEwalletFeePerak($serviceType);
+    $costPrice = $customPrice + $feePerak;
 
-            $displayName = 'Transfer / Top-Up Nominal Bebas';
-            if ($accName) {
-                $displayName .= ' (' . $accName . ')';
-            }
+    // 3. Hitung Admin & Selling Price
+    $customInThousand = $customPrice / 1000;
+    if (str_contains(strtolower($serviceType), 'maxim') && $customInThousand >= 10 && $customInThousand <= 100) {
+        $defaultAdmin = 4000;
+    } else {
+        $defaultAdmin = $this->calculateAdminFee($customPrice);
+    }
 
-            $cartKey = 'custom_' . time() . '_' . rand(100, 999);
+    $adminFee     = $request->filled('admin_fee') ? (float) $request->input('admin_fee') : $defaultAdmin;
+    $sellingPrice = $customPrice + $adminFee;
+    $profit       = $sellingPrice - $costPrice;
 
-            $cart[$cartKey] = [
-                'product_id'        => $request->product_id ?? 1,
-                'name'              => $displayName,
-                'type'              => 'digital',
-                'target_phone'      => $targetNum,
-                'cost_price'        => $costPrice,
-                'selling_price'     => $sellingPrice,
-                'qty'               => 1,
-                'subtotal'          => $sellingPrice,
-                'profit'            => $adminFee,
-                'served_by_user_id' => null,
-            ];
+    $targetNum = $request->input('account_number') ?? $request->input('target_number');
+    $accName   = $request->input('account_name');
 
-            session()->put('pos_cart', $cart);
-            return back()->with('success', 'Transaksi nominal bebas ditambahkan ke keranjang.');
+    // 4. Buat Nama Tampilan secara Langsung dan Lengkap
+    $serviceLower = strtolower($serviceType);
+    $isBank = str_contains($serviceLower, 'bank') || str_contains($serviceLower, 'bca') || str_contains($serviceLower, 'bri') || str_contains($serviceLower, 'mandiri') || str_contains($serviceLower, 'bni') || str_contains($serviceLower, 'bsi');
+    $prefix = $isBank ? 'Transfer' : 'Top-Up';
 
-        } else {
+    // Format: "Transfer BANK BCA 1.111.847.843 (z)"
+    $displayName = $prefix . ' ' . strtoupper($serviceType) . ' ' . number_format($sellingPrice, 0, ',', '.');
+    if ($accName) {
+        $displayName .= ' (' . $accName . ')';
+    }
+
+    $cartKey = 'custom_' . time() . '_' . rand(100, 999);
+
+    $cart[$cartKey] = [
+        'product_id'        => $request->product_id ?? 1,
+        'name'              => $displayName, // Disimpan utuh ke session
+        'type'              => 'digital',
+        'target_phone'      => $targetNum,
+        'cost_price'        => $costPrice,
+        'selling_price'     => $sellingPrice,
+        'qty'               => 1,
+        'subtotal'          => $sellingPrice,
+        'profit'            => $profit,
+        'digital_provider'  => 'Propana', // PPOB Server Provider
+        'served_by_user_id' => null,
+    ];
+
+    session()->put('pos_cart', $cart);
+    return back()->with('success', 'Transaksi nominal bebas ditambahkan ke keranjang.');
+}    else {
             $productId = $request->product_id;
             if (!$productId) {
                 return back()->with('error', 'Produk tidak ditemukan!');
@@ -235,14 +348,19 @@ class PosController extends Controller
                 }
 
                 if ($totalRequested > $availableStock) {
-                    return back()->with('error', 'Gagal! Stok "' . $product->name . '" tidak mencukupi (Tersedia: ' . $availableStock . ' Pcs, Di keranjang: ' . $existingQtyInCart . ' Pcs).');
+                    return back()->with('error', 'Gagal! Stok "' . $product->name . '" tidak mencukupi.');
                 }
             }
+
+            $defaultProvider = $request->input('digital_provider', null);
 
             if (isset($cart[$cartKey])) {
                 $cart[$cartKey]['qty'] += $qty;
                 $cart[$cartKey]['subtotal'] = $cart[$cartKey]['qty'] * $cart[$cartKey]['selling_price'];
                 $cart[$cartKey]['profit']   = $cart[$cartKey]['qty'] * ($cart[$cartKey]['selling_price'] - $cart[$cartKey]['cost_price']);
+                if ($isDigital && $request->filled('digital_provider')) {
+                    $cart[$cartKey]['digital_provider'] = $request->input('digital_provider');
+                }
             } else {
                 $cart[$cartKey] = [
                     'product_id'        => $product->id,
@@ -254,6 +372,7 @@ class PosController extends Controller
                     'qty'               => $qty,
                     'subtotal'          => (float) ($product->selling_price * $qty),
                     'profit'            => (float) (($product->selling_price - $product->cost_price) * $qty),
+                    'digital_provider'  => $defaultProvider,
                     'served_by_user_id' => $isDigital ? null : $defaultStaffId,
                 ];
             }
@@ -268,8 +387,19 @@ class PosController extends Controller
         $cart = session()->get('pos_cart', []);
 
         if (isset($cart[$key])) {
-            $cart[$key]['served_by_user_id'] = $request->served_by_user_id ? (int) $request->served_by_user_id : null;
+            $staffId = $request->served_by_user_id ? (int) $request->served_by_user_id : null;
+            $cart[$key]['served_by_user_id'] = $staffId;
             session()->put('pos_cart', $cart);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                $staff = User::find($staffId);
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Penanggung jawab berhasil diperbarui',
+                    'staff_id' => $staffId,
+                    'staff_name' => $staff ? $staff->name : 'Pilih Karyawan Penjual'
+                ]);
+            }
         }
 
         return back()->with('success', 'Penanggung jawab item berhasil diperbarui.');
@@ -281,26 +411,43 @@ class PosController extends Controller
         $cart = session()->get('pos_cart', []);
 
         if (isset($cart[$key])) {
-            $qty = (int) $request->qty;
-            if ($qty > 0) {
-                $item = $cart[$key];
-                $productType = strtolower(trim($item['type'] ?? 'physical'));
-
-                if ($productType !== 'digital') {
-                    $availableStock = $this->getProductStock($storeId, $item['product_id']);
-                    if ($qty > $availableStock) {
-                        return back()->with('error', 'Jumlah melebihi stok yang tersedia! Stok "' . $item['name'] . '" tersisa: ' . $availableStock . ' Pcs.');
-                    }
-                }
-
-                $cart[$key]['qty']      = $qty;
-                $cart[$key]['subtotal'] = $qty * $cart[$key]['selling_price'];
-                $cart[$key]['profit']   = $qty * ($cart[$key]['selling_price'] - $cart[$key]['cost_price']);
-                session()->put('pos_cart', $cart);
-            } else {
-                unset($cart[$key]);
-                session()->put('pos_cart', $cart);
+            if ($request->has('digital_provider')) {
+                $cart[$key]['digital_provider'] = $request->input('digital_provider');
             }
+
+            if ($request->has('qty')) {
+                $qty = (int) $request->qty;
+                if ($qty > 0) {
+                    $item = $cart[$key];
+                    $productType = strtolower(trim($item['type'] ?? 'physical'));
+
+                    if ($productType !== 'digital') {
+                        $availableStock = $this->getProductStock($storeId, $item['product_id']);
+                        if ($qty > $availableStock) {
+                            if ($request->ajax() || $request->wantsJson()) {
+                                return response()->json(['status' => 'error', 'message' => 'Jumlah melebihi stok!'], 422);
+                            }
+                            return back()->with('error', 'Jumlah melebihi stok yang tersedia!');
+                        }
+                    }
+
+                    $cart[$key]['qty']      = $qty;
+                    $cart[$key]['subtotal'] = $qty * $cart[$key]['selling_price'];
+                    $cart[$key]['profit']   = $qty * ($cart[$key]['selling_price'] - $cart[$key]['cost_price']);
+                } else {
+                    unset($cart[$key]);
+                }
+            }
+
+            session()->put('pos_cart', $cart);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Server provider berhasil diperbarui',
+                'provider' => $cart[$key]['digital_provider'] ?? null
+            ]);
         }
 
         return back()->with('success', 'Keranjang diperbarui.');
@@ -324,6 +471,9 @@ class PosController extends Controller
         return back()->with('success', 'Keranjang dikosongkan.');
     }
 
+    /**
+     * Menyimpan Transaksi Pembelian ke Database
+     */
     public function store(Request $request)
     {
         $cart = session()->get('pos_cart', []);
@@ -348,7 +498,7 @@ class PosController extends Controller
 
                 $availableStock = $this->getProductStock($storeId, $item['product_id']);
                 if ($availableStock < $item['qty']) {
-                    return back()->with('error', 'Transaksi dibatalkan! Stok untuk "' . $item['name'] . '" telah habis/tidak mencukupi (Tersedia: ' . $availableStock . ' Pcs, Diminta: ' . $item['qty'] . ' Pcs).');
+                    return back()->with('error', 'Transaksi dibatalkan! Stok untuk "' . $item['name'] . '" telah habis.');
                 }
             }
         }
@@ -390,25 +540,17 @@ class PosController extends Controller
                 $productType = strtolower(trim($item['type'] ?? 'physical'));
 
                 if ($productType === 'digital') {
-                    if ($request->filled('digital_provider')) {
+                    if (!empty($item['digital_provider'])) {
+                        $provider = $item['digital_provider'];
+                    } elseif ($request->filled('digital_provider')) {
                         $provider = $request->digital_provider;
-                    } else {
-                        $itemName = strtolower($item['name'] ?? '');
-                        
-                        if (str_contains($itemName, 'transfer') || str_contains($itemName, 'top-up') || 
-                            str_contains($itemName, 'dana') || str_contains($itemName, 'gopay') || 
-                            str_contains($itemName, 'ovo') || str_contains($itemName, 'shopee') || 
-                            str_contains($itemName, 'linkaja') || str_contains($itemName, 'bank')) {
-                            $provider = 'Propana';
-                        } else {
-                            $provider = 'Digipos';
-                        }
                     }
                 }
 
                 TransactionDetail::create([
                     'transaction_id'    => $transaction->id,
                     'product_id'        => $item['product_id'],
+                    'custom_name'       => $item['name'] ?? null,
                     'served_by_user_id' => $productType !== 'digital' ? $item['served_by_user_id'] : null,
                     'target_phone'      => $item['target_phone'],
                     'digital_provider'  => $provider,
@@ -436,7 +578,6 @@ class PosController extends Controller
             }
 
             DB::commit();
-
             session()->forget('pos_cart');
 
             return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil disimpan!');

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\StoreProductStock;
 use Illuminate\Database\Seeder;
 
 class EwalletBankProductSeeder extends Seeder
@@ -26,16 +27,22 @@ class EwalletBankProductSeeder extends Seeder
 
     public function run(): void
     {
+        // Helper function untuk mengambil/fallback category ID
+        $getCatId = function ($slug, $fallbackSlug) {
+            $cat = Category::where('slug', $slug)->first();
+            return $cat ? $cat->id : Category::where('slug', $fallbackSlug)->first()?->id;
+        };
+
         // ----------------------------------------------------
-        // 1. TOP-UP E-WALLET
+        // 1. TOP-UP E-WALLET (BIAYA PERAK MODAL SESUAI CATATAN)
         // ----------------------------------------------------
         $ewallets = [
-            'DANA'      => ['slug' => 'ewallet-dana',      'code' => 'DANA'],
-            'OVO'       => ['slug' => 'ewallet-ovo',       'code' => 'OVO'],
-            'GoPay'     => ['slug' => 'ewallet-gopay',     'code' => 'GOPAY'],
-            'ShopeePay' => ['slug' => 'ewallet-shopeepay', 'code' => 'SHOPEE'],
-            'LinkAja'   => ['slug' => 'ewallet-linkaja',   'code' => 'LINKAJA'],
-            'Maxim'     => ['slug' => 'ewallet-maxim',     'code' => 'MAXIM'],
+            'DANA'      => ['slug' => 'ewallet-dana',      'code' => 'DANA',    'fee_perak' => 101],
+            'GoPay'     => ['slug' => 'ewallet-gopay',     'code' => 'GOPAY',   'fee_perak' => 910],
+            'ShopeePay' => ['slug' => 'ewallet-shopeepay', 'code' => 'SHOPEE',  'fee_perak' => 75],
+            'OVO'       => ['slug' => 'ewallet-ovo',       'code' => 'OVO',     'fee_perak' => 631],
+            'LinkAja'   => ['slug' => 'ewallet-linkaja',   'code' => 'LINKAJA', 'fee_perak' => 500],
+            'Maxim'     => ['slug' => 'ewallet-maxim',     'code' => 'MAXIM',   'fee_perak' => 2700],
         ];
 
         // Daftar nominal e-wallet dalam ribuan (K)
@@ -52,27 +59,31 @@ class EwalletBankProductSeeder extends Seeder
         ];
 
         foreach ($ewallets as $walletName => $walletData) {
-            $catWallet = Category::where('slug', $walletData['slug'])->first();
-            $catId = $catWallet ? $catWallet->id : Category::where('slug', 'topup-ewallet')->first()?->id;
+            $catId = $getCatId($walletData['slug'], 'topup-ewallet');
 
             if ($catId) {
+                $walletProducts = [];
                 foreach ($ewalletNominals as $k => $name) {
-                    $costPrice    = $k * 1000; // Modal awal (Rp 10.000, dst)
-                    $adminFee     = $this->calculateAdminFee($k);
-                    $sellingPrice = $costPrice + $adminFee;
+                    $baseNominal  = $k * 1000;
+                    $costPrice    = $baseNominal + $walletData['fee_perak']; // Modal = Nominal + Biaya Perak
+                    
+                    // Khusus Maxim nominal 10k - 100k, admin_fee fixed 4.000
+                    if ($walletName === 'Maxim' && $k >= 10 && $k <= 100) {
+                        $adminFee = 4000;
+                    } else {
+                        $adminFee = $this->calculateAdminFee($k);
+                    }
 
-                    Product::create([
-                        'category_id'   => $catId,
-                        'name'          => "Top-Up {$walletName} {$name}",
-                        'code'          => "{$walletData['code']}{$k}K",
-                        'type'          => 'digital',
-                        'cost_price'    => $costPrice,
-                        'selling_price' => $sellingPrice,
-                        'stock'         => 0,
-                        'min_stock'     => 0,
-                        'is_active'     => true,
-                    ]);
+                    $sellingPrice = $baseNominal + $adminFee;
+
+                    $walletProducts[] = [
+                        'name' => "Top-Up {$walletName} {$name}",
+                        'code' => "{$walletData['code']}{$k}K",
+                        'cost' => $costPrice,
+                        'sell' => $sellingPrice,
+                    ];
                 }
+                $this->seedGroup($catId, $walletProducts);
             }
         }
 
@@ -98,27 +109,23 @@ class EwalletBankProductSeeder extends Seeder
         ];
 
         foreach ($banks as $bankName => $bankData) {
-            $catBank = Category::where('slug', $bankData['slug'])->first();
-            $catId = $catBank ? $catBank->id : Category::where('slug', 'transfer-bank')->first()?->id;
+            $catId = $getCatId($bankData['slug'], 'transfer-bank');
 
             if ($catId) {
+                $bankProducts = [];
                 foreach ($bankNominals as $k => $name) {
                     $costPrice    = $k * 1000;
                     $adminFee     = $this->calculateAdminFee($k);
                     $sellingPrice = $costPrice + $adminFee;
 
-                    Product::create([
-                        'category_id'   => $catId,
-                        'name'          => "Transfer {$bankName} {$name}",
-                        'code'          => "TRF-{$bankData['code']}{$k}K",
-                        'type'          => 'digital',
-                        'cost_price'    => $costPrice,
-                        'selling_price' => $sellingPrice,
-                        'stock'         => 0,
-                        'min_stock'     => 0,
-                        'is_active'     => true,
-                    ]);
+                    $bankProducts[] = [
+                        'name' => "Transfer {$bankName} {$name}",
+                        'code' => "TRF-{$bankData['code']}{$k}K",
+                        'cost' => $costPrice,
+                        'sell' => $sellingPrice,
+                    ];
                 }
+                $this->seedGroup($catId, $bankProducts);
             }
         }
 
@@ -128,25 +135,57 @@ class EwalletBankProductSeeder extends Seeder
         $catPLN = Category::where('slug', 'token-pln')->first()?->id;
         if ($catPLN) {
             $plnTokens = [
-                ['name' => 'Token PLN 20.000',  'code' => 'PLN20K',  'cost' => 20100,  'sell' => 22000],
-                ['name' => 'Token PLN 50.000',  'code' => 'PLN50K',  'cost' => 50100,  'sell' => 52000],
-                ['name' => 'Token PLN 100.000', 'code' => 'PLN100K', 'cost' => 100100, 'sell' => 103000],
-                ['name' => 'Token PLN 200.000', 'code' => 'PLN200K', 'cost' => 200100, 'sell' => 203000],
+                ['name' => 'Token PLN 20.000',     'code' => 'PLN20K',  'cost' => 21400,   'sell' => 22000],
+                ['name' => 'Token PLN 25.000',     'code' => 'PLN25K',  'cost' => 26511,   'sell' => 27000],
+                ['name' => 'Token PLN 50.000',     'code' => 'PLN50K',  'cost' => 51261,   'sell' => 52000],
+                ['name' => 'Token PLN 100.000',    'code' => 'PLN100K', 'cost' => 101321,  'sell' => 103000],
+                ['name' => 'Token PLN 200.000',    'code' => 'PLN200K', 'cost' => 201321,  'sell' => 203000],
+                ['name' => 'Token PLN 500.000',    'code' => 'PLN500K', 'cost' => 501321,  'sell' => 503000],
+                ['name' => 'Token PLN 1.000.000', 'code' => 'PLN1M',   'cost' => 1001321, 'sell' => 1003000],
             ];
+            $this->seedGroup($catPLN, $plnTokens);
+        }
+    }
 
-            foreach ($plnTokens as $p) {
-                Product::create([
-                    'category_id'   => $catPLN,
-                    'name'          => $p['name'],
-                    'code'          => $p['code'],
-                    'type'          => 'digital',
-                    'cost_price'    => $p['cost'],
-                    'selling_price' => $p['sell'],
-                    'stock'         => 0,
-                    'min_stock'     => 0,
-                    'is_active'     => true,
-                ]);
-            }
+    private function seedGroup($catId, array $items)
+    {
+        foreach ($items as $item) {
+            // 1. Buat Master Produk (Global) tipe Digital
+            $product = Product::create([
+                'category_id'   => $catId,
+                'name'          => $item['name'],
+                'code'          => $item['code'],
+                'type'          => 'digital',
+                'cost_price'    => $item['cost'],
+                'selling_price' => $item['sell'],
+                'stock'         => 0, // Fallback master untuk produk digital
+                'min_stock'     => 0, // Fallback master untuk produk digital
+                'is_active'     => true,
+            ]);
+
+            // 2. Alokasikan Stok & Min_Stock untuk Store 1 (WannCell)
+            StoreProductStock::updateOrCreate(
+                [
+                    'store_id'   => 1,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'stock'     => 0,
+                    'min_stock' => 0,
+                ]
+            );
+
+            // 3. Alokasikan Stok & Min_Stock untuk Store 2
+            StoreProductStock::updateOrCreate(
+                [
+                    'store_id'   => 2,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'stock'     => 0,
+                    'min_stock' => 0,
+                ]
+            );
         }
     }
 }

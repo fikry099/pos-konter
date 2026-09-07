@@ -19,7 +19,7 @@
         </div>
 
         <!-- FORM ADD TO CART -->
-        <form action="{{ route('pos.cart.add') }}" method="POST" class="mt-5 space-y-4">
+        <form action="{{ route('pos.cart.add') }}" method="POST" autocomplete="off" onsubmit="prepareCleanNumbers(event)" class="mt-5 space-y-4">
             @csrf
             <input type="hidden" name="product_id" id="modal_product_id">
             <input type="hidden" name="is_custom_amount" id="modal_is_custom_amount" value="0">
@@ -30,13 +30,15 @@
                     <label for="modal_custom_price" class="block text-xs font-bold text-indigo-900">
                         <i class="fa-solid fa-money-bill-wave text-indigo-600 mr-1"></i> Nominal Transfer / Top-Up (Rp):
                     </label>
-                    <input type="number" id="modal_custom_price" name="custom_price" min="1000" placeholder="Contoh: 137500" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 transition">
+                    <!-- UBAH KE TYPE="TEXT" DAN TAMBAHKAN ONINPUT -->
+                    <input type="text" id="modal_custom_price" name="custom_price" placeholder="Contoh: 137.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 transition">
                 </div>
                 <div class="space-y-1.5">
                     <label for="modal_admin_fee" class="block text-xs font-bold text-indigo-900">
                         <i class="fa-solid fa-receipt text-indigo-600 mr-1"></i> Biaya Admin / Jasa (Rp):
                     </label>
-                    <input type="number" id="modal_admin_fee" name="admin_fee" value="2500" placeholder="Contoh: 2500" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-gray-700 transition">
+                    <!-- UBAH KE TYPE="TEXT" DAN TAMBAHKAN ONINPUT -->
+                    <input type="text" id="modal_admin_fee" name="admin_fee" value="2.500" placeholder="Contoh: 2.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-gray-700 transition">
                 </div>
             </div>
 
@@ -45,7 +47,7 @@
                 <label for="modal_target_phone" class="block text-xs font-bold text-gray-700">
                     <i class="fa-solid fa-phone text-indigo-500 mr-1"></i> Nomor HP / ID Pelanggan:
                 </label>
-                <input type="text" id="modal_target_phone" name="target_number" placeholder="Contoh: 081234567890 / ID PLN" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition">
+                <input type="text" id="modal_target_phone" name="target_number" placeholder="Contoh: 081234567890 / ID PLN" autocomplete="off" aria-autocomplete="none" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition">
             </div>
 
             <!-- 3. FIELD TRANSFER BANK -->
@@ -54,13 +56,13 @@
                     <label for="modal_account_number" class="block text-xs font-bold text-gray-700">
                         <i class="fa-solid fa-credit-card text-teal-600 mr-1"></i> Nomor Rekening Tujuan:
                     </label>
-                    <input type="text" id="modal_account_number" name="account_number" placeholder="Contoh: 1234567890" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
+                    <input type="text" id="modal_account_number" name="account_number" placeholder="Contoh: 1234567890" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
                 </div>
                 <div class="space-y-1.5">
                     <label for="modal_account_name" class="block text-xs font-bold text-gray-700">
                         <i class="fa-solid fa-user text-teal-600 mr-1"></i> Nama Pemilik Rekening:
                     </label>
-                    <input type="text" id="modal_account_name" name="account_name" placeholder="Contoh: Budi Santoso" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
+                    <input type="text" id="modal_account_name" name="account_name" placeholder="Contoh: Budi Santoso" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
                 </div>
             </div>
 
@@ -69,7 +71,7 @@
                 <label for="modal_quantity" class="block text-xs font-bold text-gray-700">
                     <i class="fa-solid fa-layer-group text-amber-500 mr-1"></i> Jumlah / Qty:
                 </label>
-                <input type="number" id="modal_quantity" name="quantity" min="1" value="1" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-center transition">
+                <input type="number" id="modal_quantity" name="quantity" min="1" value="1" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-center transition">
             </div>
 
             <!-- BUTTONS ACTION -->
@@ -85,3 +87,37 @@
         </form>
     </div>
 </div>
+
+<!-- SCRIPT PEMFORMATAN RUPIAH -->
+<script>
+    // 1. Fungsi Format Angka ke Rupiah (Titik Ribuan)
+    function formatRupiahInput(element) {
+        let value = element.value.replace(/[^,\d]/g, '').toString();
+        let split = value.split(',');
+        let sisa = split[0].length % 3;
+        let rupiah = split[0].substr(0, sisa);
+        let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+        if (ribuan) {
+            let separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
+        }
+
+        rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+        element.value = rupiah;
+    }
+
+    // 2. Fungsi Pembersih Titik Sebelum Form Di-Submit ke Laravel
+    function prepareCleanNumbers(e) {
+        let customPriceInput = document.getElementById('modal_custom_price');
+        let adminFeeInput = document.getElementById('modal_admin_fee');
+
+        if (customPriceInput && customPriceInput.value) {
+            customPriceInput.value = customPriceInput.value.replace(/[^0-9]/g, '');
+        }
+
+        if (adminFeeInput && adminFeeInput.value) {
+            adminFeeInput.value = adminFeeInput.value.replace(/[^0-9]/g, '');
+        }
+    }
+</script>
