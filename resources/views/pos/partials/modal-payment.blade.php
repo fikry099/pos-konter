@@ -81,10 +81,10 @@
             </div>
 
             <!-- PANEL 2: QRIS (WEBCAM BUKTI) -->
-            <div id="modal_qris_panel" class="hidden space-y-2 text-center">
+            <div id="modal_qris_panel" class="hidden space-y-2.5 text-center">
                 <div class="flex justify-between items-center px-1">
                     <span class="text-[11px] font-bold text-slate-700 block">Ambil Foto Bukti Transfer QRIS</span>
-                    <button type="button" onclick="toggleQrisCameraFacing()" class="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg transition flex items-center space-x-1 cursor-pointer">
+                    <button type="button" onclick="toggleQrisCameraFacing()" class="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg transition flex items-center space-x-1 cursor-pointer">
                         <i class="fa-solid fa-camera-rotate text-[11px]"></i>
                         <span>Balik Kamera</span>
                     </button>
@@ -96,12 +96,15 @@
                 </div>
                 <div id="qris_result" class="hidden w-full h-48 rounded-xl border overflow-hidden mx-auto shadow-sm"></div>
 
-                <div class="flex justify-center space-x-2 pt-0.5">
-                    <button type="button" onclick="take_qris_snapshot()" id="btn_snap_qris" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] px-3 py-1.5 rounded-xl font-bold transition shadow-md shadow-indigo-200 cursor-pointer">
-                        <i class="fa-solid fa-camera mr-1 text-[10px]"></i> Ambil Foto Bukti
+                <!-- TOMBOL AMBIL FOTO / FOTO ULANG (FULL WIDTH & LEBIH BESAR) -->
+                <div class="pt-1">
+                    <button type="button" onclick="take_qris_snapshot()" id="btn_snap_qris" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-98 text-white text-xs sm:text-sm py-3 px-4 rounded-xl font-black transition shadow-md shadow-amber-200 flex items-center justify-center space-x-2 cursor-pointer">
+                        <i class="fa-solid fa-camera text-sm"></i>
+                        <span>Ambil Foto Bukti</span>
                     </button>
-                    <button type="button" onclick="reset_qris_camera()" id="btn_reset_qris" class="hidden bg-rose-600 hover:bg-rose-700 text-white text-[11px] px-3 py-1.5 rounded-xl font-bold transition shadow-md cursor-pointer">
-                        <i class="fa-solid fa-rotate-left mr-1 text-[10px]"></i> Foto Ulang
+                    <button type="button" onclick="reset_qris_camera()" id="btn_reset_qris" class="hidden w-full bg-rose-600 hover:bg-rose-700 active:scale-98 text-white text-xs sm:text-sm py-3 px-4 rounded-xl font-black transition shadow-md flex items-center justify-center space-x-2 cursor-pointer">
+                        <i class="fa-solid fa-rotate-left text-sm"></i>
+                        <span>Foto Ulang</span>
                     </button>
                 </div>
             </div>

@@ -20,6 +20,10 @@ class Transaction extends Model
         'change_amount',
         'payment_method',
         'payment_proof',
+        'status',           // 'completed' / 'cancelled'
+        'cancel_reason',    // Alasan pembatalan
+        'cancelled_by',     // User ID yang membatalkan
+        'cancelled_at',     // Waktu pembatalan
     ];
 
     protected $casts = [
@@ -28,6 +32,7 @@ class Transaction extends Model
         'total_profit'  => 'decimal:2',
         'pay_amount'    => 'decimal:2',
         'change_amount' => 'decimal:2',
+        'cancelled_at'  => 'datetime',
     ];
 
     /* =========================================================================
@@ -44,6 +49,11 @@ class Transaction extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
     public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class);
@@ -55,7 +65,7 @@ class Transaction extends Model
     }
 
     /* =========================================================================
-     * SCOPE QUERY FILTER CABANG
+     * SCOPE QUERY FILTER
      * ========================================================================= */
 
     public function scopeForStore($query, $storeId)
@@ -64,5 +74,11 @@ class Transaction extends Model
             return $query->where('store_id', $storeId);
         }
         return $query;
+    }
+
+    // Scope untuk menyaring hanya transaksi yang berhasil (bukan batal)
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
     }
 }

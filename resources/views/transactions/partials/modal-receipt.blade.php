@@ -167,14 +167,127 @@
 </style>
 
 <script>
+    // VARIABEL GLOBAL STATUS BLUETOOTH
+    let btDevice = null;
+    let btCharacteristic = null;
+
     function formatRupiahIDR(val) {
         if (val === null || val === undefined || val === '') return 'Rp 0';
         let numberVal = Math.round(parseFloat(val));
         return 'Rp ' + numberVal.toLocaleString('id-ID');
     }
 
-    function printThermalReceipt() {
-        window.print();
+    // FUNGSI UTAMA CETAK AUTOMATIC CONNECT & DIRECT PRINT VIA BLUETOOTH
+    async function printThermalReceipt() {
+        let isAndroid = /Android/i.test(navigator.userAgent);
+
+        if (navigator.bluetooth && isAndroid) {
+            try {
+                // 1. KONEKSI KE PRINTER BLUETOOTH JIKA BELUM HUBUNG
+                if (!btDevice || !btDevice.gatt.connected || !btCharacteristic) {
+                    btDevice = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: [
+                            '000018f0-0000-1000-8000-00805f9b34fb',
+                            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                            '0000ff00-0000-1000-8000-00805f9b34fb'
+                        ]
+                    });
+
+                    const server = await btDevice.gatt.connect();
+                    const services = await server.getPrimaryServices();
+
+                    if (services.length > 0) {
+                        const characteristics = await services[0].getCharacteristics();
+                        btCharacteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                    }
+                }
+
+                if (!btCharacteristic) {
+                    alert('Tidak dapat mendeteksi layanan printer Bluetooth.');
+                    window.print();
+                    return;
+                }
+
+                // 2. CEK DAN AMBIL KETERSEDIAAN LIBRARY ESC-POS ENCODER
+                if (typeof EscPosEncoder === 'undefined') {
+                    console.warn('EscPosEncoder CDN belum dimuat di app.blade.php');
+                    window.print();
+                    return;
+                }
+
+                // 3. ESTRAKSI TEKS DATA DARI STRUK
+                let storeName = document.getElementById('res_store_name')?.innerText.replace(/\*/g, '').trim() || 'WANNCELL';
+                let storeSub  = document.getElementById('res_store_sub')?.innerText || 'VOUCHER & CELLULAR';
+                let storeAddr = document.getElementById('res_store_address')?.innerText || '';
+                let invoice   = document.getElementById('res_invoice')?.innerText || '-';
+                let dateTime  = document.getElementById('res_date_time')?.innerText || '-';
+                let method    = document.getElementById('res_method')?.innerText || 'CASH';
+                let total     = document.getElementById('res_total')?.innerText || 'Rp 0';
+                let pay       = document.getElementById('res_pay')?.innerText || 'Rp 0';
+                let change    = document.getElementById('res_change')?.innerText || 'Rp 0';
+
+                // 4. SUSUN KOLEKSI BYTE COMMAND THERMAL
+                let encoder = new EscPosEncoder();
+                encoder
+                    .initialize()
+                    .codepage('cp437')
+                    .align('center')
+                    .bold(true)
+                    .line(storeName)
+                    .bold(false)
+                    .line(storeSub)
+                    .line(storeAddr)
+                    .line('--------------------------------')
+                    .align('left')
+                    .line('No.Trx  : ' + invoice)
+                    .line('Tgl/Jam : ' + dateTime)
+                    .line('--------------------------------');
+
+                // Iterasi item belanja
+                let itemRows = document.querySelectorAll('#res_details .trx-receipt-table tr');
+                itemRows.forEach(row => {
+                    let name = row.querySelector('.lbl')?.innerText.replace(/\n/g, ' ').trim() || '';
+                    let price = row.querySelector('.val')?.innerText.trim() || '';
+                    if (name) {
+                        encoder.align('left').line(name).align('right').line(price);
+                    }
+                });
+
+                // Footer ringkasan belanja
+                let resultData = encoder
+                    .align('center')
+                    .line('--------------------------------')
+                    .align('left')
+                    .line('METODE BAYAR : ' + method)
+                    .bold(true)
+                    .line('TOTAL        : ' + total)
+                    .bold(false)
+                    .line('BAYAR        : ' + pay)
+                    .line('KEMBALIAN    : ' + change)
+                    .line('--------------------------------')
+                    .align('center')
+                    .line('..:: Terima Kasih ::..')
+                    .line('Simpan Struk Ini Sebagai Bukti')
+                    .line('\n\n\n')
+                    .encode();
+
+                // 5. MENGIRIM KUMPULAN CHUNK DATA BYTE KE PRINTER
+                const chunkSize = 512;
+                for (let i = 0; i < resultData.length; i += chunkSize) {
+                    const chunk = resultData.slice(i, i + chunkSize);
+                    await btCharacteristic.writeValue(chunk);
+                }
+
+            } catch (err) {
+                console.error('Kendala cetak Bluetooth:', err);
+                // Jika koneksi gagal / dibatalkan, dialihkan ke jendela browser print
+                window.print();
+            }
+        } else {
+            // Jika dipanggil dari PC/Laptop
+            window.print();
+        }
     }
 
     function closeDetail() {
@@ -219,65 +332,57 @@
                 if (dateEl) dateEl.innerText = dateStr;
 
                 // 4. RENDER ITEM BELANJA MENGGUNAKAN TABEL FORMAL THERMAL
-let detailsContainer = document.getElementById('res_details');
-detailsContainer.innerHTML = '';
+                let detailsContainer = document.getElementById('res_details');
+                detailsContainer.innerHTML = '';
 
-if (data.details && data.details.length > 0) {
-    data.details.forEach(item => {
-        let rawName = item.custom_name ? item.custom_name : (item.product ? item.product.name : 'Produk');
-        let subtotalVal = formatRupiahIDR(item.subtotal);
-        let numericSubtotal = formatRupiahIDR(item.subtotal); // Nominal transaksi untuk resi
-        
-        // Deteksi jenis transaksi berdasarkan digital_provider atau nama produk
-        let provider = (item.digital_provider || '').toLowerCase();
-        let nameLower = rawName.toLowerCase();
-        
-        let formattedReceiptName = rawName; // Default
+                if (data.details && data.details.length > 0) {
+                    data.details.forEach(item => {
+                        let rawName = item.custom_name ? item.custom_name : (item.product ? item.product.name : 'Produk');
+                        let subtotalVal = formatRupiahIDR(item.subtotal);
+                        let numericSubtotal = formatRupiahIDR(item.subtotal);
+                        
+                        let provider = (item.digital_provider || '').toLowerCase();
+                        let nameLower = rawName.toLowerCase();
+                        
+                        let formattedReceiptName = rawName;
 
-        // Jika ini transaksi nominal bebas (transfer / top-up)
-        if (nameLower.includes('transfer') || nameLower.includes('top-up') || nameLower.includes('nominal bebas')) {
-            // Cek apakah masuk kategori E-Wallet (Dana, Ovo, Gopay, ShopeePay, LinkAja)
-            let isEwallet = provider.includes('dana') || provider.includes('ovo') || provider.includes('gopay') || provider.includes('shopee') || provider.includes('linkaja') || provider.includes('propana') || nameLower.includes('dana') || nameLower.includes('ovo') || nameLower.includes('gopay');
-            
-            // Cek apakah masuk kategori Bank (BCA, BRI, Mandiri, BNI, Transfer Bank)
-            let isBank = provider.includes('bank') || provider.includes('bca') || provider.includes('bri') || provider.includes('mandiri') || provider.includes('bni') || nameLower.includes('bank') || nameLower.includes('bca') || nameLower.includes('bri');
+                        if (nameLower.includes('transfer') || nameLower.includes('top-up') || nameLower.includes('nominal bebas')) {
+                            let isEwallet = provider.includes('dana') || provider.includes('ovo') || provider.includes('gopay') || provider.includes('shopee') || provider.includes('linkaja') || provider.includes('propana') || nameLower.includes('dana') || nameLower.includes('ovo') || nameLower.includes('gopay');
+                            let isBank = provider.includes('bank') || provider.includes('bca') || provider.includes('bri') || provider.includes('mandiri') || provider.includes('bni') || nameLower.includes('bank') || nameLower.includes('bca') || nameLower.includes('bri');
 
-            // Ambil nama pemilik akun di dalam kurung jika ada (Contoh: "(Fara)")
-            let accMatch = rawName.match(/\(([^)]+)\)/);
-            let accNameSuffix = accMatch ? ` (${accMatch[1]})` : '';
+                            let accMatch = rawName.match(/\(([^)]+)\)/);
+                            let accNameSuffix = accMatch ? ` (${accMatch[1]})` : '';
 
-            if (isEwallet && !provider.includes('bank')) {
-                // Format E-Wallet khusus Resi: Top-Up [Provider] [Nominal] (Nama)
-                let walletName = item.digital_provider ? item.digital_provider : 'E-Wallet';
-                formattedReceiptName = `Top-Up ${walletName} ${numericSubtotal}${accNameSuffix}`;
-            } else if (isBank || provider.includes('m-banking') || provider.includes('transfer')) {
-                // Format Bank khusus Resi: Transfer [Bank] [Nominal] (Nama)
-                let bankName = item.digital_provider ? item.digital_provider : 'Bank';
-                formattedReceiptName = `Transfer ${bankName} ${numericSubtotal}${accNameSuffix}`;
-            }
-        }
+                            if (isEwallet && !provider.includes('bank')) {
+                                let walletName = item.digital_provider ? item.digital_provider : 'E-Wallet';
+                                formattedReceiptName = `Top-Up ${walletName} ${numericSubtotal}${accNameSuffix}`;
+                            } else if (isBank || provider.includes('m-banking') || provider.includes('transfer')) {
+                                let bankName = item.digital_provider ? item.digital_provider : 'Bank';
+                                formattedReceiptName = `Transfer ${bankName} ${numericSubtotal}${accNameSuffix}`;
+                            }
+                        }
 
-        let isTransferOrTopup = formattedReceiptName.toLowerCase().includes('transfer') || formattedReceiptName.toLowerCase().includes('top-up');
-        let targetLabel = isTransferOrTopup ? 'TUJUAN/REK' : 'NO';
+                        let isTransferOrTopup = formattedReceiptName.toLowerCase().includes('transfer') || formattedReceiptName.toLowerCase().includes('top-up');
+                        let targetLabel = isTransferOrTopup ? 'TUJUAN/REK' : 'NO';
 
-        detailsContainer.innerHTML += `
-            <div class="py-1 border-b border-black/20 last:border-none">
-                <table class="trx-receipt-table">
-                    <tr>
-                        <td class="lbl">
-                            <div class="font-extrabold uppercase text-[9px] leading-tight text-black">${formattedReceiptName} x${item.qty}</div>
-                            ${item.target_phone ? `<div class="text-[8px] text-black font-bold mt-0.5">${targetLabel}: ${item.target_phone}</div>` : ''}
-                            ${item.digital_provider ? `<div class="text-[8px] text-black font-bold">SERVER: ${item.digital_provider}</div>` : ''}
-                        </td>
-                        <td class="val font-black text-[9px] text-black">
-                            ${subtotalVal}
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        `;
-    });
-}
+                        detailsContainer.innerHTML += `
+                            <div class="py-1 border-b border-black/20 last:border-none">
+                                <table class="trx-receipt-table">
+                                    <tr>
+                                        <td class="lbl">
+                                            <div class="font-extrabold uppercase text-[9px] leading-tight text-black">${formattedReceiptName} x${item.qty}</div>
+                                            ${item.target_phone ? `<div class="text-[8px] text-black font-bold mt-0.5">${targetLabel}: ${item.target_phone}</div>` : ''}
+                                            ${item.digital_provider ? `<div class="text-[8px] text-black font-bold">SERVER: ${item.digital_provider}</div>` : ''}
+                                        </td>
+                                        <td class="val font-black text-[9px] text-black">
+                                            ${subtotalVal}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        `;
+                    });
+                }
 
                 // 5. METODE BAYAR & BUKTI QRIS
                 let methodEl = document.getElementById('res_method');

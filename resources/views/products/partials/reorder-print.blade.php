@@ -1,13 +1,8 @@
-<!-- ========================================== -->
-<!-- MODAL POPUP RESI RESTOK PO (THERMAL 58mm) -->
-<!-- ========================================== -->
 <div id="reorderReceiptModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-xs w-full p-5 space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto my-auto">
         
-        <!-- AREA KHUSUS STRUK YANG AKAN DICETAK PRINTER -->
         <div id="thermal-print-po-area" class="text-black font-mono text-[10px] leading-tight bg-white">
             
-            <!-- HEADER STRUK RESTOK (DINAMIS CABANG) -->
             <div class="text-center space-y-0.5 pb-1 border-b border-black border-dashed">
                 <p class="font-bold text-xs tracking-wider uppercase">
                     ** {{ strtoupper(auth()->user()->store?->name ?? 'WANNCELL') }} **
@@ -20,12 +15,9 @@
                 <p class="text-[9px] uppercase tracking-wider font-extrabold">[ DAFTAR BARANG DIORDER ]</p>
             </div>
 
-            <!-- LIST ITEM BARANG DIORDER -->
             <div id="print_tbody" class="py-1 space-y-1 border-b border-black border-dashed">
-                <!-- Data Item Diisi Otomatis via JS (Format Tabel) -->
-            </div>
+                </div>
 
-            <!-- TOTAL ITEM & PCS -->
             <div class="py-1 border-b border-black border-dashed">
                 <table class="po-receipt-table">
                     <tr>
@@ -39,7 +31,6 @@
                 </table>
             </div>
 
-            <!-- FOOTER CATATAN KARYAWAN -->
             <div class="text-center pt-1.5 space-y-0.5 text-[9px]">
                 <p class="font-bold">** CATATAN KARYAWAN **</p>
                 <p class="font-medium">Serahkan Struk Ini ke Sales / Supplier</p>
@@ -49,7 +40,6 @@
 
         </div>
 
-        <!-- TOMBOL AKSI MODAL -->
         <div class="flex space-x-2 pt-2 border-t border-slate-200 no-print">
             <button type="button" onclick="closeReorderReceiptModal()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl border border-slate-300 transition cursor-pointer">
                 Tutup
@@ -63,7 +53,6 @@
     </div>
 </div>
 
-<!-- CSS KHUSUS PRINT PRINTER THERMAL KASIR 58mm -->
 <style type="text/css">
 #thermal-print-po-area .po-receipt-table {
     width: 100%;
@@ -142,10 +131,13 @@
 </style>
 
 @push('scripts')
-<!-- Library SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+    // VARIABEL GLOBAL UNTUK MENGINGAT KONEKSI BLUETOOTH PRINTER
+    let btDevice = null;
+    let btCharacteristic = null;
+
     document.addEventListener("DOMContentLoaded", function() {
         if (typeof calculateTotals === "function") {
             calculateTotals();
@@ -272,8 +264,111 @@
         document.getElementById('reorderReceiptModal').classList.add('hidden');
     }
 
-    function executePrintOrder() {
-        window.print();
+    // FUNGSI UTAMA CETAK DIRECT PRINT VIA BLUETOOTH DENGAN FALLBACK WINDOW.PRINT
+    async function executePrintOrder() {
+        let isAndroid = /Android/i.test(navigator.userAgent);
+
+        if (navigator.bluetooth && isAndroid) {
+            try {
+                // 1. HUBUNGKAN KE PRINTER BLUETOOTH JIKA BELUM TERKONEKSI
+                if (!btDevice || !btDevice.gatt.connected || !btCharacteristic) {
+                    btDevice = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: [
+                            '000018f0-0000-1000-8000-00805f9b34fb',
+                            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                            '0000ff00-0000-1000-8000-00805f9b34fb'
+                        ]
+                    });
+
+                    const server = await btDevice.gatt.connect();
+                    const services = await server.getPrimaryServices();
+
+                    if (services.length > 0) {
+                        const characteristics = await services[0].getCharacteristics();
+                        btCharacteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                    }
+                }
+
+                if (!btCharacteristic) {
+                    alert('Tidak dapat mendeteksi layanan printer Bluetooth.');
+                    window.print();
+                    return;
+                }
+
+                // 2. CEK KETERSEDIAAN LIBRARY ESC-POS ENCODER
+                if (typeof EscPosEncoder === 'undefined') {
+                    console.warn('EscPosEncoder CDN belum dimuat di app.blade.php');
+                    window.print();
+                    return;
+                }
+
+                // 3. AMBIL DATA ELEMEN HEADER & RINGKASAN PO
+                let dateStr    = document.getElementById('print_date')?.innerText || '-';
+                let totalItems = document.getElementById('print_total_items')?.innerText || '0 Item';
+                let totalPcs   = document.getElementById('print_total_pcs')?.innerText || '0 Pcs';
+
+                // 4. SUSUN ENCODER DATA COMMAND ESC/POS THERMAL
+                let encoder = new EscPosEncoder();
+                encoder
+                    .initialize()
+                    .codepage('cp437')
+                    .align('center')
+                    .bold(true)
+                    .line('** {{ strtoupper(auth()->user()->store?->name ?? "WANNCELL") }} **')
+                    .bold(false)
+                    .line('REKAP ORDER SUPPLIER / PO')
+                    .line(dateStr)
+                    .line('--------------------------------')
+                    .line('[ DAFTAR BARANG DIORDER ]')
+                    .line('--------------------------------');
+
+                // Iterasi item barang diorder dari modal resi
+                let itemRows = document.querySelectorAll('#print_tbody .po-receipt-table tr');
+                itemRows.forEach(row => {
+                    let name = row.querySelector('.lbl .font-extrabold')?.innerText.replace(/\n/g, ' ').trim() || '';
+                    let codeEl = row.querySelector('.lbl .text-\\[8px\\]');
+                    let code = codeEl ? ' (' + codeEl.innerText.replace('KODE:', '').trim() + ')' : '';
+                    let qty  = row.querySelector('.val')?.innerText.trim() || '';
+
+                    if (name) {
+                        encoder.align('left').line(name + code).align('right').line(qty);
+                    }
+                });
+
+                // Ringkasan Total PO & Catatan Karyawan
+                let resultData = encoder
+                    .align('center')
+                    .line('--------------------------------')
+                    .align('left')
+                    .line('TOTAL VARIASI: ' + totalItems)
+                    .bold(true)
+                    .line('TOTAL PCS    : ' + totalPcs)
+                    .bold(false)
+                    .line('--------------------------------')
+                    .align('center')
+                    .line('** CATATAN KARYAWAN **')
+                    .line('Serahkan Struk Ini ke Sales / Supplier')
+                    .line('Cek Kembali Fisik Barang Saat Datang')
+                    .line('..:: SIMPAN SEBAGAI BUKTI PO ::..')
+                    .line('\n\n\n')
+                    .encode();
+
+                // 5. KIRIM CHUNK DATA BYTE BERGANTIAN KE PRINTER BLUETOOTH
+                const chunkSize = 512;
+                for (let i = 0; i < resultData.length; i += chunkSize) {
+                    const chunk = resultData.slice(i, i + chunkSize);
+                    await btCharacteristic.writeValue(chunk);
+                }
+
+            } catch (err) {
+                console.error('Kendala cetak Bluetooth PO:', err);
+                window.print();
+            }
+        } else {
+            // Fallback untuk PC/Laptop
+            window.print();
+        }
     }
 </script>
 @endpush

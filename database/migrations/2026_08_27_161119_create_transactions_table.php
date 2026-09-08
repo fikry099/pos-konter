@@ -24,6 +24,13 @@ return new class extends Migration
             $table->decimal('change_amount', 12, 2);
             $table->string('payment_method')->default('cash');
             $table->text('payment_proof')->nullable();
+
+            /* --- FITUR PEMBATALAN TRANSAKSI (DITAMBAHKAN) --- */
+            $table->string('status')->default('completed'); // completed / cancelled
+            $table->text('cancel_reason')->nullable();
+            $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('cancelled_at')->nullable();
+
             $table->timestamps();
         });
     }

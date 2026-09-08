@@ -1,11 +1,8 @@
-<!-- MODAL STRUK RESI SHIFT (STYLE STRUK THERMAL HITAM PUTIH KASIR) -->
 <div id="shiftReceiptModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-xs w-full p-5 space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto my-auto">
         
-        <!-- AREA KHUSUS STRUK YANG AKAN DICETAK PRINTER -->
         <div id="thermal-print-shift-area" class="text-black font-mono text-[10px] leading-tight bg-white">
             
-            <!-- HEADER STRUK DINAMIS CABANG -->
             <div class="text-center space-y-0.5 pb-1 border-b border-black border-dashed">
                 <p class="font-bold text-xs tracking-wider uppercase">
                     ** {{ strtoupper(auth()->user()->store?->name ?? 'WANNCELL') }} **
@@ -23,7 +20,6 @@
                 <p class="text-[9px] uppercase tracking-wider font-extrabold">REKAPITULASI SHIFT KASIR</p>
             </div>
 
-            <!-- DETAIL INFORMASI KASIR & WAKTU -->
             <div class="py-1 border-b border-black border-dashed">
                 <table class="receipt-table">
                     <tr>
@@ -41,7 +37,6 @@
                 </table>
             </div>
 
-            <!-- RINCIAN ARUS KAS -->
             <div class="py-1 border-b border-black border-dashed">
                 <table class="receipt-table">
                     <tr>
@@ -63,7 +58,6 @@
                 </table>
             </div>
 
-            <!-- RINGKASAN SALDO LACI & SELISIH -->
             <div class="py-1 border-b border-black border-dashed">
                 <table class="receipt-table">
                     <tr>
@@ -85,7 +79,6 @@
                 </div>
             </div>
 
-            <!-- FOOTER PESAN STRUK -->
             <div class="text-center pt-1.5 space-y-0.5 text-[9px]">
                 <p class="font-bold">Laporan Rekapitulasi Pembukuan</p>
                 <p class="font-extrabold">..:: POS COUNTER SYSTEM ::..</p>
@@ -94,7 +87,6 @@
 
         </div>
 
-        <!-- TOMBOL AKSI -->
         <div class="flex space-x-2 pt-2 border-t border-slate-200 no-print">
             <button type="button" onclick="closeShiftReceiptModal()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl border border-slate-300 transition cursor-pointer">
                 Tutup
@@ -108,7 +100,6 @@
     </div>
 </div>
 
-<!-- CSS KHUSUS PRINTER THERMAL KASIR (POS 58mm) -->
 <style type="text/css">
 #thermal-print-shift-area .receipt-table {
     width: 100%;
@@ -186,8 +177,15 @@
 }
 </style>
 
-<!-- SCRIPT UNTUK MEMBUKA DAN MENCETAK RESI SHIFT -->
 <script>
+    // DEKLARASI VARIABEL GLOBAL UNTUK SHIFT RESI JIKA BELUM ADA
+    if (typeof window.btDevice === 'undefined') {
+        window.btDevice = null;
+    }
+    if (typeof window.btCharacteristic === 'undefined') {
+        window.btCharacteristic = null;
+    }
+
     function formatRupiahIDR(val) {
         if (val === null || val === undefined || val === '') return 'Rp 0';
         let numberVal = Math.round(parseFloat(val));
@@ -228,7 +226,114 @@
         document.getElementById('shiftReceiptModal').classList.add('hidden');
     }
 
-    function printShiftReceipt() {
-        window.print();
+    // FUNGSI UTAMA CETAK AUTOMATIC CONNECT & DIRECT PRINT VIA BLUETOOTH (SHIFT RESI)
+    async function printShiftReceipt() {
+        let isAndroid = /Android/i.test(navigator.userAgent);
+
+        if (navigator.bluetooth && isAndroid) {
+            try {
+                // 1. KONEKSI KE PRINTER BLUETOOTH JIKA BELUM HUBUNG
+                if (!window.btDevice || !window.btDevice.gatt.connected || !window.btCharacteristic) {
+                    window.btDevice = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: [
+                            '000018f0-0000-1000-8000-00805f9b34fb',
+                            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                            '0000ff00-0000-1000-8000-00805f9b34fb'
+                        ]
+                    });
+
+                    const server = await window.btDevice.gatt.connect();
+                    const services = await server.getPrimaryServices();
+
+                    if (services.length > 0) {
+                        const characteristics = await services[0].getCharacteristics();
+                        window.btCharacteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                    }
+                }
+
+                if (!window.btCharacteristic) {
+                    alert('Tidak dapat mendeteksi layanan printer Bluetooth.');
+                    window.print();
+                    return;
+                }
+
+                // 2. CEK KETERSEDIAAN LIBRARY ESC-POS ENCODER
+                if (typeof EscPosEncoder === 'undefined') {
+                    console.warn('EscPosEncoder CDN belum dimuat di app.blade.php');
+                    window.print();
+                    return;
+                }
+
+                // 3. ESTRAKSI TEKS DATA RESI SHIFT
+                let shiftId   = document.getElementById('receipt_shift_id')?.innerText || 'SHIFT # -';
+                let staff     = document.getElementById('receipt_staff')?.innerText || '-';
+                let start     = document.getElementById('receipt_start')?.innerText || '-';
+                let end       = document.getElementById('receipt_end')?.innerText || '-';
+
+                let initial   = document.getElementById('receipt_initial')?.innerText || 'Rp 0';
+                let cashSales = document.getElementById('receipt_cash_sales')?.innerText || 'Rp 0';
+                let qrisSales = document.getElementById('receipt_qris_sales')?.innerText || 'Rp 0';
+                let expenses  = document.getElementById('receipt_expenses')?.innerText || 'Rp 0';
+
+                let expected  = document.getElementById('receipt_expected')?.innerText || 'Rp 0';
+                let actual    = document.getElementById('receipt_actual')?.innerText || 'Rp 0';
+                let diff      = document.getElementById('receipt_diff')?.innerText || 'Rp 0';
+
+                // 4. SUSUN KOLEKSI BYTE COMMAND THERMAL
+                let encoder = new EscPosEncoder();
+                let resultData = encoder
+                    .initialize()
+                    .codepage('cp437')
+                    .align('center')
+                    .bold(true)
+                    .line('** {{ strtoupper(auth()->user()->store?->name ?? "WANNCELL") }} **')
+                    .bold(false)
+                    .line('{{ auth()->user()->store?->subtitle ?? "VOUCHER & CELLULAR" }}')
+                    .line('{{ auth()->user()->store?->address ?? "Jl. Raya Konter" }}')
+                    .bold(true)
+                    .line(shiftId)
+                    .bold(false)
+                    .line('--------------------------------')
+                    .line('REKAPITULASI SHIFT KASIR')
+                    .line('--------------------------------')
+                    .align('left')
+                    .line('KASIR  : ' + staff)
+                    .line('MULAI  : ' + start)
+                    .line('SELESAI: ' + end)
+                    .line('--------------------------------')
+                    .line('MODAL AWAL  : ' + initial)
+                    .line('(+) TUNAI   : ' + cashSales)
+                    .line('(+) QRIS    : ' + qrisSales)
+                    .line('(-) KAS OUT : ' + expenses)
+                    .line('--------------------------------')
+                    .line('EKSPEKTASI  : ' + expected)
+                    .line('FISIK LACI  : ' + actual)
+                    .bold(true)
+                    .line('SELISIH     : ' + diff)
+                    .bold(false)
+                    .line('--------------------------------')
+                    .align('center')
+                    .line('Laporan Rekapitulasi Pembukuan')
+                    .line('..:: POS COUNTER SYSTEM ::..')
+                    .line('Dicetak Otomatis Oleh Sistem')
+                    .line('\n\n\n')
+                    .encode();
+
+                // 5. MENGIRIM KUMPULAN CHUNK DATA BYTE KE PRINTER
+                const chunkSize = 512;
+                for (let i = 0; i < resultData.length; i += chunkSize) {
+                    const chunk = resultData.slice(i, i + chunkSize);
+                    await window.btCharacteristic.writeValue(chunk);
+                }
+
+            } catch (err) {
+                console.error('Kendala cetak Bluetooth Shift:', err);
+                window.print();
+            }
+        } else {
+            // Fallback untuk PC / Laptop
+            window.print();
+        }
     }
 </script>

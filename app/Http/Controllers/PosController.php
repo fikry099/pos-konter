@@ -115,7 +115,7 @@ class PosController extends Controller
     }
 
     /**
-     * API ENDPOINT: Load Produk Berdasarkan Kategori
+     * API ENDPOINT: Load Produk Berdasarkan Kategori & Provider/Sub-Kategori
      */
     public function getProductsByCategory(Request $request)
     {
@@ -127,60 +127,164 @@ class PosController extends Controller
             ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
             ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
                 $join->on('products.id', '=', 'store_product_stocks.product_id')
-                     ->where('store_product_stocks.store_id', '=', $storeId);
+                    ->where('store_product_stocks.store_id', '=', $storeId);
             })
             ->where('products.is_active', true)
             ->with(['category.parent']);
 
         $isAksesorisContext = str_contains($categoryKey, 'aksesoris') || str_contains($providerKey, 'aksesoris');
+        $isHpContext        = str_contains($categoryKey, 'handphone') || str_contains($categoryKey, 'hp') || str_contains($providerKey, 'hp');
 
         if ($isAksesorisContext) {
             $query->whereHas('category', function ($q) {
                 $q->where('slug', 'like', '%aksesoris%')
-                  ->orWhere('name', 'like', '%aksesoris%')
-                  ->orWhereHas('parent', function ($p) {
-                      $p->where('slug', 'like', '%aksesoris%')
+                ->orWhere('name', 'like', '%aksesoris%')
+                ->orWhereHas('parent', function ($p) {
+                    $p->where('slug', 'like', '%aksesoris%')
                         ->orWhere('name', 'like', '%aksesoris%');
-                  });
+                });
             });
 
             if (!empty($providerKey) && !in_array($providerKey, ['aksesoris', 'aksesoris-hp', 'all'])) {
                 $query->where(function ($q) use ($providerKey) {
-                    if ($providerKey === 'power') {
-                        $q->where('products.name', 'like', '%charger%')
-                          ->orWhere('products.name', 'like', '%kabel%')
-                          ->orWhere('products.name', 'like', '%power%')
-                          ->orWhere('products.name', 'like', '%batok%')
-                          ->orWhere('products.name', 'like', '%pb%')
-                          ->orWhere('products.code', 'like', '%acc-charger%')
-                          ->orWhere('products.code', 'like', '%acc-typec%')
-                          ->orWhere('products.code', 'like', '%acc-iphone%');
+                    // --- SUB-PROTEKSI ---
+                    if ($providerKey === 'casing' || $providerKey === 'case') {
+                        $q->where('products.name', 'like', '%case%')
+                        ->orWhere('products.name', 'like', '%casing%')
+                        ->orWhere('products.code', 'like', '%acc-case%');
+                    } elseif ($providerKey === 'tempered-glass' || $providerKey === 'tg') {
+                        $q->where('products.name', 'like', '%tg%')
+                        ->orWhere('products.name', 'like', '%tempered%')
+                        ->orWhere('products.code', 'like', '%acc-tg%');
+                    } elseif ($providerKey === 'hydrogel') {
+                        $q->where('products.name', 'like', '%hydrogel%')
+                        ->orWhere('products.code', 'like', '%acc-hydrogel%');
                     } elseif ($providerKey === 'proteksi') {
                         $q->where('products.name', 'like', '%case%')
-                          ->orWhere('products.name', 'like', '%casing%')
-                          ->orWhere('products.name', 'like', '%tg%')
-                          ->orWhere('products.name', 'like', '%hydrogel%')
-                          ->orWhere('products.name', 'like', '%tempered%')
-                          ->orWhere('products.code', 'like', '%acc-case%');
+                        ->orWhere('products.name', 'like', '%casing%')
+                        ->orWhere('products.name', 'like', '%tg%')
+                        ->orWhere('products.name', 'like', '%hydrogel%')
+                        ->orWhere('products.name', 'like', '%tempered%')
+                        ->orWhere('products.code', 'like', '%acc-case%');
+
+                    // --- SUB-POWER ---
+                    } elseif ($providerKey === 'charger') {
+                        $q->where('products.name', 'like', '%charger%')
+                        ->orWhere('products.name', 'like', '%batok%')
+                        ->orWhere('products.name', 'like', '%adaptor%')
+                        ->orWhere('products.code', 'like', '%acc-charger%');
+                    } elseif ($providerKey === 'kabel-data') {
+                        $q->where('products.name', 'like', '%kabel%')
+                        ->orWhere('products.name', 'like', '%cable%')
+                        ->orWhere('products.code', 'like', '%acc-typec%')
+                        ->orWhere('products.code', 'like', '%acc-iphone%');
+                    } elseif ($providerKey === 'powerbank') {
+                        $q->where('products.name', 'like', '%powerbank%')
+                        ->orWhere('products.name', 'like', '%power bank%')
+                        ->orWhere('products.name', 'like', '%pb%');
+                    } elseif ($providerKey === 'power') {
+                        $q->where('products.name', 'like', '%charger%')
+                        ->orWhere('products.name', 'like', '%kabel%')
+                        ->orWhere('products.name', 'like', '%power%')
+                        ->orWhere('products.name', 'like', '%batok%')
+                        ->orWhere('products.name', 'like', '%pb%');
+
+                    // --- SUB-AUDIO ---
+                    } elseif ($providerKey === 'tws') {
+                        $q->where('products.name', 'like', '%tws%')
+                        ->orWhere('products.name', 'like', '%earbuds%')
+                        ->orWhere('products.name', 'like', '%airpods%');
+                    } elseif ($providerKey === 'headset') {
+                        $q->where('products.name', 'like', '%headset%')
+                        ->orWhere('products.name', 'like', '%earphone%')
+                        ->orWhere('products.code', 'like', '%acc-headset%');
+                    } elseif ($providerKey === 'speaker') {
+                        $q->where('products.name', 'like', '%speaker%')
+                        ->orWhere('products.name', 'like', '%spiker%');
                     } elseif ($providerKey === 'audio') {
                         $q->where('products.name', 'like', '%headset%')
-                          ->orWhere('products.name', 'like', '%tws%')
-                          ->orWhere('products.name', 'like', '%speaker%')
-                          ->orWhere('products.name', 'like', '%audio%')
-                          ->orWhere('products.code', 'like', '%acc-headset%');
+                        ->orWhere('products.name', 'like', '%tws%')
+                        ->orWhere('products.name', 'like', '%speaker%')
+                        ->orWhere('products.name', 'like', '%earphone%');
+
+                    // --- SUB-PENYIMPANAN ---
+                    } elseif ($providerKey === 'flashdisk') {
+                        $q->where('products.name', 'like', '%flashdisk%')
+                        ->orWhere('products.name', 'like', '%flash drive%')
+                        ->orWhere('products.name', 'like', '%fd%');
+                    } elseif ($providerKey === 'microsd') {
+                        $q->where('products.name', 'like', '%microsd%')
+                        ->orWhere('products.name', 'like', '%memory%')
+                        ->orWhere('products.name', 'like', '%sd card%');
                     } elseif ($providerKey === 'penyimpanan') {
                         $q->where('products.name', 'like', '%flashdisk%')
-                          ->orWhere('products.name', 'like', '%microsd%')
-                          ->orWhere('products.name', 'like', '%memory%');
+                        ->orWhere('products.name', 'like', '%microsd%')
+                        ->orWhere('products.name', 'like', '%memory%');
+
+                    // --- SUB-MOUNT & STAND ---
+                    } elseif ($providerKey === 'holder') {
+                        $q->where('products.name', 'like', '%holder%')
+                        ->orWhere('products.name', 'like', '%stand%');
+                    } elseif ($providerKey === 'tripod') {
+                        $q->where('products.name', 'like', '%tripod%')
+                        ->orWhere('products.name', 'like', '%tongsis%')
+                        ->orWhere('products.name', 'like', '%monopod%');
                     } elseif ($providerKey === 'mount-stand') {
                         $q->where('products.name', 'like', '%holder%')
-                          ->orWhere('products.name', 'like', '%tripod%')
-                          ->orWhere('products.name', 'like', '%stand%');
+                        ->orWhere('products.name', 'like', '%tripod%')
+                        ->orWhere('products.name', 'like', '%stand%')
+                        ->orWhere('products.name', 'like', '%tongsis%');
                     } else {
                         $cleanSearch = str_replace('-', ' ', $providerKey);
                         $q->where('products.name', 'like', "%{$providerKey}%")
-                          ->orWhere('products.name', 'like', "%{$cleanSearch}%")
-                          ->orWhere('products.code', 'like', "%{$providerKey}%");
+                        ->orWhere('products.name', 'like', "%{$cleanSearch}%")
+                        ->orWhere('products.code', 'like', "%{$providerKey}%");
+                    }
+                });
+            }
+
+        } elseif ($isHpContext) {
+            // --- FILTER KATEGORI HANDPHONE ---
+            $query->whereHas('category', function ($q) {
+                $q->where('slug', 'like', '%handphone%')
+                ->orWhere('slug', 'like', '%hp%')
+                ->orWhere('name', 'like', '%handphone%')
+                ->orWhere('name', 'like', '%hp%')
+                ->orWhereHas('parent', function ($p) {
+                    $p->where('slug', 'like', '%handphone%')
+                        ->orWhere('slug', 'like', '%hp%')
+                        ->orWhere('name', 'like', '%handphone%')
+                        ->orWhere('name', 'like', '%hp%');
+                });
+            });
+
+            if (!empty($providerKey) && !in_array($providerKey, ['handphone', 'hp', 'all'])) {
+                $query->where(function ($q) use ($providerKey) {
+                    if (in_array($providerKey, ['hp-new', 'new', 'baru'])) {
+                        $q->where('products.name', 'like', '%new%')
+                        ->orWhere('products.name', 'like', '%baru%')
+                        ->orWhere('products.code', 'like', '%hp-new%')
+                        ->orWhereHas('category', function($catQ) {
+                            $catQ->where('slug', 'like', '%new%')
+                                 ->orWhere('name', 'like', '%new%')
+                                 ->orWhere('name', 'like', '%baru%');
+                        });
+                    } elseif (in_array($providerKey, ['hp-second', 'second', 'bekas', 'sec'])) {
+                        $q->where('products.name', 'like', '%second%')
+                        ->orWhere('products.name', 'like', '%bekas%')
+                        ->orWhere('products.name', 'like', '%sec%')
+                        ->orWhere('products.code', 'like', '%hp-sec%')
+                        ->orWhere('products.code', 'like', '%hp-second%')
+                        ->orWhereHas('category', function($catQ) {
+                            $catQ->where('slug', 'like', '%second%')
+                                 ->orWhere('name', 'like', '%second%')
+                                 ->orWhere('name', 'like', '%bekas%');
+                        });
+                    } else {
+                        $cleanSearch = str_replace('-', ' ', $providerKey);
+                        $q->where('products.name', 'like', "%{$providerKey}%")
+                        ->orWhere('products.name', 'like', "%{$cleanSearch}%")
+                        ->orWhere('products.code', 'like', "%{$providerKey}%");
                     }
                 });
             }
@@ -194,7 +298,7 @@ class PosController extends Controller
                     })
                     ->orWhereHas('parent', function ($p) use ($categoryKey) {
                         $p->where('slug', 'like', "%{$categoryKey}%")
-                          ->orWhere('name', 'like', "%{$categoryKey}%");
+                        ->orWhere('name', 'like', "%{$categoryKey}%");
                     });
                 });
             }
@@ -205,22 +309,22 @@ class PosController extends Controller
                 $query->where(function ($q) use ($providerKey, $cleanProviderSearch) {
                     if (in_array($providerKey, ['tri', 'three', '3'])) {
                         $q->where('products.name', 'like', '%tri%')
-                          ->orWhere('products.name', 'like', '%three%')
-                          ->orWhere('products.code', 'like', '%v-3-%')
-                          ->orWhere('products.code', 'like', '%tri%');
+                        ->orWhere('products.name', 'like', '%three%')
+                        ->orWhere('products.code', 'like', '%v-3-%')
+                        ->orWhere('products.code', 'like', '%tri%');
                     } elseif (in_array($providerKey, ['telkomsel', 'tsel'])) {
                         $q->where('products.name', 'like', '%telkomsel%')
-                          ->orWhere('products.name', 'like', '%tsel%')
-                          ->orWhere('products.name', 'like', '%by.u%')
-                          ->orWhere('products.code', 'like', '%tsel%');
+                        ->orWhere('products.name', 'like', '%tsel%')
+                        ->orWhere('products.name', 'like', '%by.u%')
+                        ->orWhere('products.code', 'like', '%tsel%');
                     } elseif (in_array($providerKey, ['indosat', 'isat', 'im3'])) {
                         $q->where('products.name', 'like', '%indosat%')
-                          ->orWhere('products.name', 'like', '%im3%')
-                          ->orWhere('products.code', 'like', '%isat%');
+                        ->orWhere('products.name', 'like', '%im3%')
+                        ->orWhere('products.code', 'like', '%isat%');
                     } else {
                         $q->whereHas('category', function ($catQ) use ($providerKey) {
                             $catQ->where('slug', 'like', "%{$providerKey}%")
-                                 ->orWhere('name', 'like', "%{$providerKey}%");
+                                ->orWhere('name', 'like', "%{$providerKey}%");
                         })
                         ->orWhere('products.name', 'like', "%{$providerKey}%")
                         ->orWhere('products.name', 'like', "%{$cleanProviderSearch}%")
@@ -266,64 +370,64 @@ class PosController extends Controller
             }
         }
 
-if ($isCustom) {
-    $customPrice = (float) $request->input('custom_price', 0);
-    
-    // 1. Tangkap nama bank/wallet dari 'service_type' ATAU 'digital_provider'
-    $serviceType = $request->input('service_type') ?? $request->input('digital_provider');
-    if (!$serviceType || strtolower($serviceType) === 'transfer / top-up' || strtolower($serviceType) === 'transfer') {
-        $serviceType = 'Nominal Bebas';
-    }
+        if ($isCustom) {
+            $customPrice = (float) $request->input('custom_price', 0);
+            
+            // 1. Tangkap nama bank/wallet dari 'service_type' ATAU 'digital_provider'
+            $serviceType = $request->input('service_type') ?? $request->input('digital_provider');
+            if (!$serviceType || strtolower($serviceType) === 'transfer / top-up' || strtolower($serviceType) === 'transfer') {
+                $serviceType = 'Nominal Bebas';
+            }
 
-    // 2. Hitung Modal (Cost Price)
-    $feePerak  = $this->getEwalletFeePerak($serviceType);
-    $costPrice = $customPrice + $feePerak;
+            // 2. Hitung Modal (Cost Price)
+            $feePerak  = $this->getEwalletFeePerak($serviceType);
+            $costPrice = $customPrice + $feePerak;
 
-    // 3. Hitung Admin & Selling Price
-    $customInThousand = $customPrice / 1000;
-    if (str_contains(strtolower($serviceType), 'maxim') && $customInThousand >= 10 && $customInThousand <= 100) {
-        $defaultAdmin = 4000;
-    } else {
-        $defaultAdmin = $this->calculateAdminFee($customPrice);
-    }
+            // 3. Hitung Admin & Selling Price
+            $customInThousand = $customPrice / 1000;
+            if (str_contains(strtolower($serviceType), 'maxim') && $customInThousand >= 10 && $customInThousand <= 100) {
+                $defaultAdmin = 4000;
+            } else {
+                $defaultAdmin = $this->calculateAdminFee($customPrice);
+            }
 
-    $adminFee     = $request->filled('admin_fee') ? (float) $request->input('admin_fee') : $defaultAdmin;
-    $sellingPrice = $customPrice + $adminFee;
-    $profit       = $sellingPrice - $costPrice;
+            $adminFee     = $request->filled('admin_fee') ? (float) $request->input('admin_fee') : $defaultAdmin;
+            $sellingPrice = $customPrice + $adminFee;
+            $profit       = $sellingPrice - $costPrice;
 
-    $targetNum = $request->input('account_number') ?? $request->input('target_number');
-    $accName   = $request->input('account_name');
+            $targetNum = $request->input('account_number') ?? $request->input('target_number');
+            $accName   = $request->input('account_name');
 
-    // 4. Buat Nama Tampilan secara Langsung dan Lengkap
-    $serviceLower = strtolower($serviceType);
-    $isBank = str_contains($serviceLower, 'bank') || str_contains($serviceLower, 'bca') || str_contains($serviceLower, 'bri') || str_contains($serviceLower, 'mandiri') || str_contains($serviceLower, 'bni') || str_contains($serviceLower, 'bsi');
-    $prefix = $isBank ? 'Transfer' : 'Top-Up';
+            // 4. Buat Nama Tampilan secara Langsung dan Lengkap
+            $serviceLower = strtolower($serviceType);
+            $isBank = str_contains($serviceLower, 'bank') || str_contains($serviceLower, 'bca') || str_contains($serviceLower, 'bri') || str_contains($serviceLower, 'mandiri') || str_contains($serviceLower, 'bni') || str_contains($serviceLower, 'bsi');
+            $prefix = $isBank ? 'Transfer' : 'Top-Up';
 
-    // Format: "Transfer BANK BCA 1.111.847.843 (z)"
-    $displayName = $prefix . ' ' . strtoupper($serviceType) . ' ' . number_format($sellingPrice, 0, ',', '.');
-    if ($accName) {
-        $displayName .= ' (' . $accName . ')';
-    }
+            // Format: "Transfer BANK BCA 1.111.847.843 (z)"
+            $displayName = $prefix . ' ' . strtoupper($serviceType) . ' ' . number_format($sellingPrice, 0, ',', '.');
+            if ($accName) {
+                $displayName .= ' (' . $accName . ')';
+            }
 
-    $cartKey = 'custom_' . time() . '_' . rand(100, 999);
+            $cartKey = 'custom_' . time() . '_' . rand(100, 999);
 
-    $cart[$cartKey] = [
-        'product_id'        => $request->product_id ?? 1,
-        'name'              => $displayName, // Disimpan utuh ke session
-        'type'              => 'digital',
-        'target_phone'      => $targetNum,
-        'cost_price'        => $costPrice,
-        'selling_price'     => $sellingPrice,
-        'qty'               => 1,
-        'subtotal'          => $sellingPrice,
-        'profit'            => $profit,
-        'digital_provider'  => 'Propana', // PPOB Server Provider
-        'served_by_user_id' => null,
-    ];
+            $cart[$cartKey] = [
+                'product_id'        => $request->product_id ?? 1,
+                'name'              => $displayName, // Disimpan utuh ke session
+                'type'              => 'digital',
+                'target_phone'      => $targetNum,
+                'cost_price'        => $costPrice,
+                'selling_price'     => $sellingPrice,
+                'qty'               => 1,
+                'subtotal'          => $sellingPrice,
+                'profit'            => $profit,
+                'digital_provider'  => 'Propana', // PPOB Server Provider
+                'served_by_user_id' => null,
+            ];
 
-    session()->put('pos_cart', $cart);
-    return back()->with('success', 'Transaksi nominal bebas ditambahkan ke keranjang.');
-}    else {
+            session()->put('pos_cart', $cart);
+            return back()->with('success', 'Transaksi nominal bebas ditambahkan ke keranjang.');
+        } else {
             $productId = $request->product_id;
             if (!$productId) {
                 return back()->with('error', 'Produk tidak ditemukan!');

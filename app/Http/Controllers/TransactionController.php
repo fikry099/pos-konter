@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Shift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
@@ -44,7 +45,7 @@ class TransactionController extends Controller
             $query->where('shift_id', $request->shift_id);
         }
 
-        // Filter 4: Kategori Produk / Katalog (Optimasi Query via Pluck ID)
+        // Filter 4: Kategori Produk / Katalog
         if ($request->filled('category_id')) {
             $catId = $request->category_id;
 
@@ -71,23 +72,31 @@ class TransactionController extends Controller
         $storeId = $this->getActiveStoreId();
 
         $categories = Category::whereNull('parent_id')->get();
-        
-        // Filter shift khusus cabang aktif
         $shifts = Shift::where('store_id', $storeId)->latest()->get();
 
-        // Kueri Dasar Filter
+        // Kueri Dasar Filter Cabang
         $baseQuery = Transaction::forStore($storeId);
+
+        // =========================================================================
+        // ATURAN 1: BILA KARYAWAN -> SEMBUNYIKAN TRANSAKSI YANG SUDAH DIBATALKAN
+        // (Bila Owner -> Tampilkan Semua Transaksi Sukses & Batal untuk Audit)
+        // =========================================================================
+        if (Auth::user()->role !== 'owner') {
+            $baseQuery->completed();
+        }
+
         $this->applyTransactionFilters($baseQuery, $request);
 
-        // Calculate Summary secara cepat langsung dari database
+        // Omset & Profit HANYA menghitung transaksi yang BERHASIL (Completed)
+        $summaryQuery = (clone $baseQuery)->completed();
         $summary = [
-            'total_omset'  => (clone $baseQuery)->sum('total_price'),
-            'total_profit' => (clone $baseQuery)->sum('total_profit'),
+            'total_omset'  => $summaryQuery->sum('total_price'),
+            'total_profit' => $summaryQuery->sum('total_profit'),
         ];
 
-        // Eager load relasi HANYA saat mengambil data transaksi paginasi
+        // Ambil data transaksi
         $transactions = $baseQuery
-            ->with(['user', 'shift', 'details.product.category', 'details.servedBy'])
+            ->with(['user', 'shift', 'details.product.category', 'details.servedBy', 'cancelledBy'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -96,13 +105,82 @@ class TransactionController extends Controller
     }
 
     /**
-     * Export Excel dengan Filter Kategori & Penanggung Jawab
+     * Process Pembatalan Transaksi (Void & Restock)
+     */
+    public function cancel(Request $request, $id)
+    {
+        // =========================================================================
+        // ATURAN 2: PROTEKSI SERVER - OWNER TIDAK BISA MEMBATALKAN TRANSAKSI
+        // =========================================================================
+        if (Auth::user()->role === 'owner') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Owner hanya bertugas memantau/mengaudit dan tidak dapat membatalkan transaksi.'
+            ], 403);
+        }
+
+        $request->validate([
+            'cancel_reason' => 'required|string|min:3|max:255',
+        ], [
+            'cancel_reason.required' => 'Alasan pembatalan wajib diisi!',
+            'cancel_reason.min'      => 'Alasan pembatalan minimal 3 karakter.'
+        ]);
+
+        $storeId = $this->getActiveStoreId();
+
+        DB::beginTransaction();
+        try {
+            $transaction = Transaction::forStore($storeId)
+                ->with('details.product')
+                ->findOrFail($id);
+
+            if ($transaction->status === 'cancelled') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Transaksi ini sudah dibatalkan sebelumnya.'
+                ], 400);
+            }
+
+            // 1. KEMBALIKAN STOK BARANG PENJUALAN
+            foreach ($transaction->details as $detail) {
+                if ($detail->product) {
+                    $detail->product->increment('stock', $detail->qty);
+                }
+            }
+
+            // 2. UPDATE STATUS TRANSAKSI TANDAI BANYAK METADATA BATAL
+            $transaction->update([
+                'status'        => 'cancelled',
+                'cancel_reason' => $request->cancel_reason,
+                'cancelled_by'  => Auth::id(),
+                'cancelled_at'  => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaksi berhasil dibatalkan dan stok produk telah dikembalikan!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan transaksi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Export Excel dengan Filter
      */
     public function exportExcel(Request $request)
     {
         $storeId = $this->getActiveStoreId();
 
         $query = Transaction::forStore($storeId)
+            ->completed() // Hanya ekspor transaksi yang sukses
             ->with(['user', 'shift', 'details.product.category', 'details.servedBy']);
 
         $this->applyTransactionFilters($query, $request);
@@ -131,7 +209,7 @@ class TransactionController extends Controller
     {
         $storeId = $this->getActiveStoreId();
         $transaction = Transaction::forStore($storeId)
-            ->with(['details.product', 'details.servedBy', 'user', 'shift'])
+            ->with(['details.product', 'details.servedBy', 'user', 'shift', 'cancelledBy'])
             ->findOrFail($id);
 
         return response()->json($transaction);

@@ -1,135 +1,132 @@
-<!-- SCRIPT ANTI-FLICKER SEBELUM RENDER -->
+<!-- SCRIPT ANTI-FLICKER SEBELUM RENDER (PRESISI 100% TENGAH) -->
 <script>
     (function() {
         var savedState = localStorage.getItem('sidebar_state');
         var isSmallScreen = window.innerWidth < 768;
         
         if (savedState === 'collapsed' || (savedState === null && isSmallScreen)) {
-            document.write('<style id="sidebar-temp-style">#sidebar{width:5rem !important;} .sidebar-text{display:none !important;}</style>');
+            document.write('<style id="sidebar-temp-style">#sidebar{width:4.5rem !important; min-width:4.5rem !important; max-width:4.5rem !important;} .sidebar-text{display:none !important;} #sidebar nav a, #sidebar .header-container, #sidebar .profile-btn{justify-content:center !important; padding-left:0 !important; padding-right:0 !important;}</style>');
         }
     })();
 </script>
 
-<aside id="sidebar" class="bg-slate-900 text-white h-screen flex flex-col justify-between transition-all duration-300 z-30 shrink-0 w-64 select-none relative">
+<aside id="sidebar" class="bg-slate-900 text-white h-screen flex flex-col justify-between transition-[width] duration-300 z-30 shrink-0 w-48 select-none relative overflow-hidden">
     
     <!-- HEADER SIDEBAR & MENU ITEM -->
-    <div class="flex flex-col flex-1 min-h-0">
+    <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
         
         <!-- HEADER LOGO & TOGGLE BUTTON -->
-        <div class="h-16 px-3 flex items-center justify-between border-b border-slate-800 shrink-0 overflow-hidden">
+        <div class="h-16 px-2 flex items-center justify-between border-b border-slate-800 shrink-0 overflow-hidden header-container">
             <!-- LOGO: TRIGGER TOGGLE SIDEBAR -->
-            <button type="button" onclick="toggleSidebar()" class="flex items-center overflow-hidden text-left cursor-pointer group shrink-0" title="Buka / Tutup Sidebar">
+            <button type="button" onclick="toggleSidebar()" class="flex items-center justify-center overflow-hidden text-left cursor-pointer group shrink-0 w-full" title="Buka / Tutup Sidebar">
                 <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                    <img src="{{ asset('img/logo.png') }}" alt="W&A Cell Logo" class="w-9 h-9 rounded-xl object-contain drop-shadow group-hover:scale-105 transition-transform">
+                    <img src="{{ asset('img/logo.png') }}" alt="W&A Cell Logo" class="w-8 h-8 rounded-xl object-contain drop-shadow group-hover:scale-105 transition-transform">
                 </div>
 
-                <div class="sidebar-text whitespace-nowrap overflow-hidden ml-3">
-                    <h1 class="font-black text-sm text-white leading-none tracking-wide">W & A CELL</h1>
-                    <p class="text-[10px] font-bold text-indigo-400 mt-1 uppercase tracking-widest">POS System</p>
+                <div class="sidebar-text whitespace-nowrap overflow-hidden ml-2 flex-1">
+                    <h1 class="font-black text-xs text-white leading-none tracking-wide">W & A CELL</h1>
+                    <p class="text-[9px] font-bold text-indigo-400 mt-1 uppercase tracking-widest">POS System</p>
                 </div>
-            </button>
 
-            <!-- TOMBOL TOGGLE (HILANG SAAT DITUTUP VIA CLASS 'sidebar-text') -->
-            <button type="button" onclick="toggleSidebar()" class="sidebar-toggle-btn sidebar-text text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer shrink-0" title="Tutup Sidebar">
-                <i id="sidebar_toggle_icon" class="fa-solid fa-angles-left text-sm"></i>
+                <!-- TOMBOL TOGGLE -->
+                <div class="sidebar-toggle-btn sidebar-text text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800 transition cursor-pointer shrink-0">
+                    <i id="sidebar_toggle_icon" class="fa-solid fa-angles-left text-xs"></i>
+                </div>
             </button>
         </div>
 
-        <!-- MENU NAVIGASI (IKON DIPAKSA KONSISTEN DI TENGAH W-10) -->
-        <nav class="p-3 space-y-1.5 overflow-y-auto flex-1 no-scrollbar">
+        <!-- MENU NAVIGASI (SIMETRIS PERFECT) -->
+        <nav class="p-2 space-y-1 overflow-y-auto flex-1 no-scrollbar overflow-x-hidden">
             @if(auth()->check() && auth()->user()->isOwner())
                 <!-- OWNER MENU -->
-                <a href="{{ route('dashboard') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('dashboard') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Dashboard Analyst">
+                <a href="{{ route('dashboard') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('dashboard') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Dashboard Analyst">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-chart-pie text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-chart-pie text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
-                    <span class="sidebar-text whitespace-nowrap ml-2">Dashboard Analyst</span>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Dashboard</span>
                 </a>
 
-                <a href="{{ route('products.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('products.index') || request()->routeIs('products.edit') || request()->routeIs('products.create') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Kelola Katalog & Harga Modal">
+                <a href="{{ route('products.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('products.index') || request()->routeIs('products.edit') || request()->routeIs('products.create') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Kelola Katalog & Harga Modal">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-boxes-stacked text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-box text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Master Produk</span>
                 </a>
 
-                <a href="{{ route('owner.monitoring') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('owner.monitoring') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Monitoring Absensi & Audit Toko">
+                <a href="{{ route('owner.monitoring') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('owner.monitoring') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Monitoring Absensi & Audit Toko">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-clipboard-user text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-clipboard-user text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
-                    <span class="sidebar-text whitespace-nowrap ml-2">Monitoring Absensi</span>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Monitoring</span>
                 </a>
 
-                <a href="{{ route('owner.bookkeeping') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('owner.bookkeeping') || request()->routeIs('owner.attendances.detail') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pembukuan & Rekap Bonus Karyawan">
+                <a href="{{ route('owner.bookkeeping') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('owner.bookkeeping') || request()->routeIs('owner.attendances.detail') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pembukuan & Rekap Bonus Karyawan">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-calculator text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-book text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
-                    <span class="sidebar-text whitespace-nowrap ml-2">Pembukuan & Bonus</span>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Pembukuan</span>
                 </a>
 
-                <a href="{{ route('transactions.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('transactions.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Audit Riwayat Transaksi">
+                <a href="{{ route('transactions.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('transactions.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Audit Riwayat Transaksi">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-receipt text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-receipt text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Riwayat Transaksi</span>
                 </a>
             @else
                 <!-- KARYAWAN MENU -->
-                <a href="{{ route('pos.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('pos.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Transaksi POS">
+                <a href="{{ route('pos.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('pos.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Transaksi POS">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-cash-register text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-cash-register text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Transaksi POS</span>
                 </a>
 
-                <a href="{{ route('products.reorder') }}" class="flex items-center justify-between p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('products.reorder') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Order Voucher Harian">
-                    <div class="flex items-center overflow-hidden">
-                        <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-cart-flatbed text-base group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <span class="sidebar-text whitespace-nowrap ml-2">Order Voucher</span>
-                    </div>
-                    <span class="sidebar-text bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase shrink-0 mr-1">
-                        Order
-                    </span>
-                </a>
-
-                <a href="{{ route('products.restock.index') }}" class="flex items-center justify-between p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('products.restock.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Restok Barang Masuk">
-                    <div class="flex items-center overflow-hidden">
-                        <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-boxes-packing text-base group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <span class="sidebar-text whitespace-nowrap ml-2">Restok Barang</span>
-                    </div>
-                    <span class="sidebar-text bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase shrink-0 mr-1">
-                        Input
-                    </span>
-                </a>
-
-                <a href="{{ route('shifts.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('shifts.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Shift & Absensi">
+                <a href="{{ route('cash_out.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('cash_out.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Layanan Tarik Tunai">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-user-clock text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-hand-holding-dollar text-sm group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Tarik Tunai</span>
+                </a>
+
+                <a href="{{ route('products.reorder') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('products.reorder') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Order Voucher Harian">
+                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-cart-flatbed text-sm group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Order Voucher</span>
+                </a>
+
+                <a href="{{ route('products.restock.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('products.restock.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Restok Barang Masuk">
+                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-boxes-packing text-sm group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Restok Barang</span>
+                </a>
+
+                <a href="{{ route('shifts.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('shifts.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Shift & Absensi">
+                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-user-clock text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Shift & Absensi</span>
                 </a>
 
-                <a href="{{ route('transactions.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('transactions.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Riwayat Transaksi">
+                <a href="{{ route('transactions.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('transactions.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Riwayat Transaksi">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-receipt text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-receipt text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Riwayat Transaksi</span>
                 </a>
 
-                <a href="{{ route('expenses.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('expenses.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pengeluaran Kas Toko">
+                <a href="{{ route('expenses.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('expenses.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pengeluaran Kas Toko">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-wallet text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-wallet text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Pengeluaran Kas</span>
                 </a>
 
-                <a href="{{ route('returns.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('returns.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Retur & Penukaran">
+                <a href="{{ route('returns.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('returns.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Retur & Penukaran">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-rotate-left text-base group-hover:scale-110 transition-transform"></i>
+                        <i class="fa-solid fa-rotate-left text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Retur & Penukaran</span>
                 </a>
@@ -138,15 +135,15 @@
     </div>
 
     <!-- FOOTER PROFILE USER -->
-    <div class="p-3 border-t border-slate-800 shrink-0 relative">
-        <button type="button" onclick="toggleProfilePopover()" class="w-full flex items-center justify-between p-1 rounded-xl hover:bg-slate-800/80 transition cursor-pointer group">
-            <div class="flex items-center overflow-hidden min-w-0">
+    <div class="p-2 border-t border-slate-800 shrink-0 relative overflow-hidden">
+        <button type="button" onclick="toggleProfilePopover()" class="w-full flex items-center justify-between p-1 rounded-xl hover:bg-slate-800/80 transition cursor-pointer group profile-btn">
+            <div class="flex items-center justify-center overflow-hidden min-w-0">
                 <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-black text-xs shrink-0 border border-indigo-500/30 shadow-inner group-hover:border-indigo-400 transition">
                     {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 2)) }}
                 </div>
-                <div class="sidebar-text overflow-hidden leading-snug text-left ml-3">
+                <div class="sidebar-text overflow-hidden leading-snug text-left ml-2">
                     <p class="text-xs font-extrabold text-white truncate">{{ auth()->user()->name ?? 'User' }}</p>
-                    <p class="text-[10px] capitalize font-medium">
+                    <p class="text-[9px] capitalize font-medium">
                         @if(auth()->check() && auth()->user()->isOwner())
                             <span class="text-indigo-400 font-bold">Owner / Pemilik</span>
                         @else
@@ -178,13 +175,31 @@
     </form>
 </aside>
 
-<!-- CSS KUNCI SIMETRIS KANAN DAN KIRI -->
+<!-- CSS MEMAKSA SETIAP IKON TERTATA LURUS DI TENGAH SAAT SIDEBAR COLLAPSED -->
 <style>
     #sidebar.collapsed {
-        width: 5rem !important; /* Dihitung matematis: padding p-3 (0.75rem / 12px) + w-10 (2.5rem / 40px) + padding p-3 (0.75rem / 12px) + border = 80px (5rem) */
+        width: 4.5rem !important;
+        min-width: 4.5rem !important;
+        max-width: 4.5rem !important;
     }
     #sidebar.collapsed .sidebar-text {
         display: none !important;
+    }
+    #sidebar.collapsed nav {
+        padding-left: 0.375rem !important;
+        padding-right: 0.375rem !important;
+    }
+    #sidebar.collapsed nav a {
+        justify-content: center !important;
+        padding: 0.375rem 0 !important;
+        width: 100% !important;
+    }
+    #sidebar.collapsed .header-container button,
+    #sidebar.collapsed .profile-btn {
+        justify-content: center !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        width: 100% !important;
     }
 </style>
 

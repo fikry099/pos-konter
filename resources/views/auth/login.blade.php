@@ -24,7 +24,7 @@
             </div>
             <div>
                 <h2 class="text-xl font-black text-slate-900 tracking-tight leading-none">W & A CELL</h2>
-                <p class="text-[10px] font-extrabold tracking-widest text-indigo-600 uppercase mt-1">VOUCHER & CELL SYSTEM</p>
+                <p class="text-[10px] font-extrabold tracking-widest text-indigo-600 uppercase mt-1">VOUCHER dan CELL SYSTEM</p>
             </div>
             <p class="text-xs text-slate-500 font-medium pt-1">Silakan masuk untuk mengoperasikan sistem kasir.</p>
         </div>
@@ -124,7 +124,7 @@
         <!-- FOOTER -->
         <div class="border-t border-slate-100 pt-3 text-center">
             <p class="text-[10px] text-slate-400 font-medium">
-                W&A POS v1.0 &copy; {{ date('Y') }}
+                W&A POS v1.0 &copy; apies {{ date('Y') }}
             </p>
         </div>
 

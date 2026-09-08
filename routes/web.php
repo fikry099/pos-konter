@@ -15,6 +15,7 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\BookkeepingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CashOutController;
 
 // Middlewares
 use App\Http\Middleware\EnsureShiftIsOpen;
@@ -65,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('/transactions/export-excel', [TransactionController::class, 'exportExcel'])->name('transactions.export_excel');
     Route::get('/transactions/{id}', [TransactionController::class, 'show'])->name('transactions.show');
+    Route::post('/transactions/{id}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
 
     // Modul Pengeluaran Kas Operasional (Expenses)
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -117,6 +119,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pos/checkout', [PosController::class, 'store'])->name('pos.checkout');
         Route::post('/pos/cart/assign-staff/{key}', [PosController::class, 'assignStaff'])->name('pos.cart.assign_staff');
         Route::get('/pos/products/by-category', [App\Http\Controllers\PosController::class, 'getProductsByCategory'])->name('pos.products.by-category');
+        // Modul Tarik Tunai Mandiri
+        Route::get('/cash-out', [CashOutController::class, 'index'])->name('cash_out.index');
+        Route::post('/cash-out', [CashOutController::class, 'store'])->name('cash_out.store');
     });
 
 });

@@ -4,14 +4,13 @@
 let navLevel = 1;
 let selectedCategory = '';
 let selectedProvider = '';
-window.selectedProviderTitle = ''; // Menyimpan nama resmi/lengkap provider (misal: "DANA", "Bank BRI")
+let currentSubDetailKey = ''; // Menyimpan key sub-detail (proteksi, power, audio, dll)
+window.selectedProviderTitle = '';
 
-// VARIABLE GLOBAL PAGINASI POS
 let posCurrentPage = 1;
 let posItemsPerPage = 10;
 let posVisibleProducts = [];
 
-// Helper untuk mengatur visibilitas kontainer filter harga
 function togglePriceFilterVisibility(show) {
     let priceFilter = document.getElementById('price_filter_container');
     let minInput = document.getElementById('filter_min_price');
@@ -30,10 +29,11 @@ function togglePriceFilterVisibility(show) {
     }
 }
 
-// 1. DARI LEVEL 1 KE LEVEL 2 (PILIH PROVIDER / SUB-KATEGORI UTAMA)
+// 1. DARI LEVEL 1 KE LEVEL 2
 function navigateToSubCategory(catType, title) {
     navLevel = 2;
     selectedCategory = catType.toLowerCase();
+    currentSubDetailKey = '';
 
     document.getElementById('view_main_categories').classList.add('hidden');
     document.getElementById('view_sub_providers').classList.remove('hidden');
@@ -49,35 +49,87 @@ function navigateToSubCategory(catType, title) {
         titleText.innerHTML = '<i class="fa-solid fa-list mr-2 text-indigo-600"></i> Pilih ' + title;
     }
 
-    let cellGrid = document.getElementById('sub_cellular_grid');
-    let walletGrid = document.getElementById('sub_ewallet_grid');
-    let bankGrid = document.getElementById('sub_bank_grid');
-    let aksesorisGrid = document.getElementById('sub_aksesoris_grid');
-
-    if (cellGrid) cellGrid.classList.add('hidden');
-    if (walletGrid) walletGrid.classList.add('hidden');
-    if (bankGrid) bankGrid.classList.add('hidden');
-    if (aksesorisGrid) aksesorisGrid.classList.add('hidden');
+    // Sembunyikan semua grid sub-kategori
+    let grids = [
+        'sub_cellular_grid', 'sub_ewallet_grid', 'sub_bank_grid', 
+        'sub_handphone_grid', 'sub_aksesoris_grid', 'sub_proteksi_grid', 
+        'sub_power_grid', 'sub_audio_grid', 'sub_penyimpanan_grid', 'sub_mount_grid'
+    ];
+    grids.forEach(g => {
+        let el = document.getElementById(g);
+        if (el) el.classList.add('hidden');
+    });
 
     let normalizedType = catType.toLowerCase();
     
-    if (normalizedType === 'ewallet') {
-        if (walletGrid) walletGrid.classList.remove('hidden');
-    } else if (normalizedType === 'bank' || normalizedType === 'transfer-bank' || normalizedType === 'transfer') {
-        if (bankGrid) bankGrid.classList.remove('hidden');
-    } else if (normalizedType === 'aksesoris' || normalizedType === 'aksesoris-hp') {
-        if (aksesorisGrid) aksesorisGrid.classList.remove('hidden');
+    if (normalizedType.includes('handphone') || normalizedType === 'hp') {
+        let el = document.getElementById('sub_handphone_grid');
+        if (el) el.classList.remove('hidden');
+    } else if (normalizedType.includes('wallet')) {
+        let el = document.getElementById('sub_ewallet_grid');
+        if (el) el.classList.remove('hidden');
+    } else if (normalizedType.includes('bank') || normalizedType.includes('transfer')) {
+        let el = document.getElementById('sub_bank_grid');
+        if (el) el.classList.remove('hidden');
+    } else if (normalizedType.includes('aksesoris')) {
+        let el = document.getElementById('sub_aksesoris_grid');
+        if (el) el.classList.remove('hidden');
     } else {
-        if (cellGrid) cellGrid.classList.remove('hidden');
+        let el = document.getElementById('sub_cellular_grid');
+        if (el) el.classList.remove('hidden');
     }
 }
 
-// 2. DARI LEVEL 2 KE LEVEL 3 (LOAD AJAX PRODUK BERDASARKAN PROVIDER / SUB-KATEGORI)
-function selectProviderFilter(providerKey, title) {
+// 2. DARI LEVEL 2 KE LEVEL 3 (SUB-DETAIL AKSESORIS)
+function navigateToSubDetail(subKey) {
     navLevel = 3;
+    currentSubDetailKey = subKey.toLowerCase();
+
+    document.getElementById('view_main_categories').classList.add('hidden');
+    document.getElementById('view_sub_providers').classList.remove('hidden');
+    document.getElementById('view_products_grid').classList.add('hidden');
+
+    togglePriceFilterVisibility(false);
+
+    let titleText = document.getElementById('catalog_title_text');
+    let titleMap = {
+        'proteksi': 'Proteksi (Casing, TG, Hydrogel)',
+        'power': 'Power (Charger, Kabel, PB)',
+        'audio': 'Audio (TWS, Headset, Speaker)',
+        'penyimpanan': 'Penyimpanan (Flashdisk, MicroSD)',
+        'mount-stand': 'Mount & Stand (Holder, Tripod)'
+    };
+
+    if (titleText) {
+        titleText.innerHTML = '<i class="fa-solid fa-layer-group mr-2 text-indigo-600"></i> Pilih ' + (titleMap[currentSubDetailKey] || 'Kategori');
+    }
+
+    let grids = [
+        'sub_cellular_grid', 'sub_ewallet_grid', 'sub_bank_grid', 
+        'sub_handphone_grid', 'sub_aksesoris_grid', 'sub_proteksi_grid', 
+        'sub_power_grid', 'sub_audio_grid', 'sub_penyimpanan_grid', 'sub_mount_grid'
+    ];
+    grids.forEach(g => {
+        let el = document.getElementById(g);
+        if (el) el.classList.add('hidden');
+    });
+
+    let targetGridMap = {
+        'proteksi': 'sub_proteksi_grid',
+        'power': 'sub_power_grid',
+        'audio': 'sub_audio_grid',
+        'penyimpanan': 'sub_penyimpanan_grid',
+        'mount-stand': 'sub_mount_grid'
+    };
+
+    let targetGrid = document.getElementById(targetGridMap[currentSubDetailKey]);
+    if (targetGrid) targetGrid.classList.remove('hidden');
+}
+
+// 3. SELEKSI SUB-ITEM / PROVIDER UNTUK MENGAMBIL DAFTAR PRODUK
+function selectProviderFilter(providerKey, title) {
+    navLevel = currentSubDetailKey !== '' ? 4 : 3;
     selectedProvider = providerKey.toLowerCase();
-    
-    // PERBAIKAN: Simpan judul provider yang diklik kasir (misal: "DANA", "Bank BRI", "Mandiri")
     window.selectedProviderTitle = title || providerKey;
 
     document.getElementById('view_sub_providers').classList.add('hidden');
@@ -93,11 +145,12 @@ function selectProviderFilter(providerKey, title) {
     fetchProductsFromServer(selectedCategory, selectedProvider);
 }
 
-// 3. LANGSUNG KE PRODUK DARI LEVEL 1 (PLN TERPISAH)
+// 4. MENGARAH LANGSUNG KE PRODUK DARI UTAMA (PLN / LAINNYA)
 function navigateToDirectCategory(slugKey, title) {
     navLevel = 3;
     selectedCategory = slugKey.toLowerCase();
     selectedProvider = '';
+    currentSubDetailKey = '';
     window.selectedProviderTitle = title || '';
 
     document.getElementById('view_main_categories').classList.add('hidden');
@@ -117,11 +170,12 @@ function navigateToDirectCategory(slugKey, title) {
     fetchProductsFromServer(selectedCategory, '');
 }
 
-// 4. TAMPILKAN SEMUA PRODUK (ON-DEMAND)
+// 5. TAMPILKAN SEMUA PRODUK ON-DEMAND
 function showAllProducts() {
     navLevel = 3;
     selectedCategory = 'all';
     selectedProvider = '';
+    currentSubDetailKey = '';
     window.selectedProviderTitle = '';
 
     document.getElementById('view_main_categories').classList.add('hidden');
@@ -141,7 +195,7 @@ function showAllProducts() {
     fetchProductsFromServer('all', '');
 }
 
-// 5. FUNGSI FETCH AJAX DARI SERVER & RENDER GRID
+// 6. FETCH AJAX DATA PRODUK
 function fetchProductsFromServer(category, provider) {
     let gridView = document.getElementById('view_products_grid');
     if (!gridView) return;
@@ -175,18 +229,16 @@ function fetchProductsFromServer(category, provider) {
         });
 }
 
-// 6. FUNGSI MERENDER ITEM PRODUK MENJADI CARD HTML
+// 7. RENDER ITEM PRODUK KETIKA DILOAD
 function renderProductsHTML(products, container) {
     container.innerHTML = '';
 
     let catStr = (selectedCategory || '').toLowerCase();
     let provStr = (selectedProvider || '').toLowerCase();
     
-    // Pengecekan Kategori/Provider Kustom (Bank, E-Wallet, Smartfren)
-    let isBankOrWallet = catStr.includes('bank') || catStr.includes('ewallet') || catStr.includes('e-wallet') || catStr.includes('wallet') || catStr.includes('transfer') ||
-                         provStr.includes('bank') || provStr.includes('ewallet') || provStr.includes('e-wallet') || provStr.includes('bca') || provStr.includes('bri') || provStr.includes('bni') || provStr.includes('mandiri') || provStr.includes('dana') || provStr.includes('ovo') || provStr.includes('gopay') || provStr.includes('shopeepay') || provStr.includes('linkaja');
+    let isBankOrWallet = catStr.includes('bank') || catStr.includes('ewallet') || catStr.includes('wallet') || catStr.includes('transfer') ||
+                         provStr.includes('bank') || provStr.includes('ewallet') || provStr.includes('bca') || provStr.includes('bri') || provStr.includes('bni') || provStr.includes('mandiri') || provStr.includes('dana') || provStr.includes('ovo') || provStr.includes('gopay') || provStr.includes('shopeepay') || provStr.includes('linkaja');
 
-    // JIKA KATEGORI ADALAH BANK, EWALLET, ATAU SMARTFREN -> RENDER KARTU KUSTOM
     if (isBankOrWallet) {
         let providerTitleParam = (window.selectedProviderTitle || selectedProvider || '').replace(/'/g, "\\'");
 
@@ -194,7 +246,7 @@ function renderProductsHTML(products, container) {
             <div id="card_custom_amount" 
                  onclick="openCustomAmountModal('${providerTitleParam}')" 
                  class="product-item bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl shadow-md hover:shadow-indigo-200 p-3.5 flex flex-col justify-between transition cursor-pointer active:scale-98 group"
-                 data-name="nominal bebas kustom transfer topup pulsa smartfren"
+                 data-name="nominal bebas kustom transfer topup pulsa"
                  data-code="CUSTOM"
                  data-price="0">
                 <div>
@@ -306,13 +358,25 @@ function renderProductsHTML(products, container) {
     applyProductFilters();
 }
 
-// 7. TOMBOL KEMBALI HIERARKI NAVIGASI
+// 8. LOGIKA MUNDUR BERTAHAP SAAT KLIK TOMBOL KEMBALI
 function resetCategoryNavigation() {
-    let hasSubLevel = ['pulsa', 'voucher', 'perdana', 'kartu-perdana', 'ewallet', 'bank', 'transfer-bank', 'aksesoris', 'aksesoris-hp'].includes(selectedCategory);
+    // JIKA BERADA DI DAFTAR PRODUK HASIL PILIHAN SUB-DETAIL (LEVEL 4) -> MUNDUR KE PILIHAN SUB-DETAIL LEVEL 3
+    if (navLevel === 4 && currentSubDetailKey !== '') {
+        navigateToSubDetail(currentSubDetailKey);
+        return;
+    }
 
-    if (navLevel === 3 && hasSubLevel) {
+    // JIKA BERADA DI PILIHAN SUB-DETAIL LEVEL 3 -> MUNDUR KE SUB AKSESORIS LEVEL 2
+    if (navLevel === 3 && currentSubDetailKey !== '') {
+        navigateToSubCategory('aksesoris', 'Sub Aksesoris');
+        return;
+    }
+
+    // JIKA BERADA DI GRID PRODUK HASIL LEVEL 2 (PULSA, HP, EWALLET, BANK, ATAU AKSESORIS UTAMA) -> MUNDUR KE LEVEL 2
+    if (navLevel === 3 && ['pulsa', 'voucher', 'perdana', 'kartu-perdana', 'handphone', 'hp', 'ewallet', 'bank', 'transfer', 'transfer-bank', 'aksesoris', 'aksesoris-hp'].includes(selectedCategory)) {
         navLevel = 2;
         selectedProvider = '';
+        currentSubDetailKey = '';
         window.selectedProviderTitle = '';
         
         document.getElementById('view_products_grid').classList.add('hidden');
@@ -322,36 +386,67 @@ function resetCategoryNavigation() {
         
         let titleText = document.getElementById('catalog_title_text');
         if (titleText) {
-            let labelTitle = 'Operator';
-            if (selectedCategory === 'aksesoris' || selectedCategory === 'aksesoris-hp') labelTitle = 'Sub Aksesoris';
-            else if (selectedCategory === 'ewallet') labelTitle = 'E-Wallet';
-            else if (selectedCategory === 'bank' || selectedCategory === 'transfer-bank') labelTitle = 'Bank';
+            let labelTitle = 'Operator / Provider';
+            if (selectedCategory.includes('handphone') || selectedCategory === 'hp') labelTitle = 'Tipe Handphone';
+            else if (selectedCategory.includes('aksesoris')) labelTitle = 'Sub Aksesoris';
+            else if (selectedCategory.includes('ewallet') || selectedCategory.includes('wallet')) labelTitle = 'E-Wallet';
+            else if (selectedCategory.includes('bank') || selectedCategory.includes('transfer')) labelTitle = 'Bank';
 
             titleText.innerHTML = '<i class="fa-solid fa-list mr-2 text-indigo-600"></i> Pilih ' + labelTitle;
         }
-    } else {
-        navLevel = 1;
-        selectedCategory = '';
-        selectedProvider = '';
-        window.selectedProviderTitle = '';
-        
-        document.getElementById('view_main_categories').classList.remove('hidden');
-        document.getElementById('view_sub_providers').classList.add('hidden');
-        document.getElementById('view_products_grid').classList.add('hidden');
-        
-        togglePriceFilterVisibility(false);
-        
-        let backBtn = document.getElementById('btn_back_category');
-        if (backBtn) backBtn.classList.add('hidden');
 
-        let titleText = document.getElementById('catalog_title_text');
-        if (titleText) {
-            titleText.innerHTML = '<i class="fa-solid fa-boxes-stacked mr-2 text-indigo-600"></i> Katalog Utama';
+        let grids = [
+            'sub_cellular_grid', 'sub_ewallet_grid', 'sub_bank_grid', 
+            'sub_handphone_grid', 'sub_aksesoris_grid', 'sub_proteksi_grid', 
+            'sub_power_grid', 'sub_audio_grid', 'sub_penyimpanan_grid', 'sub_mount_grid'
+        ];
+        grids.forEach(g => {
+            let el = document.getElementById(g);
+            if (el) el.classList.add('hidden');
+        });
+
+        if (selectedCategory.includes('handphone') || selectedCategory === 'hp') {
+            let el = document.getElementById('sub_handphone_grid');
+            if (el) el.classList.remove('hidden');
+        } else if (selectedCategory.includes('ewallet') || selectedCategory.includes('wallet')) {
+            let el = document.getElementById('sub_ewallet_grid');
+            if (el) el.classList.remove('hidden');
+        } else if (selectedCategory.includes('bank') || selectedCategory.includes('transfer')) {
+            let el = document.getElementById('sub_bank_grid');
+            if (el) el.classList.remove('hidden');
+        } else if (selectedCategory.includes('aksesoris')) {
+            let el = document.getElementById('sub_aksesoris_grid');
+            if (el) el.classList.remove('hidden');
+        } else {
+            let el = document.getElementById('sub_cellular_grid');
+            if (el) el.classList.remove('hidden');
         }
+
+        return;
+    }
+
+    // MUNDUR KE KATALOG UTAMA (LEVEL 1)
+    navLevel = 1;
+    selectedCategory = '';
+    selectedProvider = '';
+    currentSubDetailKey = '';
+    window.selectedProviderTitle = '';
+    
+    document.getElementById('view_main_categories').classList.remove('hidden');
+    document.getElementById('view_sub_providers').classList.add('hidden');
+    document.getElementById('view_products_grid').classList.add('hidden');
+    
+    togglePriceFilterVisibility(false);
+    
+    let backBtn = document.getElementById('btn_back_category');
+    if (backBtn) backBtn.classList.add('hidden');
+
+    let titleText = document.getElementById('catalog_title_text');
+    if (titleText) {
+        titleText.innerHTML = '<i class="fa-solid fa-boxes-stacked mr-2 text-indigo-600"></i> Katalog Utama';
     }
 }
 
-// 8. FUNGSI FORMAT INPUT HARGA OTOMATIS
 function formatPriceInput(input) {
     let rawValue = input.value.replace(/\D/g, '');
     if (rawValue === '') {
@@ -362,7 +457,6 @@ function formatPriceInput(input) {
     applyProductFilters();
 }
 
-// 9. PENYARINGAN KARTU PRODUK REALTIME + PAGINASI
 function applyProductFilters() {
     let searchInput = document.getElementById('search_product');
     let searchKeyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -400,7 +494,6 @@ function applyProductFilters() {
     renderPosPagination();
 }
 
-// 10. ENGINE PAGINASI GRID KASIR POS
 function renderPosPagination() {
     let pagContainer = document.getElementById('pos_pagination_container');
     if (!pagContainer) return;
