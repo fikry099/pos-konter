@@ -1,27 +1,28 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="space-y-5 max-w-4xl mx-auto">
+<!-- MENGUBAH max-w-4xl mx-auto MENJADI w-full DENGAN EXTRA PADDING BOTTOM PB-24 -->
+<div class="space-y-4 w-full pb-24 sm:pb-12">
     
     <!-- HEADER -->
-    <div class="bg-slate-900 text-white p-5 rounded-3xl shadow-xl flex items-center justify-between border border-slate-800">
+    <div class="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl flex items-center justify-between border border-slate-800">
         <div class="flex items-center space-x-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xl font-bold shrink-0">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg sm:text-xl font-bold shrink-0">
                 <i class="fa-solid fa-hand-holding-dollar"></i>
             </div>
             <div>
                 <h1 class="text-base sm:text-lg font-black tracking-wide">Layanan Tarik Tunai (Cash-Out)</h1>
-                <p class="text-xs text-slate-400 font-medium">Pelanggan transfer via m-Banking/QRIS, Kasir berikan uang fisik laci.</p>
+                <p class="text-xs text-slate-400 font-medium hidden sm:block">Pelanggan transfer via m-Banking/QRIS, Kasir berikan uang fisik laci.</p>
             </div>
         </div>
-        <a href="{{ route('transactions.index') }}" class="hidden sm:flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition">
+        <a href="{{ route('transactions.index') }}" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition shrink-0">
             <i class="fa-solid fa-receipt"></i>
-            <span>Riwayat Transaksi</span>
+            <span class="hidden sm:inline">Riwayat Transaksi</span>
         </a>
     </div>
 
     <!-- FORM INPUT TARIK TUNAI -->
-    <form action="{{ route('cash_out.store') }}" method="POST" autocomplete="off" onsubmit="prepareCleanNumbers(event)" class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-5">
+    <form action="{{ route('cash_out.store') }}" method="POST" autocomplete="off" onsubmit="prepareCleanNumbers(event)" class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-5">
         @csrf
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
