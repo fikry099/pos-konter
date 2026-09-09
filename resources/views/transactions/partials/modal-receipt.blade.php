@@ -126,7 +126,7 @@
         display: none !important;
     }
 
-    #receiptModal, #thermal-print-area, #thermal-print-area * {
+    #receiptModal, #receiptModal *, #thermal-print-area, #thermal-print-area * {
         visibility: visible !important;
     }
 
@@ -183,7 +183,7 @@
 
         if (navigator.bluetooth && isAndroid) {
             try {
-                // 1. KONEKSI KE PRINTER BLUETOOTH JIKA BELUM HUBUNG
+                // 1. KONEKSI KE PRINTER BLUETOOTH JIKA BELUM TERHUBUNG
                 if (!btDevice || !btDevice.gatt.connected || !btCharacteristic) {
                     btDevice = await navigator.bluetooth.requestDevice({
                         acceptAllDevices: true,
@@ -204,15 +204,14 @@
                 }
 
                 if (!btCharacteristic) {
-                    alert('Tidak dapat mendeteksi layanan printer Bluetooth.');
-                    window.print();
+                    printViaNewWindow();
                     return;
                 }
 
-                // 2. CEK DAN AMBIL KETERSEDIAAN LIBRARY ESC-POS ENCODER
+                // 2. CEK KETERSEDIAAN LIBRARY ESC-POS ENCODER
                 if (typeof EscPosEncoder === 'undefined') {
                     console.warn('EscPosEncoder CDN belum dimuat di app.blade.php');
-                    window.print();
+                    printViaNewWindow();
                     return;
                 }
 
@@ -272,7 +271,7 @@
                     .line('\n\n\n')
                     .encode();
 
-                // 5. MENGIRIM KUMPULAN CHUNK DATA BYTE KE PRINTER
+                // 5. MENGIRIM CHUNK DATA KE PRINTER
                 const chunkSize = 512;
                 for (let i = 0; i < resultData.length; i += chunkSize) {
                     const chunk = resultData.slice(i, i + chunkSize);
@@ -281,13 +280,60 @@
 
             } catch (err) {
                 console.error('Kendala cetak Bluetooth:', err);
-                // Jika koneksi gagal / dibatalkan, dialihkan ke jendela browser print
-                window.print();
+                printViaNewWindow();
             }
         } else {
-            // Jika dipanggil dari PC/Laptop
-            window.print();
+            printViaNewWindow();
         }
+    }
+
+    // FUNGSI KHUSUS PRINT VIA POPUP BROWSER UNTUK MENGUNCI UKURAN 58MM
+    function printViaNewWindow() {
+        const printArea = document.getElementById('thermal-print-area');
+        if (!printArea) return;
+
+        const printWindow = window.open('', '_blank', 'width=380,height=600');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Cetak Struk</title>
+                    <style>
+                        body {
+                            font-family: 'Courier New', Courier, monospace;
+                            width: 58mm;
+                            margin: 0 auto;
+                            padding: 2mm;
+                            font-size: 9px;
+                            color: #000;
+                        }
+                        .text-center { text-align: center; }
+                        .font-bold { font-weight: bold; }
+                        .uppercase { text-transform: uppercase; }
+                        .trx-receipt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                        .trx-receipt-table td { padding: 1px 0; vertical-align: top; word-break: break-word; }
+                        .trx-receipt-table .lbl { text-align: left; width: 55%; }
+                        .trx-receipt-table .val { text-align: right; width: 45%; }
+                        .border-b { border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; }
+                        .border-t { border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px; }
+                        .no-print { display: none !important; }
+                        @media print {
+                            @page { size: 58mm auto; margin: 0; }
+                            body { width: 58mm; margin: 0; padding: 2mm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printArea.innerHTML}
+                </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 300);
     }
 
     function closeDetail() {
