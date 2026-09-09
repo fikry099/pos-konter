@@ -30,11 +30,16 @@ RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 # Copy Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Pengaturan Env Composer untuk mencegah Timeout (HTTP 504) & Izin Superuser
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_HTTP_TIMEOUT=600
+
 WORKDIR /app
 COPY . .
 
-# Install dependency Laravel
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+# Install dependency Laravel dengan fallback koneksi jika dist GitHub timeout
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs || \
+    composer install --no-dev --optimize-autoloader --ignore-platform-reqs --prefer-source
 
 # Set permission storage
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
@@ -42,5 +47,5 @@ RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
 
 EXPOSE 8080
 
-# Jalankan php-fpm (huruf kecil) di background dan Nginx di foreground
+# Jalankan php-fpm di background dan Nginx di foreground
 CMD ["sh", "-c", "php-fpm -F -R & nginx -g 'daemon off;'"]
