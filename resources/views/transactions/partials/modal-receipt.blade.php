@@ -76,10 +76,10 @@
 
         <!-- TOMBOL AKSI -->
         <div class="flex space-x-2 pt-2 border-t border-slate-200 no-print">
-            <button type="button" onclick="closeDetail()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl border border-slate-300 transition cursor-pointer">
+            <button type="button" onclick="closeDetail(event)" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl border border-slate-300 transition cursor-pointer">
                 Tutup
             </button>
-            <button type="button" onclick="printThermalReceipt()" class="w-1/2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl shadow-md transition flex items-center justify-center space-x-1 cursor-pointer">
+            <button type="button" onclick="printThermalReceipt(event)" class="w-1/2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl shadow-md transition flex items-center justify-center space-x-1 cursor-pointer">
                 <i class="fa-solid fa-print"></i>
                 <span>Cetak Struk</span>
             </button>
@@ -178,7 +178,9 @@
     }
 
     // FUNGSI UTAMA CETAK AUTOMATIC CONNECT & DIRECT PRINT VIA BLUETOOTH
-    async function printThermalReceipt() {
+    async function printThermalReceipt(e) {
+        if (e) e.preventDefault(); // Mencegah form submit/refresh otomatis
+
         let isAndroid = /Android/i.test(navigator.userAgent);
 
         if (navigator.bluetooth && isAndroid) {
@@ -336,7 +338,8 @@
         }, 300);
     }
 
-    function closeDetail() {
+    function closeDetail(e) {
+        if (e) e.preventDefault();
         document.getElementById('receiptModal').classList.add('hidden');
     }
 
