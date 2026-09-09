@@ -72,9 +72,16 @@
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-sm font-black">
                                 Rp
                             </div>
-                            <input type="text" id="formatted_cash_initial" oninput="formatShiftCurrency(this, 'raw_cash_initial')" required placeholder="Contoh: 200.000" autocomplete="off" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 text-slate-900 border rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-sm font-black placeholder-slate-400">
+                            <input type="text" id="formatted_cash_initial" oninput="formatShiftCurrency(this, 'raw_cash_initial')" required placeholder="Contoh: 350.000" autocomplete="off" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 text-slate-900 border rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-sm font-black placeholder-slate-400">
                         </div>
-                        <span class="text-xs text-slate-400 mt-2 block font-medium">* Nominal uang kembalian di laci kasir saat shift dimulai.</span>
+
+                        <!-- BANNER INFORMASI MODAL LACI -->
+                        <div class="mt-3 bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-info text-amber-500 text-sm mt-0.5 shrink-0"></i>
+                            <p class="text-[11px] text-amber-800 font-semibold leading-relaxed">
+                                Di laci harus sudah tersedia uang modal <strong class="font-black text-amber-950">Rp 350.000</strong> untuk operasional / kembalian. Nominal modal awal ini murni untuk transaksi kasir dan <span class="font-bold underline">tidak akan mempengaruhi omset harian</span>.
+                            </p>
+                        </div>
                     </div>
                 @else
                     <!-- INFORMASI MODAL SAMA SAAT JOIN SHIFT -->

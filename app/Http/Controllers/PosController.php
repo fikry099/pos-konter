@@ -8,6 +8,7 @@ use App\Models\Shift;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\StoreProductStock;
+use App\Models\PpobServer;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,10 @@ class PosController extends Controller
 
     private function getProductStock($storeId, $productId)
     {
+        if (!$productId) {
+            return 0;
+        }
+
         $product = Product::find($productId);
         if (!$product) {
             return 0;
@@ -147,7 +152,6 @@ class PosController extends Controller
 
             if (!empty($providerKey) && !in_array($providerKey, ['aksesoris', 'aksesoris-hp', 'all'])) {
                 $query->where(function ($q) use ($providerKey) {
-                    // --- SUB-PROTEKSI ---
                     if ($providerKey === 'casing' || $providerKey === 'case') {
                         $q->where('products.name', 'like', '%case%')
                         ->orWhere('products.name', 'like', '%casing%')
@@ -167,7 +171,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%tempered%')
                         ->orWhere('products.code', 'like', '%acc-case%');
 
-                    // --- SUB-POWER ---
                     } elseif ($providerKey === 'charger') {
                         $q->where('products.name', 'like', '%charger%')
                         ->orWhere('products.name', 'like', '%batok%')
@@ -189,7 +192,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%batok%')
                         ->orWhere('products.name', 'like', '%pb%');
 
-                    // --- SUB-AUDIO ---
                     } elseif ($providerKey === 'tws') {
                         $q->where('products.name', 'like', '%tws%')
                         ->orWhere('products.name', 'like', '%earbuds%')
@@ -207,7 +209,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%speaker%')
                         ->orWhere('products.name', 'like', '%earphone%');
 
-                    // --- SUB-PENYIMPANAN ---
                     } elseif ($providerKey === 'flashdisk') {
                         $q->where('products.name', 'like', '%flashdisk%')
                         ->orWhere('products.name', 'like', '%flash drive%')
@@ -221,7 +222,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%microsd%')
                         ->orWhere('products.name', 'like', '%memory%');
 
-                    // --- SUB-MOUNT & STAND ---
                     } elseif ($providerKey === 'holder') {
                         $q->where('products.name', 'like', '%holder%')
                         ->orWhere('products.name', 'like', '%stand%');
@@ -244,7 +244,6 @@ class PosController extends Controller
             }
 
         } elseif ($isHpContext) {
-            // --- FILTER KATEGORI HANDPHONE ---
             $query->whereHas('category', function ($q) {
                 $q->where('slug', 'like', '%handphone%')
                 ->orWhere('slug', 'like', '%hp%')
@@ -266,8 +265,8 @@ class PosController extends Controller
                         ->orWhere('products.code', 'like', '%hp-new%')
                         ->orWhereHas('category', function($catQ) {
                             $catQ->where('slug', 'like', '%new%')
-                                 ->orWhere('name', 'like', '%new%')
-                                 ->orWhere('name', 'like', '%baru%');
+                                   ->orWhere('name', 'like', '%new%')
+                                   ->orWhere('name', 'like', '%baru%');
                         });
                     } elseif (in_array($providerKey, ['hp-second', 'second', 'bekas', 'sec'])) {
                         $q->where('products.name', 'like', '%second%')
@@ -277,8 +276,8 @@ class PosController extends Controller
                         ->orWhere('products.code', 'like', '%hp-second%')
                         ->orWhereHas('category', function($catQ) {
                             $catQ->where('slug', 'like', '%second%')
-                                 ->orWhere('name', 'like', '%second%')
-                                 ->orWhere('name', 'like', '%bekas%');
+                                   ->orWhere('name', 'like', '%second%')
+                                   ->orWhere('name', 'like', '%bekas%');
                         });
                     } else {
                         $cleanSearch = str_replace('-', ' ', $providerKey);
@@ -321,6 +320,15 @@ class PosController extends Controller
                         $q->where('products.name', 'like', '%indosat%')
                         ->orWhere('products.name', 'like', '%im3%')
                         ->orWhere('products.code', 'like', '%isat%');
+                    // --- DUKUNGAN PEMFILTERAN BANK BARU ---
+                    } elseif (in_array($providerKey, ['seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd'])) {
+                        $q->where('products.name', 'like', "%{$providerKey}%")
+                        ->orWhere('products.name', 'like', "%{$cleanProviderSearch}%")
+                        ->orWhere('products.code', 'like', "%{$providerKey}%")
+                        ->orWhereHas('category', function ($catQ) use ($providerKey) {
+                            $catQ->where('slug', 'like', "%{$providerKey}%")
+                                ->orWhere('name', 'like', "%{$providerKey}%");
+                        });
                     } else {
                         $q->whereHas('category', function ($catQ) use ($providerKey) {
                             $catQ->where('slug', 'like', "%{$providerKey}%")
@@ -373,17 +381,14 @@ class PosController extends Controller
         if ($isCustom) {
             $customPrice = (float) $request->input('custom_price', 0);
             
-            // 1. Tangkap nama bank/wallet dari 'service_type' ATAU 'digital_provider'
             $serviceType = $request->input('service_type') ?? $request->input('digital_provider');
             if (!$serviceType || strtolower($serviceType) === 'transfer / top-up' || strtolower($serviceType) === 'transfer') {
                 $serviceType = 'Nominal Bebas';
             }
 
-            // 2. Hitung Modal (Cost Price)
             $feePerak  = $this->getEwalletFeePerak($serviceType);
             $costPrice = $customPrice + $feePerak;
 
-            // 3. Hitung Admin & Selling Price
             $customInThousand = $customPrice / 1000;
             if (str_contains(strtolower($serviceType), 'maxim') && $customInThousand >= 10 && $customInThousand <= 100) {
                 $defaultAdmin = 4000;
@@ -398,12 +403,20 @@ class PosController extends Controller
             $targetNum = $request->input('account_number') ?? $request->input('target_number');
             $accName   = $request->input('account_name');
 
-            // 4. Buat Nama Tampilan secara Langsung dan Lengkap
             $serviceLower = strtolower($serviceType);
-            $isBank = str_contains($serviceLower, 'bank') || str_contains($serviceLower, 'bca') || str_contains($serviceLower, 'bri') || str_contains($serviceLower, 'mandiri') || str_contains($serviceLower, 'bni') || str_contains($serviceLower, 'bsi');
+            
+            // --- DETEKSI KELOMPOK BANK (TERMASUK DUKUNGAN BANK BARU) ---
+            $bankKeywords = ['bank', 'bca', 'bri', 'mandiri', 'bni', 'bsi', 'seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd'];
+            $isBank = false;
+            foreach ($bankKeywords as $kw) {
+                if (str_contains($serviceLower, $kw)) {
+                    $isBank = true;
+                    break;
+                }
+            }
+
             $prefix = $isBank ? 'Transfer' : 'Top-Up';
 
-            // Format: "Transfer BANK BCA 1.111.847.843 (z)"
             $displayName = $prefix . ' ' . strtoupper($serviceType) . ' ' . number_format($sellingPrice, 0, ',', '.');
             if ($accName) {
                 $displayName .= ' (' . $accName . ')';
@@ -411,9 +424,12 @@ class PosController extends Controller
 
             $cartKey = 'custom_' . time() . '_' . rand(100, 999);
 
+            // SET PRODUCT_ID KE NULL JIKA HANYA DIISI SECARA FALLBACK KUSTOM
+            $finalProductId = ($request->filled('product_id') && $request->product_id != 1) ? $request->product_id : null;
+
             $cart[$cartKey] = [
-                'product_id'        => $request->product_id ?? 1,
-                'name'              => $displayName, // Disimpan utuh ke session
+                'product_id'        => $finalProductId,
+                'name'              => $displayName,
                 'type'              => 'digital',
                 'target_phone'      => $targetNum,
                 'cost_price'        => $costPrice,
@@ -421,7 +437,7 @@ class PosController extends Controller
                 'qty'               => 1,
                 'subtotal'          => $sellingPrice,
                 'profit'            => $profit,
-                'digital_provider'  => 'Propana', // PPOB Server Provider
+                'digital_provider'  => $request->input('digital_provider') ?? \App\Models\PpobServer::where('name', 'Propana')->value('name') ?? 'Propana',
                 'served_by_user_id' => null,
             ];
 
@@ -456,7 +472,7 @@ class PosController extends Controller
                 }
             }
 
-            $defaultProvider = $request->input('digital_provider', null);
+            $defaultProvider = $request->input('digital_provider') ?? \App\Models\PpobServer::where('name', 'Propana')->value('name') ?? \App\Models\PpobServer::value('name') ?? 'Propana';
 
             if (isset($cart[$cartKey])) {
                 $cart[$cartKey]['qty'] += $qty;
@@ -653,7 +669,7 @@ class PosController extends Controller
 
                 TransactionDetail::create([
                     'transaction_id'    => $transaction->id,
-                    'product_id'        => $item['product_id'],
+                    'product_id'        => $item['product_id'] ?? null,
                     'custom_name'       => $item['name'] ?? null,
                     'served_by_user_id' => $productType !== 'digital' ? $item['served_by_user_id'] : null,
                     'target_phone'      => $item['target_phone'],
@@ -665,7 +681,17 @@ class PosController extends Controller
                     'profit'            => $item['profit'],
                 ]);
 
-                if ($productType !== 'digital') {
+                // --- OTOMATIS POTONG SALDO SERVER PPOB JIKA TRANSAKSI DIGITAL ---
+                if ($productType === 'digital' && !empty($provider)) {
+                    $ppobServer = PpobServer::whereRaw('LOWER(name) = ?', [strtolower(trim($provider))])->first();
+                    
+                    if ($ppobServer) {
+                        $totalItemCost = (float) $item['cost_price'] * (int) $item['qty'];
+                        $ppobServer->decrement('balance', $totalItemCost);
+                    }
+                }
+
+                if ($productType !== 'digital' && !empty($item['product_id'])) {
                     $stock = StoreProductStock::where('store_id', $storeId)
                         ->where('product_id', $item['product_id'])
                         ->first();

@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\StoreProductStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Exports\ProductStockExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -315,5 +317,71 @@ class ProductController extends Controller
         }
 
         return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Ekspor Laporan Stok & Inventaris Produk Cabang Aktif ke Excel (.xlsx)
+     */
+    public function exportExcel(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+
+        $query = StoreProductStock::with([
+                'product' => function ($q) {
+                    // TAMBAHKAN 'selling_price' DI SINI
+                    $q->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'is_active')
+                       ->with('category.parent');
+                }
+            ])
+            ->where('store_id', $storeId)
+            ->whereHas('product', function ($q) {
+                $q->where('type', 'physical')->where('is_active', true);
+            });
+
+        // (Filter pencarian, category, dan sub_filter tetap sama seperti sebelumnya...)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->whereHas('product', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category')) {
+            $catKey = strtolower($request->category);
+            $query->whereHas('product.category', function ($q) use ($catKey) {
+                $q->where('slug', 'like', "%{$catKey}%")
+                  ->orWhere('name', 'like', "%{$catKey}%")
+                  ->orWhereHas('parent', function ($qp) use ($catKey) {
+                      $qp->where('slug', 'like', "%{$catKey}%")
+                        ->orWhere('name', 'like', "%{$catKey}%");
+                  });
+            });
+        }
+
+        if ($request->filled('sub_filter')) {
+            $subKey = strtolower($request->sub_filter);
+            $query->whereHas('product', function ($q) use ($subKey) {
+                $q->where('name', 'like', "%{$subKey}%")
+                  ->orWhereHas('category', function ($qc) use ($subKey) {
+                      $qc->where('slug', 'like', "%{$subKey}%")
+                        ->orWhere('name', 'like', "%{$subKey}%");
+                  });
+            });
+        }
+
+        $stocks = $query->latest()->get();
+
+        $products = $stocks->map(function ($stock) {
+            $prod = $stock->product;
+            if ($prod) {
+                $prod->stock = $stock->stock;
+            }
+            return $prod;
+        })->filter();
+
+        $fileName = 'Laporan_Stok_' . ucfirst($request->category ?? 'Semua') . '_' . date('Ymd_His') . '.xlsx';
+
+        return Excel::download(new ProductStockExport($products), $fileName);
     }
 }

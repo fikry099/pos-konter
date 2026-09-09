@@ -104,30 +104,30 @@
     </div>
 
     <!-- NAVBAR PAGINASI GRID POS DINAMIS -->
-<div id="pos_pagination_container" class="bg-white p-3 rounded-2xl border border-gray-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-start gap-4 text-xs font-semibold text-gray-600">
-    <!-- Pilihan Per Halaman -->
-    <div class="flex items-center space-x-2">
-        <span>Tampilkan</span>
-        <select id="pos_items_per_page" onchange="changePosPerPage()" class="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 font-bold text-gray-800 focus:outline-none cursor-pointer">
-            <option value="12" selected>12</option>
-            <option value="24">24</option>
-            <option value="48">48</option>
-        </select>
-        <span>produk</span>
+    <div id="pos_pagination_container" class="bg-white p-3.5 rounded-2xl border border-gray-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-start gap-3 sm:gap-4 text-xs font-bold text-slate-600 pr-16 sm:pr-20">
+        <!-- Pilihan Per Halaman -->
+        <div class="flex items-center space-x-2">
+            <span>Tampilkan</span>
+            <select id="pos_items_per_page" onchange="changePosPerPage()" class="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="12" selected>12</option>
+                <option value="24">24</option>
+                <option value="48">48</option>
+            </select>
+            <span>produk</span>
+        </div>
+
+        <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+
+        <!-- Tombol Angka Paginasi -->
+        <div id="pos_pagination_buttons" class="flex items-center space-x-1.5">
+            <!-- Tombol halaman di-render via JS -->
+        </div>
+
+        <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+
+        <!-- Info Teks -->
+        <div id="pos_pagination_info" class="text-slate-500 font-bold text-[11px] sm:text-xs">
+            Menampilkan 0 dari 0 produk
+        </div>
     </div>
-
-    <div class="h-4 w-px bg-gray-200 hidden sm:block"></div>
-
-    <!-- Tombol Angka Paginasi -->
-    <div id="pos_pagination_buttons" class="flex items-center space-x-1">
-        <!-- Tombol halaman di-render via JS -->
-    </div>
-
-    <div class="h-4 w-px bg-gray-200 hidden sm:block"></div>
-
-    <!-- Info Teks -->
-    <div id="pos_pagination_info" class="text-gray-500 font-medium text-[11px] sm:text-xs">
-        Menampilkan 0 dari 0 produk
-    </div>
-</div>
 </div>

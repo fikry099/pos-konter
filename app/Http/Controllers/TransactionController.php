@@ -8,110 +8,194 @@ use App\Models\Shift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Exports\TransactionHistoryExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TransactionController extends Controller
 {
-    /**
-     * Helper privat untuk menentukan store_id cabang yang aktif
-     */
     private function getActiveStoreId()
     {
         return Auth::user()->store_id ?? session('selected_store_id') ?? 1;
     }
 
     /**
-     * Helper privat untuk menerapkan seluruh filter transaksi (Reuseable)
+     * Helper privat untuk mengambil seluruh ID Kategori
+     */
+    private function getAllCategoryIds($catId)
+    {
+        $ids = [(int)$catId];
+        
+        // Level 2 (Sub-Kategori)
+        $childrenIds = Category::where('parent_id', $catId)->pluck('id')->toArray();
+        if (!empty($childrenIds)) {
+            $ids = array_merge($ids, $childrenIds);
+            
+            // Level 3 (Kategori Spesifik/Provider)
+            $grandChildrenIds = Category::whereIn('parent_id', $childrenIds)->pluck('id')->toArray();
+            if (!empty($grandChildrenIds)) {
+                $ids = array_merge($ids, $grandChildrenIds);
+            }
+        }
+
+        return array_unique(array_map('intval', $ids));
+    }
+
+    /**
+     * API Endpoint untuk mengambil Sub-Kategori via AJAX
+     */
+    public function getSubCategories($parentId)
+    {
+        $subCategories = Category::where('parent_id', $parentId)->get(['id', 'name']);
+        return response()->json($subCategories);
+    }
+
+    /**
+     * Helper privat untuk menerapkan seluruh filter transaksi
      */
     private function applyTransactionFilters($query, Request $request)
     {
-        // Filter 1: Search Nota / No HP Target
+        // 1. Filter Search (Nota / No HP Target / Nama Item Kustom)
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_code', 'like', "%{$search}%")
                   ->orWhereHas('details', function ($qd) use ($search) {
-                      $qd->where('target_phone', 'like', "%{$search}%");
+                      $qd->where('target_phone', 'like', "%{$search}%")
+                        ->orWhere('custom_name', 'like', "%{$search}%")
+                        ->orWhereHas('product', function($qp) use ($search) {
+                            $qp->where('name', 'like', "%{$search}%");
+                        });
                   });
             });
         }
 
-        // Filter 2: Tanggal Transaksi
+        // 2. Filter Tanggal Transaksi
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->date);
         }
 
-        // Filter 3: Shift Kerja
+        // 3. Filter Shift Kerja
         if ($request->filled('shift_id')) {
             $query->where('shift_id', $request->shift_id);
         }
 
-        // Filter 4: Kategori Produk / Katalog
-        if ($request->filled('category_id')) {
-            $catId = $request->category_id;
+        // 4. Filter Metode Pembayaran
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
 
-            $categoryIds = Category::where('id', $catId)
-                ->orWhere('parent_id', $catId)
-                ->orWhereHas('parent', function ($qp) use ($catId) {
-                    $qp->where('parent_id', $catId);
-                })
-                ->pluck('id');
+        // 5. Filter Kategori ID & Sub-Kategori ID
+        $targetCatId = $request->filled('sub_category_id') ? $request->sub_category_id : $request->category_id;
 
-            $query->whereHas('details.product', function ($qp) use ($categoryIds) {
-                $qp->whereIn('category_id', $categoryIds);
-            });
+        if ($targetCatId) {
+            $allCategoryIds = $this->getAllCategoryIds($targetCatId);
+            $selectedCategory = Category::find($targetCatId);
+            $catName = strtolower($selectedCategory->name ?? '');
+
+            // JIKA KATEGORI ADALAH PULSA REGULER
+            if (str_contains($catName, 'pulsa')) {
+                $query->where('invoice_code', 'NOT LIKE', 'WD-%');
+
+                $query->whereHas('details.product', function ($qp) use ($allCategoryIds) {
+                    $qp->whereIn('category_id', $allCategoryIds);
+                });
+
+                $query->whereDoesntHave('details', function ($qd) {
+                    $qd->where(function($qKw) {
+                        $qKw->whereRaw('LOWER(custom_name) LIKE ?', ['%top-up%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%topup%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%dana%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%gopay%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%ovo%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%shopee%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%linkaja%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%transfer%']);
+                    });
+                });
+            } 
+            // JIKA KATEGORI ADALAH E-WALLET / TOP-UP
+            elseif (str_contains($catName, 'wallet') || str_contains($catName, 'top-up') || str_contains($catName, 'topup')) {
+                $query->whereHas('details', function ($qd) use ($allCategoryIds) {
+                    $qd->where(function ($qSub) use ($allCategoryIds) {
+                        $qSub->whereHas('product', function ($qp) use ($allCategoryIds) {
+                            $qp->whereIn('category_id', $allCategoryIds);
+                        })
+                        ->orWhereNull('product_id')
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%top-up%'])
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%topup%'])
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%dana%'])
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%gopay%'])
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%ovo%'])
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%shopee%'])
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%linkaja%']);
+                    });
+                });
+            }
+            // JIKA KATEGORI ADALAH BANK / TRANSFER
+            elseif (str_contains($catName, 'bank') || str_contains($catName, 'transfer')) {
+                $query->whereHas('details', function ($qd) use ($allCategoryIds) {
+                    $qd->where(function ($qSub) use ($allCategoryIds) {
+                        $qSub->whereHas('product', function ($qp) use ($allCategoryIds) {
+                            $qp->whereIn('category_id', $allCategoryIds);
+                        })
+                        ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%transfer%'])
+                        ->orWhere('invoice_code', 'LIKE', 'WD-%');
+                    });
+                });
+            }
+            // KATEGORI LAINNYA (Aksesoris, HP, Provider Spesifik, dll)
+            else {
+                $query->whereHas('details.product', function ($qp) use ($allCategoryIds) {
+                    $qp->whereIn('category_id', $allCategoryIds);
+                });
+            }
         }
 
         return $query;
     }
 
-    /**
-     * Halaman Utama Riwayat Transaksi Penjualan
-     */
     public function index(Request $request)
     {
         $storeId = $this->getActiveStoreId();
 
         $categories = Category::whereNull('parent_id')->get();
-        $shifts = Shift::where('store_id', $storeId)->latest()->get();
+        $shifts     = Shift::where('store_id', $storeId)->latest()->get();
 
-        // Kueri Dasar Filter Cabang
         $baseQuery = Transaction::forStore($storeId);
 
-        // =========================================================================
-        // ATURAN 1: BILA KARYAWAN -> SEMBUNYIKAN TRANSAKSI YANG SUDAH DIBATALKAN
-        // (Bila Owner -> Tampilkan Semua Transaksi Sukses & Batal untuk Audit)
-        // =========================================================================
         if (Auth::user()->role !== 'owner') {
             $baseQuery->completed();
         }
 
         $this->applyTransactionFilters($baseQuery, $request);
 
-        // Omset & Profit HANYA menghitung transaksi yang BERHASIL (Completed)
-        $summaryQuery = (clone $baseQuery)->completed();
-        $summary = [
-            'total_omset'  => $summaryQuery->sum('total_price'),
-            'total_profit' => $summaryQuery->sum('total_profit'),
-        ];
-
-        // Ambil data transaksi
-        $transactions = $baseQuery
+        $rawTransactions = $baseQuery
             ->with(['user', 'shift', 'details.product.category', 'details.servedBy', 'cancelledBy'])
             ->latest()
-            ->paginate(15)
-            ->withQueryString();
+            ->get();
+
+        // Ringkasan
+        $summary = [
+            'total_omset'  => $rawTransactions->sum('total_price'),
+            'total_profit' => $rawTransactions->sum('total_profit'),
+        ];
+
+        // Pagination
+        $page = request()->get('page', 1);
+        $perPage = 15;
+        $transactions = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rawTransactions->forPage($page, $perPage)->values(),
+            $rawTransactions->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
 
         return view('transactions.index', compact('transactions', 'categories', 'shifts', 'summary'));
     }
 
-    /**
-     * Process Pembatalan Transaksi (Void & Restock)
-     */
     public function cancel(Request $request, $id)
     {
-        // =========================================================================
-        // ATURAN 2: PROTEKSI SERVER - OWNER TIDAK BISA MEMBATALKAN TRANSAKSI
-        // =========================================================================
         if (Auth::user()->role === 'owner') {
             return response()->json([
                 'success' => false,
@@ -121,9 +205,6 @@ class TransactionController extends Controller
 
         $request->validate([
             'cancel_reason' => 'required|string|min:3|max:255',
-        ], [
-            'cancel_reason.required' => 'Alasan pembatalan wajib diisi!',
-            'cancel_reason.min'      => 'Alasan pembatalan minimal 3 karakter.'
         ]);
 
         $storeId = $this->getActiveStoreId();
@@ -141,14 +222,12 @@ class TransactionController extends Controller
                 ], 400);
             }
 
-            // 1. KEMBALIKAN STOK BARANG PENJUALAN
             foreach ($transaction->details as $detail) {
-                if ($detail->product) {
+                if ($detail->product && $detail->product->type === 'physical') {
                     $detail->product->increment('stock', $detail->qty);
                 }
             }
 
-            // 2. UPDATE STATUS TRANSAKSI TANDAI BANYAK METADATA BATAL
             $transaction->update([
                 'status'        => 'cancelled',
                 'cancel_reason' => $request->cancel_reason,
@@ -173,16 +252,18 @@ class TransactionController extends Controller
     }
 
     /**
-     * Export Excel dengan Filter
+     * Ekspor Laporan Transaksi ke File Excel (.xlsx Murni)
+     * Kompatibel penuh dengan Android, iOS, WPS Office, MS Excel & Google Sheets
      */
     public function exportExcel(Request $request)
     {
         $storeId = $this->getActiveStoreId();
 
         $query = Transaction::forStore($storeId)
-            ->completed() // Hanya ekspor transaksi yang sukses
+            ->completed()
             ->with(['user', 'shift', 'details.product.category', 'details.servedBy']);
 
+        // Terapkan seluruh filter persis seperti di tampilan halaman
         $this->applyTransactionFilters($query, $request);
 
         $transactions = $query->latest()->get();
@@ -191,20 +272,14 @@ class TransactionController extends Controller
         $totalCost   = $transactions->sum('total_cost');
         $totalProfit = $transactions->sum('total_profit');
 
-        $html = view('transactions.export-excel', compact('transactions', 'totalOmset', 'totalCost', 'totalProfit'))->render();
+        $fileName = 'Laporan_Transaksi_' . date('Ymd_His') . '.xlsx';
 
-        $fileName = 'Laporan_Transaksi_' . date('Ymd_His') . '.xls';
-
-        return response($html, 200, [
-            'Content-Type'        => 'application/vnd.ms-excel',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-            'Cache-Control'       => 'max-age=0',
-        ]);
+        return Excel::download(
+            new TransactionHistoryExport($transactions, $totalOmset, $totalCost, $totalProfit), 
+            $fileName
+        );
     }
 
-    /**
-     * API Detail Transaksi (Modal Pop-Up Detail)
-     */
     public function show($id)
     {
         $storeId = $this->getActiveStoreId();

@@ -56,31 +56,84 @@
         </div>
     </div>
 
-    <!-- LEVEL 2: CARDS BANK TRANSFER -->
-    <div id="sub_bank_grid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div onclick="selectProviderFilter('bca', 'Bank BCA')" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
-            <span class="font-black text-xl text-blue-700 group-hover:scale-105 transition">BCA</span>
-            <span class="text-xs text-gray-400 mt-2 font-medium">Bank Central Asia</span>
+    <!-- LEVEL 2: CARDS BANK TRANSFER (3 KOLOM) -->
+    <div id="sub_bank_grid" class="hidden grid grid-cols-3 gap-3 sm:gap-4">
+        <!-- BCA -->
+        <div onclick="selectProviderFilter('bca', 'Bank BCA')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-blue-700 group-hover:scale-105 transition">BCA</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Central Asia</span>
         </div>
-        <div onclick="selectProviderFilter('bri', 'Bank BRI')" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
-            <span class="font-black text-xl text-blue-800 group-hover:scale-105 transition">BRI</span>
-            <span class="text-xs text-gray-400 mt-2 font-medium">Bank Rakyat Indonesia</span>
+
+        <!-- BRI -->
+        <div onclick="selectProviderFilter('bri', 'Bank BRI')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-blue-900 group-hover:scale-105 transition">BRI</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Rakyat Indonesia</span>
         </div>
-        <div onclick="selectProviderFilter('mandiri', 'Bank Mandiri')" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
-            <span class="font-black text-xl text-amber-600 group-hover:scale-105 transition">Mandiri</span>
-            <span class="text-xs text-gray-400 mt-2 font-medium">Bank Mandiri</span>
+
+        <!-- MANDIRI -->
+        <div onclick="selectProviderFilter('mandiri', 'Bank Mandiri')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-amber-500 group-hover:scale-105 transition">Mandiri</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Mandiri</span>
         </div>
-        <div onclick="selectProviderFilter('bni', 'Bank BNI')" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
-            <span class="font-black text-xl text-teal-600 group-hover:scale-105 transition">BNI</span>
-            <span class="text-xs text-gray-400 mt-2 font-medium">Bank Negara Indonesia</span>
+
+        <!-- BNI -->
+        <div onclick="selectProviderFilter('bni', 'Bank BNI')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-teal-600 group-hover:scale-105 transition">BNI</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Negara Indonesia</span>
         </div>
-        <div onclick="selectProviderFilter('bsi', 'Bank BSI')" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
-            <span class="font-black text-xl text-emerald-600 group-hover:scale-105 transition">BSI</span>
-            <span class="text-xs text-gray-400 mt-2 font-medium">Bank Syariah Indonesia</span>
+
+        <!-- BSI -->
+        <div onclick="selectProviderFilter('bsi', 'Bank BSI')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-emerald-600 group-hover:scale-105 transition">BSI</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Syariah Indonesia</span>
         </div>
-        <div onclick="selectProviderFilter('permata', 'Permata / CIMB')" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
-            <span class="font-black text-xl text-purple-600 group-hover:scale-105 transition">Lainnya</span>
-            <span class="text-xs text-gray-400 mt-2 font-medium">CIMB, Permata, Danamon</span>
+
+        <!-- SEABANK -->
+        <div onclick="selectProviderFilter('seabank', 'SeaBank')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-orange-500 group-hover:scale-105 transition">SeaBank</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank SeaBank Indonesia</span>
+        </div>
+
+        <!-- BANK JAGO -->
+        <div onclick="selectProviderFilter('jago', 'Bank Jago')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-amber-600 group-hover:scale-105 transition">Bank Jago</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Jago Tbk</span>
+        </div>
+
+        <!-- CIMB NIAGA -->
+        <div onclick="selectProviderFilter('cimb', 'CIMB Niaga')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-rose-700 group-hover:scale-105 transition">CIMB Niaga</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank CIMB Niaga</span>
+        </div>
+
+        <!-- PERMATA -->
+        <div onclick="selectProviderFilter('permata', 'Bank Permata')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-emerald-700 group-hover:scale-105 transition">Permata</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Permata</span>
+        </div>
+
+        <!-- DANAMON -->
+        <div onclick="selectProviderFilter('danamon', 'Bank Danamon')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-yellow-600 group-hover:scale-105 transition">Danamon</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Danamon</span>
+        </div>
+
+        <!-- BTN -->
+        <div onclick="selectProviderFilter('btn', 'Bank BTN')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-blue-800 group-hover:scale-105 transition">BTN</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Bank Tabungan Negara</span>
+        </div>
+
+        <!-- BANK BPD / DAERAH -->
+        <div onclick="selectProviderFilter('bpd', 'Bank Daerah (BPD)')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-sky-700 group-hover:scale-105 transition">Bank BPD</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">BJB, Jatim, Jateng, dll</span>
+        </div>
+
+        <!-- BANK LAINNYA -->
+        <div onclick="selectProviderFilter('lainnya', 'Bank Lainnya')" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+            <span class="font-black text-lg sm:text-xl text-purple-600 group-hover:scale-105 transition">Lainnya</span>
+            <span class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium truncate w-full">Transfer Bank Lain</span>
         </div>
     </div>
 

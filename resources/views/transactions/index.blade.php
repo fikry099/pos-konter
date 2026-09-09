@@ -2,7 +2,8 @@
 
 @section('content')
 <div class="space-y-4">
-    
+
+    <!-- HEADER KEPALA HALAMAN -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div>
             <h1 class="text-base sm:text-xl font-black text-slate-800 flex items-center">
@@ -11,8 +12,9 @@
             <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Lacak nota belanja, nomor HP pulsa, dan rekap omset per shift.</p>
         </div>
 
-        <div class="grid {{ auth()->check() && auth()->user()->role === 'owner' ? 'grid-cols-2' : 'grid-cols-1' }} gap-2.5 w-full sm:w-auto shrink-0">
-            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center space-x-2.5 min-w-0">
+        <div class="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+            <!-- REKAP CARD: TOTAL OMSET -->
+            <div class="bg-slate-50 border border-slate-200 p-2.5 px-3 rounded-xl flex items-center space-x-2.5 min-w-0 flex-1 sm:flex-initial">
                 <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm shrink-0">
                     <i class="fa-solid fa-cash-register"></i>
                 </div>
@@ -24,8 +26,9 @@
                 </div>
             </div>
 
+            <!-- REKAP CARD: TOTAL PROFIT (OWNER ONLY) -->
             @if(auth()->check() && auth()->user()->role === 'owner')
-                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center space-x-2.5 min-w-0">
+                <div class="bg-slate-50 border border-slate-200 p-2.5 px-3 rounded-xl flex items-center space-x-2.5 min-w-0 flex-1 sm:flex-initial">
                     <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm shrink-0">
                         <i class="fa-solid fa-chart-line"></i>
                     </div>
@@ -40,15 +43,18 @@
         </div>
     </div>
 
+    <!-- PARTIAL FORM FILTER -->
     @include('transactions.partials.filter-form')
 
+    <!-- PARTIAL TABEL TRANSAKSI -->
     @include('transactions.partials.transaction-table')
 
 </div>
 
+<!-- MODAL BATALKAN TRANSAKSI -->
 <div id="cancelTransactionModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[99999] flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-100 my-auto">
-        
+
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <h4 class="font-black text-rose-600 text-sm flex items-center">
                 <i class="fa-solid fa-triangle-exclamation mr-2 text-base"></i> Batalkan Transaksi

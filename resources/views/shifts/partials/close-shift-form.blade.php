@@ -12,7 +12,7 @@
             <!-- TOMBOL UNTUK MEMBUKA MODAL ABSEN SUSULAN -->
             <button type="button" onclick="openJoinShiftModal()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-[11px] sm:text-xs font-black px-3 py-1.5 rounded-xl transition shadow-md flex items-center space-x-1.5 cursor-pointer">
                 <i class="fa-solid fa-user-plus text-[10px]"></i>
-                <span>+ Absen Susulan</span>
+                <span>Absen Susulan</span>
             </button>
 
             <span class="text-[10px] sm:text-xs bg-indigo-500/50 text-white font-mono px-2.5 py-1.5 rounded-xl font-bold border border-indigo-400/30 shrink-0">
@@ -53,7 +53,7 @@
                     </span>
                 </div>
 
-                <!-- MODAL UANG AWAL -->
+                <!-- MODAL UANG AWAL + TOMBOL EDIT (DAPAT DIKLIK KARYAWAN) -->
                 <div class="flex items-center justify-between pt-0.5">
                     <div class="flex items-center space-x-2.5">
                         <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
@@ -61,9 +61,20 @@
                         </span>
                         <span class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Modal Uang Awal</span>
                     </div>
-                    <span class="text-xs sm:text-sm font-mono font-black text-indigo-700">
-                        Rp {{ number_format($activeShift->cash_initial, 0, ',', '.') }}
-                    </span>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs sm:text-sm font-mono font-black text-indigo-700">
+                            Rp {{ number_format($activeShift->cash_initial, 0, ',', '.') }}
+                        </span>
+
+                        <!-- TOMBOL EDIT MODAL UNTUK KARYAWAN -->
+                        <button type="button" 
+                                onclick="openEditModalShiftModal({{ $activeShift->id }}, {{ $activeShift->cash_initial }})" 
+                                class="bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white px-2 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer flex items-center space-x-1 border border-indigo-100 active:scale-95" 
+                                title="Edit / Input Modal Shift">
+                            <i class="fa-solid fa-pen-to-square text-[16px]"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -95,8 +106,88 @@
     </div>
 </div>
 
+<!-- MODAL POP-UP EDIT MODAL AWAL (LENGKAP TUTUP FULLSCREEN TANPA CELAH PUTIH) -->
+<div id="editInitialCashModal" class="hidden fixed -inset-10  z-[999999] flex items-center justify-center p-4">
+    <!-- BACKDROP TAMBAHAN UNTUK MEMASTIKAN FULL HITAM -->
+    <div class="absolute inset-0 bg-slate-900/80" onclick="closeEditModalShiftModal()"></div>
+
+    <!-- KOTAK MODAL UTAMA -->
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-slate-100 relative z-10 my-auto transform transition-all">
+        
+        <!-- HEADER MODAL -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3.5">
+            <h4 class="font-black text-slate-800 text-base sm:text-lg flex items-center gap-2.5">
+                <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm shrink-0">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </span>
+                <span>Edit Modal Uang Awal</span>
+            </h4>
+            <button type="button" onclick="closeEditModalShiftModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- FORM MODAL -->
+        <form action="{{ route('shifts.update_initial_cash', $activeShift->id) }}" method="POST" class="space-y-4" onsubmit="prepareEditCashForm(this)">
+            @csrf
+            @method('PUT')
+
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Nominal Modal Baru (Rp)</label>
+                <div class="relative rounded-2xl shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-sm font-black">
+                        Rp
+                    </div>
+                    <input type="text" id="display_edit_cash_initial" required placeholder="Contoh: 350.000" autocomplete="off" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black font-mono text-sm sm:text-base focus:bg-white focus:outline-none focus:border-indigo-500 transition">
+                </div>
+                <input type="hidden" name="cash_initial" id="raw_edit_cash_initial" required>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 flex items-start space-x-2.5 text-xs text-amber-800 font-medium leading-relaxed">
+                <i class="fa-solid fa-circle-info text-amber-500 text-sm mt-0.5 shrink-0"></i>
+                <span>Perubahan modal awal ini akan langsung memperbarui kalkulasi selisih kas pada pembukuan shift aktif.</span>
+            </div>
+
+            <div class="flex space-x-3 pt-2">
+                <button type="button" onclick="closeEditModalShiftModal()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-extrabold py-3.5 rounded-2xl cursor-pointer transition active:scale-95">
+                    Batal
+                </button>
+                <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-black py-3.5 rounded-2xl shadow-lg shadow-indigo-200 cursor-pointer transition active:scale-95 flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Simpan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @push('scripts')
 <script>
+    // FUNGSI UNTUK MENGONTROL MODAL EDIT MODAL SHIFT
+    function openEditModalShiftModal(shiftId, currentCash) {
+        let modal = document.getElementById('editInitialCashModal');
+        if (!modal) return;
+        
+        let displayInput = document.getElementById('display_edit_cash_initial');
+        let rawInput = document.getElementById('raw_edit_cash_initial');
+
+        rawInput.value = currentCash;
+        displayInput.value = parseInt(currentCash, 10).toLocaleString('id-ID');
+        
+        modal.classList.remove('hidden');
+    }
+
+    function closeEditModalShiftModal() {
+        let modal = document.getElementById('editInitialCashModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function prepareEditCashForm(form) {
+        let displayVal = document.getElementById('display_edit_cash_initial').value;
+        let rawVal = displayVal.replace(/\D/g, '');
+        document.getElementById('raw_edit_cash_initial').value = rawVal;
+    }
+
     // FORMAT MASKER RIBUAN UNTUK PENUTUPAN SHIFT
     function formatShiftCloseCurrency(input, targetHiddenId) {
         let rawValue = input.value.replace(/\D/g, '');

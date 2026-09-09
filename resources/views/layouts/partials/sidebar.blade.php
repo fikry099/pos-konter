@@ -110,18 +110,19 @@
                     <span class="sidebar-text whitespace-nowrap ml-2">Restok Barang</span>
                 </a>
 
+                <!-- Tambahkan di dalam nav -->
+                <a href="{{ route('ppob_servers.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('ppob_servers.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Monitor & Saldo Server PPOB">
+                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-server text-sm group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Saldo Server</span>
+                </a>
+
                 <a href="{{ route('shifts.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('shifts.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Shift & Absensi">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-user-clock text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Shift & Absensi</span>
-                </a>
-
-                <a href="{{ route('transactions.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('transactions.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Riwayat Transaksi">
-                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-receipt text-sm group-hover:scale-110 transition-transform"></i>
-                    </div>
-                    <span class="sidebar-text whitespace-nowrap ml-2">Riwayat Transaksi</span>
                 </a>
 
                 <a href="{{ route('expenses.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('expenses.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pengeluaran Kas Toko">
@@ -136,6 +137,13 @@
                         <i class="fa-solid fa-rotate-left text-sm group-hover:scale-110 transition-transform"></i>
                     </div>
                     <span class="sidebar-text whitespace-nowrap ml-2">Retur & Penukaran</span>
+                </a>
+
+                <a href="{{ route('transactions.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('transactions.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Riwayat Transaksi">
+                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-receipt text-sm group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Riwayat Transaksi</span>
                 </a>
             @endif
         </nav>

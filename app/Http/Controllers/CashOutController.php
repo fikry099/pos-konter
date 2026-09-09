@@ -25,11 +25,9 @@ class CashOutController extends Controller
         $storeId = $this->getActiveStoreId();
         $activeShift = Shift::getActiveShift($storeId);
 
-        // Ambil data toko aktif untuk mendapatkan nama cabang (misal: "Wanncell")
         $store = \App\Models\Store::find($storeId);
         $storeName = $store ? $store->name : 'CABANG';
 
-        // Ambil riwayat tarik tunai khusus shift/hari ini
         $todayCashOuts = Transaction::where('store_id', $storeId)
             ->whereHas('details', function ($q) {
                 $q->where('custom_name', 'like', 'Tarik Tunai%');
@@ -48,12 +46,11 @@ class CashOutController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'cash_amount'    => 'required|numeric|min:1000',
-            'admin_fee'      => 'required|numeric|min:0',
-            'target_bank'    => 'required|string',
-            'account_number' => 'nullable|string',
-            'account_name'   => 'nullable|string',
-            'payment_proof'  => 'required|string', // Foto bukti transfer dari pelanggan wajib ada
+            'cash_amount'          => 'required|numeric|min:1000',
+            'admin_fee'            => 'required|numeric|min:0',
+            'admin_payment_method' => 'required|in:transfer,cash',
+            'target_bank'          => 'required|string',
+            'payment_proof'        => 'required|string',
         ], [
             'cash_amount.min'        => 'Nominal tarik tunai minimal Rp 1.000',
             'payment_proof.required' => 'Foto bukti transfer ke rekening cabang wajib diambil!',
@@ -68,21 +65,20 @@ class CashOutController extends Controller
 
         $cashAmount = (float) $request->cash_amount;
         $adminFee   = (float) $request->admin_fee;
-        $totalTransfer = $cashAmount + $adminFee; // Total yang harus ditransfer pelanggan ke rekening/QRIS toko
+        $adminMethod = $request->admin_payment_method; // 'transfer' atau 'cash'
 
-        $bankName  = strtoupper(trim($request->target_bank));
-        $accNumber = $request->account_number;
-        $accName   = $request->account_name;
+        // Hitung total transfer masuk berdasarkan pilihan bayar admin
+        $totalTransfer = ($adminMethod === 'transfer') ? ($cashAmount + $adminFee) : $cashAmount;
 
-        // KODE PERBAIKAN:
-        // Ambil ID kategori pertama yang ada di database agar category_id terisi
+        $bankName = strtoupper(trim($request->target_bank));
+
         $firstCategory = \App\Models\Category::first();
         $categoryId = $firstCategory ? $firstCategory->id : 1;
 
         $dummyProduct = Product::firstOrCreate(
             ['code' => 'TARIK-TUNAI'],
             [
-                'category_id'   => $categoryId, // <--- Penambahan category_id agar tidak error MySQL 1364
+                'category_id'   => $categoryId,
                 'name'          => 'Layanan Tarik Tunai',
                 'type'          => 'digital',
                 'cost_price'    => 0,
@@ -92,31 +88,22 @@ class CashOutController extends Controller
             ]
         );
 
-        // Format nama custom untuk invoice/struk
-        // Contoh: "Tarik Tunai BANK BCA - Rp 500.000 (Ahmad)"
-        $customName = 'Tarik Tunai ' . $bankName . ' - Rp ' . number_format($cashAmount, 0, ',', '.');
-        if ($accName) {
-            $customName .= ' (' . $accName . ')';
-        }
+        $adminTag = ($adminMethod === 'cash') ? ' (Admin Tunai)' : ' (Admin Transfer)';
+        $customName = 'Tarik Tunai ' . $bankName . ' - Rp ' . number_format($cashAmount, 0, ',', '.') . $adminTag;
 
         DB::beginTransaction();
         try {
-            // Logika Transaksi:
-            // 1. Total Price = Admin Fee (karena omset bersih/penjualan kita adalah admin fee-nya)
-            // 2. Profit = Admin Fee
-            // 3. Total Cost = 0
-            // 4. Pay Amount = Total Transfer masuk secara digital
             $transaction = Transaction::create([
                 'store_id'       => $storeId,
                 'invoice_code'   => 'WD-' . date('YmdHis') . '-' . rand(100, 999),
                 'user_id'        => Auth::id() ?? $activeShift->user_id,
                 'shift_id'       => $activeShift->id,
                 'total_cost'     => 0,
-                'total_price'    => $adminFee, // Yang masuk perhitungan omset/pendapatan adalah biaya admin
+                'total_price'    => $adminFee,
                 'total_profit'   => $adminFee,
                 'pay_amount'     => $totalTransfer,
                 'change_amount'  => 0,
-                'payment_method' => 'qris', // Masuk via transfer non-tunai
+                'payment_method' => 'qris',
                 'payment_proof'  => $request->payment_proof,
             ]);
 
@@ -125,7 +112,7 @@ class CashOutController extends Controller
                 'product_id'        => $dummyProduct->id,
                 'custom_name'       => $customName,
                 'served_by_user_id' => Auth::id(),
-                'target_phone'      => $accNumber,
+                'target_phone'      => null,
                 'digital_provider'  => $bankName,
                 'qty'               => 1,
                 'cost_price'        => 0,

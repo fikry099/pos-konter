@@ -229,7 +229,7 @@ function fetchProductsFromServer(category, provider) {
         });
 }
 
-// 7. RENDER ITEM PRODUK KETIKA DILOAD
+// 7. RENDER ITEM PRODUK KETIKA DILOAD (DIPERBAIKI DENGAN DATA-NAME SPESIFIK)
 function renderProductsHTML(products, container) {
     container.innerHTML = '';
 
@@ -242,11 +242,17 @@ function renderProductsHTML(products, container) {
     if (isBankOrWallet) {
         let providerTitleParam = (window.selectedProviderTitle || selectedProvider || '').replace(/'/g, "\\'");
 
+        // PERBAIKAN: Buat kata kunci data-name presisi agar tidak memicu deteksi "pulsa"
+        let customDataName = "nominal bebas kustom transfer topup ewallet " + provStr;
+        if (catStr.includes('bank') || provStr.includes('bank') || catStr.includes('transfer')) {
+            customDataName = "nominal bebas kustom transfer bank " + provStr;
+        }
+
         let customCardHTML = `
             <div id="card_custom_amount" 
                  onclick="openCustomAmountModal('${providerTitleParam}')" 
                  class="product-item bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl shadow-md hover:shadow-indigo-200 p-3.5 flex flex-col justify-between transition cursor-pointer active:scale-98 group"
-                 data-name="nominal bebas kustom transfer topup pulsa"
+                 data-name="${customDataName}"
                  data-code="CUSTOM"
                  data-price="0">
                 <div>
@@ -372,7 +378,7 @@ function resetCategoryNavigation() {
         return;
     }
 
-    // JIKA BERADA DI GRID PRODUK HASIL LEVEL 2 (PULSA, HP, EWALLET, BANK, ATAU AKSESORIS UTAMA) -> MUNDUR KE LEVEL 2
+    // JIKA BERADA DI GRID PRODUK HASIL LEVEL 2 -> MUNDUR KE LEVEL 2
     if (navLevel === 3 && ['pulsa', 'voucher', 'perdana', 'kartu-perdana', 'handphone', 'hp', 'ewallet', 'bank', 'transfer', 'transfer-bank', 'aksesoris', 'aksesoris-hp'].includes(selectedCategory)) {
         navLevel = 2;
         selectedProvider = '';

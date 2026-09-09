@@ -19,7 +19,15 @@
             </p>
         </div>
 
-        <div class="flex items-center shrink-0">
+        <!-- TOMBOL AKSI KANAN (EKSPOR & RESTOK) -->
+        <div class="flex items-center gap-2 shrink-0">
+            <!-- TOMBOL EKSPOR EXCEL DENGAN PARAMETER FILTER DINAMIS -->
+            <a href="#" id="export_excel_btn" onclick="triggerExportExcel(event)" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs px-4 py-2 rounded-xl font-extrabold transition shadow-md shadow-emerald-200 flex items-center space-x-1.5 cursor-pointer whitespace-nowrap">
+                <i class="fa-solid fa-file-excel text-xs"></i>
+                <span>Ekspor Excel</span>
+            </a>
+
+            <!-- TOMBOL MODAL RESTOK -->
             <button type="button" onclick="openRestockModal()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs px-4 py-2 rounded-xl font-extrabold transition shadow-md shadow-indigo-200 flex items-center space-x-1.5 cursor-pointer whitespace-nowrap">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Restok Produk</span>
@@ -658,6 +666,22 @@
         } else {
             badgeContainer.classList.add('hidden');
         }
+    }
+
+    // FUNGSI UNTUK MEMBAWA FILTER AKTIF KE URL EXPORT EXCEL
+    function triggerExportExcel(e) {
+        e.preventDefault();
+        
+        let searchVal = document.getElementById('search_product_input').value.trim();
+        let baseUrl = "{{ route('restocks.export_excel') }}";
+        
+        let params = new URLSearchParams();
+        if (searchVal) params.append('search', searchVal);
+        if (activeCategory && activeCategory !== 'all') params.append('category', activeCategory);
+        if (activeSubFilter) params.append('sub_filter', activeSubFilter);
+
+        let finalUrl = baseUrl + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = finalUrl;
     }
 </script>
 @endpush

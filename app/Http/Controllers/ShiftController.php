@@ -206,4 +206,20 @@ class ShiftController extends Controller
 
         return redirect()->route('shifts.index')->with('success', 'Shift berhasil ditutup dan ringkasan pembukuan telah disimpan!');
     }
+
+    /**
+     * Update/revisi modal uang awal shift aktif
+     */
+    public function updateInitialCash(Request $request, Shift $shift)
+    {
+        $request->validate([
+            'cash_initial' => 'required|numeric|min:0',
+        ]);
+
+        $shift->update([
+            'cash_initial' => $request->cash_initial,
+        ]);
+
+        return back()->with('success', 'Modal uang awal berhasil diperbarui!');
+    }
 }

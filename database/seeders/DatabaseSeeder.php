@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             EmployeeSeeder::class,
             CategorySeeder::class,
             AksesorisSeeder::class,
-
+            PpobServerSeeder::class,
             // 1. Buat Data Master Produk Terlebih Dahulu
             PulsaProductSeeder::class,
             VoucherProductSeeder::class,

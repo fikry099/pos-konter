@@ -16,6 +16,7 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\BookkeepingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CashOutController;
+use App\Http\Controllers\PpobServerController;
 
 // Middlewares
 use App\Http\Middleware\EnsureShiftIsOpen;
@@ -56,17 +57,22 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/shift/open', [ShiftController::class, 'store'])->name('shifts.store');
     Route::post('/shift/close/{id}', [ShiftController::class, 'closeShift'])->name('shifts.close');
     Route::post('/shift/switch/{id}', [ShiftController::class, 'switchShift'])->name('shifts.switch');
+    Route::put('/shifts/{shift}/update-initial-cash', [ShiftController::class, 'updateInitialCash'])->name('shifts.update_initial_cash');
 
     // Restok & Reorder Voucher
     Route::get('/products/restock', [ProductController::class, 'restockView'])->name('products.restock.index');
     Route::post('/products/restock', [ProductController::class, 'processRestock'])->name('products.restock.process');
     Route::get('/products/reorder', [ProductController::class, 'reorderOrder'])->name('products.reorder');
+    Route::get('/restocks/export-excel', [ProductController::class, 'exportExcel'])->name('restocks.export_excel');
 
     // Riwayat Transaksi & Audit Struk
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('/transactions/export-excel', [TransactionController::class, 'exportExcel'])->name('transactions.export_excel');
     Route::get('/transactions/{id}', [TransactionController::class, 'show'])->name('transactions.show');
     Route::post('/transactions/{id}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
+
+    // API Sub-Kategori untuk Filter Transaksi
+    Route::get('/categories/{parentId}/sub-categories', [TransactionController::class, 'getSubCategories'])->name('categories.sub_categories');
 
     // Modul Pengeluaran Kas Operasional (Expenses)
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -82,6 +88,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/returns/create', [ReturnController::class, 'create'])->name('returns.create');
     Route::get('/returns/search-transaction', [ReturnController::class, 'searchTransaction'])->name('returns.search');
     Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
+
+    // Saldo Server PPOB
+    Route::get('/ppob-servers', [PpobServerController::class, 'index'])->name('ppob_servers.index');
+    Route::post('/ppob-servers/add-server', [PpobServerController::class, 'storeServer'])->name('ppob_servers.store');
+    Route::post('/ppob-servers/add-deposit', [PpobServerController::class, 'addDeposit'])->name('ppob_servers.deposit');
 
     /*
     |--------------------------------------------------------------------------
