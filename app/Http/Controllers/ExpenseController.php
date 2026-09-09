@@ -9,11 +9,11 @@ use Illuminate\Http\Request;
 class ExpenseController extends Controller
 {
     /**
-     * Helper privat untuk mengambil store_id aktif
+     * Helper privat untuk mengambil store_id aktif dengan fallback aman
      */
     private function getActiveStoreId()
     {
-        return auth()->user()->store_id ?? session('selected_store_id');
+        return auth()->user()->store_id ?? session('selected_store_id') ?? 1;
     }
 
     /**
@@ -64,7 +64,12 @@ class ExpenseController extends Controller
             ->with(['user', 'shift']);
 
         $expenses = $query->latest()->paginate(15)->withQueryString();
-        $totalExpenses = (clone $query)->sum('amount');
+        // HANYA MENGHITUNG BEBAN OPERASIONAL SEBAGAI PENGURANG LABA BERSIH
+        $totalExpenses  = (float) Expense::forStore($storeId)
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->where('category', 'operational') // <--- Modal restok tidak ikut mengurangi laba bersih
+            ->sum('amount');
 
         return view('owner.expenses.index', compact('expenses', 'totalExpenses', 'month', 'year'));
     }
@@ -89,7 +94,7 @@ class ExpenseController extends Controller
         ]);
 
         Expense::create([
-            'store_id'    => $storeId, // Injeksi store_id otomatis
+            'store_id'    => $storeId,
             'shift_id'    => $activeShift->id,
             'user_id'     => auth()->id(),
             'description' => $request->description,
@@ -121,18 +126,20 @@ class ExpenseController extends Controller
         $storeId = $this->getActiveStoreId();
 
         $request->validate([
+            'category'    => 'required|in:operational,restock',
             'description' => 'required|string|max:255',
             'amount'      => 'required|numeric|min:1',
         ]);
 
         Expense::create([
             'store_id'    => $storeId,
-            'shift_id'    => null, // Tidak terikat shift karena dicatat langsung oleh owner
+            'shift_id'    => null, 
             'user_id'     => auth()->id(),
+            'category'    => $request->category, // <--- Simpan kategori pengeluaran
             'description' => $request->description,
             'amount'      => $request->amount,
         ]);
 
-        return redirect()->route('owner.expenses.index')->with('success', 'Pengeluaran atau pembayaran restok berhasil dicatat!');
+        return redirect()->route('owner.expenses.index')->with('success', 'Catatan pengeluaran berhasil disimpan!');
     }
 }

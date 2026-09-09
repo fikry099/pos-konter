@@ -126,6 +126,7 @@ class BookkeepingController extends Controller
         $totalExpenses  = (float) Expense::forStore($storeId)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
+            ->where('category', 'operational')
             ->sum('amount');
 
         $totalBonusAllocation = $employeeReport->sum('total_bonus');

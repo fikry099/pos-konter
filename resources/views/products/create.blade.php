@@ -49,7 +49,7 @@
             <!-- NAMA PRODUK -->
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Produk <span class="text-rose-500">*</span></label>
-                <input type="text" name="name" required placeholder="Contoh: Pulsa Telkomsel 50k / TWS M10" class="w-full bg-slate-50 text-slate-800 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white transition placeholder-slate-400">
+                <input type="text" name="name" required placeholder="Contoh: Pulsa Telkomsel 50k / Samsung Galaxy A05" class="w-full bg-slate-50 text-slate-800 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white transition placeholder-slate-400">
             </div>
 
             <!-- KODE SKU / BARCODE -->
@@ -107,8 +107,8 @@
                 </span>
             </div>
             <select name="type" id="product_type" onchange="toggleStockFields()" required class="w-full bg-slate-50 text-slate-800 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white transition cursor-pointer">
-                <option value="digital">Digital (Pulsa / Paket Data / E-Wallet / Transfer Bank)</option>
-                <option value="physical">Fisik (Aksesoris / Voucher Fisik / Perdana)</option>
+                <option value="digital">Digital </option>
+                <option value="physical">Fisik </option>
             </select>
         </div>
 
@@ -211,7 +211,7 @@
 
         if (categoryName.includes('pulsa') || categoryName.includes('voucher') || categoryName.includes('perdana')) {
             subL1Label.innerHTML = 'Pilih Provider <span class="text-rose-500">*</span>';
-        } else if (categoryName.includes('handphone') || categoryName.includes('hp')) {
+        } else if (categoryName.includes('handphone') || categoryName.includes('hp') || categoryName.includes('smartphone')) {
             subL1Label.innerHTML = 'Kondisi / Jenis HP <span class="text-rose-500">*</span>';
             // Otomatis set produk ke Fisik jika memilih Handphone
             if (productTypeSelect) {
@@ -307,7 +307,14 @@
         let typeSelect = document.getElementById('product_type');
         let badge = document.getElementById('auto_detect_badge');
 
-        const physicalKeywords = ['voucher', 'aksesoris', 'fisik', 'kartu', 'perdana', 'casing', 'tempered', 'hydrogel', 'charger', 'kabel', 'power bank', 'tws', 'headset', 'speaker', 'flashdisk', 'memory', 'holder', 'tripod', 'stand'];
+        // Kata kunci barang fisik (termasuk handphone, hp, smartphone, android, iphone)
+        const physicalKeywords = [
+            'voucher', 'aksesoris', 'fisik', 'kartu', 'perdana', 'casing', 
+            'tempered', 'hydrogel', 'charger', 'kabel', 'power bank', 'tws', 
+            'headset', 'speaker', 'flashdisk', 'memory', 'holder', 'tripod', 
+            'stand', 'handphone', 'hp', 'smartphone', 'android', 'iphone'
+        ];
+        
         let isPhysical = physicalKeywords.some(keyword => nameStr.includes(keyword));
 
         if (isPhysical) {

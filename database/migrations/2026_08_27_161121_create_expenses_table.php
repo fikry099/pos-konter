@@ -14,11 +14,12 @@ return new class extends Migration
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('store_id')->constrained()->onDelete('cascade'); // Cabang lokasi pengeluaran
-            $table->foreignId('shift_id')->constrained();
+            $table->foreignId('shift_id')->nullable()->constrained();
             $table->foreignId('user_id')->constrained();
             $table->string('description');
             $table->decimal('amount', 12, 2);
             $table->timestamps();
+            $table->string('category')->default('operational');
         });
     }
 

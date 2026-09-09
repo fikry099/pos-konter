@@ -36,16 +36,27 @@
                 <i class="fa-solid fa-circle-plus text-indigo-600 mr-1.5"></i> Catat Pengeluaran Baru
             </h3>
 
-            <form action="{{ route('owner.expenses.store') }}" method="POST" class="space-y-3">
+            <form action="{{ route('owner.expenses.store') }}" method="POST" class="space-y-3" onsubmit="prepareExpenseForm()">
                 @csrf
+                <input type="hidden" name="amount" id="raw_amount">
+
+                <!-- PILIHAN KATEGORI PENGELUARAN -->
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Kategori Pengeluaran <span class="text-rose-500">*</span></label>
+                    <select name="category" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="operational">Beban Operasional (Listrik, WiFi, dll - Mengurangi Laba)</option>
+                        <option value="restock">Pembelian Stok / Saldo (Modal - Tidak Mengurangi Laba)</option>
+                    </select>
+                </div>
+
                 <div>
                     <label class="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Keterangan / Keperluan</label>
-                    <input type="text" name="description" required autocomplete="off" placeholder="Misal: Bayar restok voucher / Isi saldo server" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" name="description" required autocomplete="off" placeholder="Misal: Bayar WiFi / Restok Voucher" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
 
                 <div>
                     <label class="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Nominal (Rp)</label>
-                    <input type="number" name="amount" required min="1" placeholder="Contoh: 150000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="formatted_amount" required autocomplete="off" placeholder="Contoh: 150.000" onkeyup="formatRupiahInput(this)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
 
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-extrabold py-2.5 rounded-xl text-xs transition shadow-md shadow-indigo-200 cursor-pointer">
@@ -94,6 +105,7 @@
                             <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-[10px] uppercase font-extrabold">
                                 <th class="py-3 px-3 pl-4">Waktu</th>
                                 <th class="py-3 px-3">Keterangan / Keperluan</th>
+                                <th class="py-3 px-3">Kategori</th>
                                 <th class="py-3 px-3">Pencatat</th>
                                 <th class="py-3 px-3 text-right pr-4">Nominal</th>
                             </tr>
@@ -107,6 +119,13 @@
                                     <td class="py-3 px-3 text-slate-800 font-bold">
                                         {{ $exp->description }}
                                     </td>
+                                    <td class="py-3 px-3">
+                                        @if(($exp->category ?? 'operational') === 'operational')
+                                            <span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Operasional</span>
+                                        @else
+                                            <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Restok/Modal</span>
+                                        @endif
+                                    </td>
                                     <td class="py-3 px-3 text-slate-600">
                                         {{ $exp->user->name ?? '-' }}
                                         <span class="text-[10px] text-slate-400 block font-normal">({{ ucfirst($exp->user->role ?? 'owner') }})</span>
@@ -117,7 +136,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="py-10 text-center text-slate-400">
+                                    <td colspan="5" class="py-10 text-center text-slate-400">
                                         <i class="fa-solid fa-receipt text-3xl mb-1 text-slate-300 block"></i>
                                         <span class="text-xs font-bold text-slate-500">Belum ada catatan pengeluaran pada periode ini.</span>
                                     </td>
@@ -140,3 +159,30 @@
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    function formatRupiahInput(input) {
+        let value = input.value.replace(/[^,\d]/g, '').toString();
+        let split = value.split(',');
+        let sisa = split[0].length % 3;
+        let rupiah = split[0].substr(0, sisa);
+        let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+        if (ribuan) {
+            let separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
+        }
+
+        rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+        input.value = rupiah;
+    }
+
+    function prepareExpenseForm() {
+        let formattedInput = document.getElementById('formatted_amount').value;
+        let rawValue = formattedInput.replace(/\./g, ''); 
+        document.getElementById('raw_amount').value = rawValue;
+        return true;
+    }
+</script>
+@endpush
