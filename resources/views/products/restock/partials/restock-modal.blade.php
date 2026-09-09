@@ -12,7 +12,8 @@
             </button>
         </div>
 
-        <form action="{{ route('products.restock.process') }}" method="POST" class="space-y-4">
+        <!-- PERBAIKAN: panggil handler submitRestockFormAjax(event) pada event onsubmit -->
+        <form id="restock_form" action="{{ route('products.restock.process') }}" method="POST" onsubmit="submitRestockFormAjax(event)" class="space-y-4">
             @csrf
             
             <!-- 1. KATEGORI UTAMA (LEVEL 1) -->
@@ -125,7 +126,7 @@
             <div>
                 <label class="block text-xs font-extrabold text-slate-700 mb-2">Jumlah Barang Masuk (Pcs) <span class="text-rose-500">*</span></label>
                 <div class="relative">
-                    <input type="number" name="qty_add" min="1" value="1" required placeholder="Contoh: 10" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-black text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    <input type="number" name="quantity" min="1" value="1" required placeholder="Contoh: 10" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-black text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
                     <span class="absolute inset-y-0 right-0 pr-4 flex items-center text-xs font-bold text-slate-400">Pcs</span>
                 </div>
             </div>

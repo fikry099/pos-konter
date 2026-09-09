@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="space-y-4 max-w-4xl mx-auto">
+<div class="space-y-4 w-full">
 
     <!-- HEADER DETAIL & FILTER -->
     <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">

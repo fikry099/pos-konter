@@ -60,6 +60,13 @@
                     <span class="sidebar-text whitespace-nowrap ml-2">Monitoring</span>
                 </a>
 
+                <a href="{{ route('owner.expenses.index') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('owner.expenses.*') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pengeluaran & Pembelian Voucher Toko">
+                    <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-wallet text-sm group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap ml-2">Pengeluaran Kas</span>
+                </a>
+
                 <a href="{{ route('owner.bookkeeping') }}" class="flex items-center p-1.5 rounded-xl text-xs font-bold {{ request()->routeIs('owner.bookkeeping') || request()->routeIs('owner.attendances.detail') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }} transition group" title="Pembukuan & Rekap Bonus Karyawan">
                     <div class="w-10 h-10 flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-book text-sm group-hover:scale-110 transition-transform"></i>

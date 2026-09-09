@@ -49,6 +49,27 @@ class ExpenseController extends Controller
     }
 
     /**
+     * Halaman Pengeluaran Khusus Owner (Dengan Filter Bulan & Tahun)
+     */
+    public function ownerIndex(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+
+        $month = str_pad($request->input('month', date('m')), 2, '0', STR_PAD_LEFT);
+        $year  = $request->input('year', date('Y'));
+
+        $query = Expense::forStore($storeId)
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->with(['user', 'shift']);
+
+        $expenses = $query->latest()->paginate(15)->withQueryString();
+        $totalExpenses = (clone $query)->sum('amount');
+
+        return view('owner.expenses.index', compact('expenses', 'totalExpenses', 'month', 'year'));
+    }
+
+    /**
      * Menyimpan Catatan Pengeluaran Kas Baru (Terikat Shift Aktif & Cabang)
      */
     public function store(Request $request)
@@ -90,5 +111,28 @@ class ExpenseController extends Controller
         $expense->delete();
 
         return redirect()->route('expenses.index')->with('success', 'Catatan pengeluaran berhasil dihapus.');
+    }
+
+    /**
+     * Menyimpan Pengeluaran Baru Langsung dari Panel Owner
+     */
+    public function ownerStore(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+
+        $request->validate([
+            'description' => 'required|string|max:255',
+            'amount'      => 'required|numeric|min:1',
+        ]);
+
+        Expense::create([
+            'store_id'    => $storeId,
+            'shift_id'    => null, // Tidak terikat shift karena dicatat langsung oleh owner
+            'user_id'     => auth()->id(),
+            'description' => $request->description,
+            'amount'      => $request->amount,
+        ]);
+
+        return redirect()->route('owner.expenses.index')->with('success', 'Pengeluaran atau pembayaran restok berhasil dicatat!');
     }
 }

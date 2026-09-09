@@ -6,7 +6,7 @@
 @endpush
 
 @section('content')
-<div class="max-w-4xl mx-auto space-y-3.5">
+<div class="w-full">
     
     <!-- HEADER HALAMAN DENGAN TOMBOL KEMBALI IKON < DI KIRI -->
     <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">

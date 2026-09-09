@@ -104,9 +104,24 @@ class BookkeepingController extends Controller
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month);
 
-        $totalOmset     = (float) (clone $trxQuery)->sum('total_price');
-        $totalCost      = (float) (clone $trxQuery)->sum('total_cost');
-        $grossProfit    = (float) (clone $trxQuery)->sum('total_profit');
+        // Ambil seluruh collection transaksi bulan ini agar penyiangan case-insensitive cepat & akurat
+        $transactions = (clone $trxQuery)->get();
+
+        $totalOmset     = (float) $transactions->sum('total_price');
+        $totalCost      = (float) $transactions->sum('total_cost');
+        $grossProfit    = (float) $transactions->sum('total_profit');
+
+        // Hitung Uang Tunai (Bebas masalah huruf besar/kecil)
+        $totalCash = (float) $transactions->filter(function($trx) {
+            $method = strtolower($trx->payment_method ?? '');
+            return in_array($method, ['cash', 'tunai', 'cash/tunai', '']);
+        })->sum('total_price');
+
+        // Hitung QRIS & Non-Tunai (Bebas masalah huruf besar/kecil)
+        $totalQris = (float) $transactions->filter(function($trx) {
+            $method = strtolower($trx->payment_method ?? '');
+            return in_array($method, ['qris', 'transfer', 'bank', 'ewallet', 'non-cash']);
+        })->sum('total_price');
 
         $totalExpenses  = (float) Expense::forStore($storeId)
             ->whereYear('created_at', $year)
@@ -123,26 +138,58 @@ class BookkeepingController extends Controller
             'total_expenses'         => $totalExpenses,
             'total_bonus_allocation' => $totalBonusAllocation,
             'net_profit'             => $netProfit,
+            'total_cash'             => $totalCash, // <--- PENAMBAHAN KEY DANA TUNAI
+            'total_qris'             => $totalQris, // <--- PENAMBAHAN KEY SALDO QRIS
         ];
 
-        // 3. AMBIL HISTORI RESTOK BARANG PERIODE INI
-        $restockHistories = Restock::where('store_id', $storeId)
+        // Hitung total estimasi modal restok periode ini tanpa memuat seluruh baris tabel
+        $totalRestockCost = Restock::where('store_id', $storeId)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
-            ->with(['product', 'user'])
-            ->latest()
-            ->get();
+            ->sum('total_cost');
 
-        $totalRestockCost = $restockHistories->sum('total_cost');
-
-        // MENGGUNAKAN 'owner.bookkeeping.index' SESUAI LOKASI FILE BLADE
         return view('owner.bookkeeping.index', compact(
             'selectedStore', 
             'month', 
             'year', 
             'employeeReport', 
             'financialSummary', 
-            'restockHistories', 
+            'totalRestockCost'
+        ));
+    }
+
+    /**
+     * METHOD BARU: Halaman Khusus Riwayat Restok Barang (Dedicated View)
+     */
+    public function restockHistory(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+        $selectedStore = Store::find($storeId);
+
+        $month = str_pad($request->input('month', date('m')), 2, '0', STR_PAD_LEFT);
+        $year  = $request->input('year', date('Y'));
+
+        $query = Restock::where('store_id', $storeId)
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->with(['product', 'user']);
+
+        if ($request->filled('search')) {
+            $search = strtolower(trim($request->search));
+            $query->whereHas('product', function ($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+                  ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"]);
+            });
+        }
+
+        $totalRestockCost = (clone $query)->sum('total_cost');
+        $restockHistories = $query->latest()->paginate(15)->withQueryString();
+
+        return view('owner.bookkeeping.restock-history', compact(
+            'selectedStore',
+            'month',
+            'year',
+            'restockHistories',
             'totalRestockCost'
         ));
     }

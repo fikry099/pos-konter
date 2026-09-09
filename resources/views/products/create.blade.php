@@ -183,11 +183,12 @@
         let mainSelect = document.getElementById('main_category_select');
         let selectedOption = mainSelect.options[mainSelect.selectedIndex];
         let parentId = mainSelect.value;
-        let categoryName = selectedOption.getAttribute('data-name') || '';
+        let categoryName = selectedOption ? (selectedOption.getAttribute('data-name') || '') : '';
 
         let subL1Container = document.getElementById('sub_level1_container');
         let subL1Select = document.getElementById('sub_level1_select');
         let subL1Label = document.getElementById('sub_level1_label');
+        
         let subL2Container = document.getElementById('sub_level2_container');
         let subL2Select = document.getElementById('sub_level2_select');
         let finalCatInput = document.getElementById('final_category_id');
@@ -204,23 +205,35 @@
             return;
         }
 
-        let options = subL1Select.querySelectorAll('.sub-l1-option');
+        // PENYESUAIAN DETEKSI OTOMATIS JENIS PRODUK & LABEL
+        let productTypeSelect = document.getElementById('product_type');
+        let autoDetectBadge = document.getElementById('auto_detect_badge');
+
+        if (categoryName.includes('pulsa') || categoryName.includes('voucher') || categoryName.includes('perdana')) {
+            subL1Label.innerHTML = 'Pilih Provider <span class="text-rose-500">*</span>';
+        } else if (categoryName.includes('handphone') || categoryName.includes('hp')) {
+            subL1Label.innerHTML = 'Kondisi / Jenis HP <span class="text-rose-500">*</span>';
+            // Otomatis set produk ke Fisik jika memilih Handphone
+            if (productTypeSelect) {
+                productTypeSelect.value = 'physical';
+                toggleStockFields();
+                if (autoDetectBadge) autoDetectBadge.classList.remove('hidden');
+            }
+        } else {
+            subL1Label.innerHTML = 'Sub-Kategori / Jenis <span class="text-rose-500">*</span>';
+        }
+
+        let l1Options = subL1Select.querySelectorAll('.sub-l1-option');
         let hasChild = false;
 
-        options.forEach(opt => {
-            if (opt.getAttribute('data-parent') === parentId) {
+        l1Options.forEach(opt => {
+            if (String(opt.getAttribute('data-parent')) === String(parentId)) {
                 opt.classList.remove('hidden');
                 hasChild = true;
             } else {
                 opt.classList.add('hidden');
             }
         });
-
-        if (categoryName.includes('pulsa') || categoryName.includes('paket') || categoryName.includes('voucher') || categoryName.includes('data')) {
-            subL1Label.innerHTML = 'PILIH PROVIDER <span class="text-rose-500">*</span>';
-        } else {
-            subL1Label.innerHTML = 'SUB-KATEGORI <span class="text-rose-500">*</span>';
-        }
 
         if (hasChild) {
             subL1Container.classList.remove('hidden');
@@ -231,8 +244,6 @@
             subL1Select.removeAttribute('required');
             finalCatInput.value = parentId;
         }
-
-        detectProductType(categoryName);
     }
 
     function handleSubLevel1Change() {

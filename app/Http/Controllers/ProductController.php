@@ -19,19 +19,24 @@ class ProductController extends Controller
     }
 
     /**
-     * Menampilkan Daftar Seluruh Produk (Tanpa Pagination untuk Filter JS)
+     * Menampilkan Daftar Seluruh Produk (Beserta Stok Cabang Aktif)
      */
     public function index(Request $request)
     {
-        // Load relasi category beserta parent-nya agar breadcrumb hirarki dapat tampil
-        $query = Product::with('category.parent');
+        $storeId = $this->getActiveStoreId();
 
-        // Filter backend opsional jika ada parameter category_id
+        // Load relasi category dan stok khusus cabang aktif
+        $query = Product::with([
+            'category.parent',
+            'stocks' => function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            }
+        ]);
+
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
-        // PERBAIKAN: Spesifikasikan nama tabel products.name agar tidak 'ambiguous' saat JOIN
         if ($request->filled('search')) {
             $search = strtolower(trim($request->search));
             $query->where(function($q) use ($search) {
@@ -40,10 +45,7 @@ class ProductController extends Controller
             });
         }
 
-        // AMBIL SEMUA DATA DENGAN ->get() AGAR JS BISA MEMFILTER SEMUA ITEM
         $products   = $query->latest()->get();
-        
-        // Ambil hanya parent utama (parent_id null) dengan semua anak-anaknya secara rekursif
         $categories = Category::whereNull('parent_id')->with('allChildren')->get();
 
         return view('products.index', compact('products', 'categories'));
@@ -103,18 +105,28 @@ class ProductController extends Controller
     }
 
     /**
-     * Menampilkan Form Edit Produk
+     * Menampilkan Form Edit Produk (MEMUAT STOK CABANG AKTIF)
      */
     public function edit($id)
     {
         $product    = Product::findOrFail($id);
         $categories = Category::whereNull('parent_id')->with('allChildren')->get();
-        
+        $storeId    = $this->getActiveStoreId();
+
+        // Ambil stok khusus cabang aktif dari tabel StoreProductStock
+        $storeStock = StoreProductStock::where('store_id', $storeId)
+            ->where('product_id', $product->id)
+            ->first();
+
+        // Tempelkan nilai stok cabang ke objek $product
+        $product->current_store_stock = $storeStock ? $storeStock->stock : 0;
+        $product->current_min_stock   = $storeStock ? $storeStock->min_stock : 5;
+
         return view('products.edit', compact('product', 'categories'));
     }
 
     /**
-     * Mengubah Data Produk di Database
+     * Mengubah Data Produk & Stok Cabang di Database (MENYINKRONKAN STOREPRODUCTSTOCK)
      */
     public function update(Request $request, $id)
     {
@@ -127,8 +139,11 @@ class ProductController extends Controller
             'type'          => 'required|in:physical,digital',
             'cost_price'    => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
+            'stock'         => 'required_if:type,physical|nullable|numeric|min:0',
+            'min_stock'     => 'required_if:type,physical|nullable|numeric|min:0',
         ]);
 
+        // 1. Update Master Katalog Produk
         $product->update([
             'category_id'   => $request->category_id,
             'name'          => $request->name,
@@ -139,7 +154,23 @@ class ProductController extends Controller
             'is_active'     => $request->has('is_active'),
         ]);
 
-        return redirect()->route('products.index')->with('success', 'Data produk berhasil diperbarui!');
+        // 2. Update atau Inisialisasi Stok di Cabang Aktif saat ini
+        if ($request->type === 'physical') {
+            $storeId = $this->getActiveStoreId();
+
+            StoreProductStock::updateOrCreate(
+                [
+                    'store_id'   => $storeId,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'stock'     => $request->stock ?? 0,
+                    'min_stock' => $request->min_stock ?? 5,
+                ]
+            );
+        }
+
+        return redirect()->route('products.index')->with('success', 'Data produk dan stok cabang berhasil diperbarui!');
     }
 
     /**
@@ -158,7 +189,6 @@ class ProductController extends Controller
 
     /**
      * Menampilkan Rekomendasi Restok / Order Voucher & Barang Fisik
-     * OPTIMASI: Panggil kolom spesifik tanpa memuat query relasi bertingkat berlebih
      */
     public function reorderOrder()
     {
@@ -204,7 +234,6 @@ class ProductController extends Controller
     {
         $storeId = $this->getActiveStoreId();
 
-        // 1. Ambil stok produk fisik cabang (Pastikan 'selling_price' ikut ter-select!)
         $stocks = StoreProductStock::with([
                 'product' => function ($q) {
                     $q->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'is_active')
@@ -219,7 +248,6 @@ class ProductController extends Controller
 
         $products = $stocks;
 
-        // 2. Ambil kategori ringan untuk dropdown filter
         $categories = Category::whereNull('parent_id')
             ->select('id', 'name', 'slug')
             ->with('allChildren:id,parent_id,name,slug')
@@ -233,6 +261,9 @@ class ProductController extends Controller
      */
     public function processRestock(Request $request)
     {
+        $qtyAdd = $request->input('qty_add') ?? $request->input('quantity');
+        $request->merge(['qty_add' => $qtyAdd]);
+
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'qty_add'    => 'required|numeric|min:1',
@@ -241,7 +272,6 @@ class ProductController extends Controller
 
         $storeId = $this->getActiveStoreId();
 
-        // 1. Cari atau buat record stok fisik cabang ini
         $storeStock = StoreProductStock::firstOrCreate(
             [
                 'store_id'   => $storeId,
@@ -253,25 +283,37 @@ class ProductController extends Controller
             ]
         );
 
-        // 2. Increment stok fisik cabang aktif
-        $storeStock->increment('stock', $request->qty_add);
+        $storeStock->increment('stock', $qtyAdd);
+        $storeStock->refresh();
 
-        // 3. AMBIL HARGA MODAL DARI MASTER PRODUK UNTUK KALKULASI TOTAL MODAL
-        $product = \App\Models\Product::find($request->product_id);
+        $product = Product::find($request->product_id);
         $costPrice = $product ? (float) $product->cost_price : 0;
-        $totalCost = $costPrice * (int) $request->qty_add;
+        $totalCost = $costPrice * (int) $qtyAdd;
 
-        // 4. CATAT DOKUMEN HISTORI RESTOK
         \App\Models\Restock::create([
             'store_id'   => $storeId,
             'product_id' => $request->product_id,
             'user_id'    => auth()->id(),
-            'qty_add'    => (int) $request->qty_add,
+            'qty_add'    => (int) $qtyAdd,
             'cost_price' => $costPrice,
             'total_cost' => $totalCost,
             'notes'      => $request->notes,
         ]);
 
-        return redirect()->back()->with('success', "Berhasil menambahkan {$request->qty_add} pcs stok untuk {$storeStock->product->name}. Stok cabang sekarang: {$storeStock->stock} pcs.");
+        $message = "Berhasil menambahkan {$qtyAdd} pcs stok untuk {$product->name}. Stok cabang sekarang: {$storeStock->stock} pcs.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'   => true,
+                'message'   => $message,
+                'new_stock' => $storeStock->stock,
+                'product'   => [
+                    'id'   => $product->id,
+                    'name' => $product->name,
+                ]
+            ]);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }

@@ -1,5 +1,10 @@
 @extends('layouts.app')
 
+@push('styles')
+<!-- CDN SWEETALERT2 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+@endpush
+
 @section('content')
 <div class="w-full bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-4">
     <!-- HEADER HALAMAN DENGAN TOMBOL KEMBALI DI KIRI -->
@@ -15,7 +20,8 @@
         </div>
     </div>
 
-    <form action="{{ route('products.update', $product->id) }}" method="POST" class="space-y-4">
+    <!-- FORM UTAMA EDIT PRODUK -->
+    <form id="edit_product_form" action="{{ route('products.update', $product->id) }}" method="POST" onsubmit="validateEditProductForm(event)" class="space-y-4">
         @csrf
         @method('PUT')
 
@@ -59,11 +65,11 @@
             </div>
         </div>
 
-        <!-- LEVEL 2: SUB-KATEGORI LEVEL 1 (MUNCUL JIKA AKSESORIS DIPILIH) -->
+        <!-- LEVEL 2: SUB-KATEGORI LEVEL 1 / PROVIDER -->
         <div id="sub_level1_container" class="hidden space-y-1.5 p-3.5 bg-indigo-50/50 rounded-xl border border-indigo-100 transition-all">
-            <label class="block text-[10px] sm:text-xs font-bold text-indigo-900 uppercase tracking-wider">Sub-Kategori Aksesoris <span class="text-rose-500">*</span></label>
+            <label id="sub_level1_label" class="block text-[10px] sm:text-xs font-bold text-indigo-900 uppercase tracking-wider">Sub-Kategori / Provider <span class="text-rose-500">*</span></label>
             <select id="sub_level1_select" onchange="handleSubLevel1Change()" class="w-full bg-white text-slate-800 border border-indigo-200 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition cursor-pointer">
-                <option value="">-- Pilih Jenis Sub-Kategori --</option>
+                <option value="">-- Pilih Sub-Kategori --</option>
                 @foreach($categories as $parentCat)
                     @foreach($parentCat->children as $subCat1)
                         <option value="{{ $subCat1->id }}" data-parent="{{ $parentCat->id }}" data-name="{{ strtolower($subCat1->name) }}" class="sub-l1-option hidden">
@@ -140,11 +146,11 @@
         <div id="stock_fields" class="{{ $product->type === 'physical' ? 'grid' : 'hidden' }} grid-cols-1 sm:grid-cols-2 gap-3.5 bg-indigo-50/40 p-3.5 rounded-xl border border-indigo-100">
             <div>
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jumlah Stok <span class="text-rose-500">*</span></label>
-                <input type="number" name="stock" value="{{ $product->stock }}" min="0" class="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition">
+                <input type="number" name="stock" value="{{ old('stock', $product->current_store_stock ?? $product->stock ?? 0) }}" min="0" class="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition">
             </div>
             <div>
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Batas Minimum Stok (Alert) <span class="text-rose-500">*</span></label>
-                <input type="number" name="min_stock" value="{{ $product->min_stock }}" min="0" class="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition">
+                <input type="number" name="min_stock" value="{{ old('min_stock', $product->current_min_stock ?? $product->min_stock ?? 5) }}" min="0" class="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition">
             </div>
         </div>
 
@@ -159,18 +165,36 @@
             </label>
         </div>
 
-        <!-- TOMBOL AKSI -->
-        <div class="flex items-center justify-end space-x-2.5 pt-4 border-t border-slate-100">
-            <a href="{{ route('products.index') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 transition">Batal</a>
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-6 py-2.5 rounded-xl text-xs font-extrabold transition shadow-md shadow-indigo-200 flex items-center">
-                <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Perbarui Produk
+        <!-- FOOTER AKSI DENGAN TOMBOL HAPUS DI KIRI DAN TOMBOL BATAL/UPDATE DI KANAN -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <!-- TOMBOL HAPUS PRODUK (SISI KIRI) -->
+            <button type="button" onclick="confirmDeleteProduct()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200/80 px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer active:scale-95">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+                <span>Hapus Produk</span>
             </button>
+
+            <!-- TOMBOL BATAL & PERBARUI (SISI KANAN) -->
+            <div class="flex items-center space-x-2.5">
+                <a href="{{ route('products.index') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 transition">Batal</a>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-5 sm:px-6 py-2.5 rounded-xl text-xs font-extrabold transition shadow-md shadow-indigo-200 flex items-center cursor-pointer">
+                    <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Perbarui Produk
+                </button>
+            </div>
         </div>
+    </form>
+
+    <!-- FORM HIDDEN UNTUK PENGHAPUSAN PRODUK -->
+    <form id="delete_product_form" action="{{ route('products.destroy', $product->id) }}" method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
     </form>
 </div>
 @endsection
 
 @push('scripts')
+<!-- CDN SWEETALERT2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     const categoriesData = @json($categories);
     const currentCategoryId = "{{ $product->category_id }}";
@@ -178,6 +202,29 @@
     document.addEventListener('DOMContentLoaded', function() {
         initCategoryEditForm();
     });
+
+    // FUNGSI KONFIRMASI HAPUS DENGAN SWEETALERT2
+    function confirmDeleteProduct() {
+        Swal.fire({
+            title: 'Hapus Produk Ini?',
+            text: "Produk '{{ $product->name }}' akan dihapus permanen dari sistem katalog.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Hapus Sekarang',
+            cancelButtonText: 'Batal',
+            customClass: {
+                popup: 'rounded-2xl font-sans',
+                confirmButton: 'rounded-xl px-4 py-2 font-bold',
+                cancelButton: 'rounded-xl px-4 py-2 font-bold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete_product_form').submit();
+            }
+        });
+    }
 
     function initCategoryEditForm() {
         if (!currentCategoryId) return;
@@ -232,11 +279,12 @@
         let mainSelect = document.getElementById('main_category_select');
         let selectedOption = mainSelect.options[mainSelect.selectedIndex];
         let parentId = mainSelect.value;
-        let slug = selectedOption.getAttribute('data-slug') || '';
-        let categoryName = selectedOption.getAttribute('data-name') || '';
+        let categoryName = selectedOption ? (selectedOption.getAttribute('data-name') || '') : '';
 
         let subL1Container = document.getElementById('sub_level1_container');
         let subL1Select = document.getElementById('sub_level1_select');
+        let subL1Label = document.getElementById('sub_level1_label');
+        
         let subL2Container = document.getElementById('sub_level2_container');
         let subL2Select = document.getElementById('sub_level2_select');
         let finalCatInput = document.getElementById('final_category_id');
@@ -246,19 +294,38 @@
         subL2Container.classList.add('hidden');
         subL2Select.removeAttribute('required');
 
-        if (slug.includes('aksesoris') || categoryName.includes('aksesoris')) {
+        if (!parentId) {
+            subL1Container.classList.add('hidden');
+            subL1Select.removeAttribute('required');
+            finalCatInput.value = '';
+            return;
+        }
+
+        // PENYESUAIAN UNTUK HANDPHONE & PROVIDER
+        if (categoryName.includes('pulsa') || categoryName.includes('paket') || categoryName.includes('voucher') || categoryName.includes('perdana')) {
+            subL1Label.innerHTML = 'Pilih Provider <span class="text-rose-500">*</span>';
+        } else if (categoryName.includes('handphone') || categoryName.includes('hp')) {
+            subL1Label.innerHTML = 'Kondisi / Jenis HP <span class="text-rose-500">*</span>';
+        } else {
+            subL1Label.innerHTML = 'Sub-Kategori / Jenis <span class="text-rose-500">*</span>';
+        }
+
+        let l1Options = subL1Select.querySelectorAll('.sub-l1-option');
+        let hasChild = false;
+
+        l1Options.forEach(opt => {
+            if (String(opt.getAttribute('data-parent')) === String(parentId)) {
+                opt.classList.remove('hidden');
+                hasChild = true;
+            } else {
+                opt.classList.add('hidden');
+            }
+        });
+
+        if (hasChild) {
             subL1Container.classList.remove('hidden');
             subL1Select.setAttribute('required', 'required');
             finalCatInput.value = '';
-
-            let options = subL1Select.querySelectorAll('.sub-l1-option');
-            options.forEach(opt => {
-                if (opt.getAttribute('data-parent') === parentId) {
-                    opt.classList.remove('hidden');
-                } else {
-                    opt.classList.add('hidden');
-                }
-            });
         } else {
             subL1Container.classList.add('hidden');
             subL1Select.removeAttribute('required');
@@ -282,7 +349,7 @@
             let hasChild = false;
 
             l2Options.forEach(opt => {
-                if (opt.getAttribute('data-parent') === parentId) {
+                if (String(opt.getAttribute('data-parent')) === String(parentId)) {
                     opt.classList.remove('hidden');
                     hasChild = true;
                 } else {
@@ -333,5 +400,19 @@
 
         input.value = parseInt(rawValue, 10).toLocaleString('id-ID');
     }
+
+    function validateEditProductForm(e) {
+        let finalCatInput = document.getElementById('final_category_id');
+
+        if (!finalCatInput.value) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Kategori Belum Lengkap',
+                text: 'Silakan tentukan sub-kategori/provider secara spesifik sebelum menyimpan.',
+                customClass: { popup: 'rounded-2xl font-sans' }
+            });
+        }
+    }
 </script>
-@endpush
+@endpushz

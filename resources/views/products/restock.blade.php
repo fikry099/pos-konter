@@ -1,5 +1,10 @@
 @extends('layouts.app')
 
+@push('styles')
+<!-- CDN SWEETALERT2 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+@endpush
+
 @section('content')
 <div class="space-y-3.5 pb-16">
 
@@ -22,7 +27,7 @@
         </div>
     </div>
 
-    <!-- NOTIFIKASI SUKSES / ERROR -->
+    <!-- NOTIFIKASI SUKSES / ERROR (DARI SESSION) -->
     @if(session('success'))
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-bold flex items-center space-x-2 shadow-xs">
             <i class="fa-solid fa-circle-check text-sm text-emerald-600"></i>
@@ -65,6 +70,9 @@
 @endsection
 
 @push('scripts')
+<!-- CDN SWEETALERT2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <!-- MODAL POPUP RESTOK -->
 @include('products.restock.partials.restock-modal')
 
@@ -131,6 +139,122 @@
         renderSubFilterPills('all');
         filterProductsTable();
     });
+
+    // --- FUNGSI SUBMIT RESTOK VIA AJAX MENGGUNAKAN SWEETALERT2 ---
+    function submitRestockFormAjax(e) {
+        if (e) e.preventDefault(); // Mencegah reload halaman
+
+        const formElement = document.getElementById('restock_form');
+        const btnSubmit = formElement.querySelector('button[type="submit"]');
+        const originalBtnText = btnSubmit ? btnSubmit.innerHTML : 'Simpan Tambahan Stok';
+
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...';
+        }
+
+        const formData = new FormData(formElement);
+
+        fetch(formElement.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal memproses restok. Periksa kembali inputan Anda.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success || data.status === 'success') {
+                const productId = formData.get('product_id');
+                const addedQty = parseInt(formData.get('quantity') || formData.get('qty_add') || 0, 10);
+
+                // 1. Update angka stok di baris tabel secara instan
+                updateTableRowStock(productId, addedQty, data.new_stock);
+
+                // 2. Tutup Modal
+                closeRestockModal();
+
+                // 3. Tampilkan Notifikasi Toast SweetAlert2
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Restok Berhasil!',
+                    text: data.message || 'Stok produk berhasil ditambahkan.',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    customClass: {
+                        popup: 'rounded-2xl font-sans'
+                    }
+                });
+
+                // 4. Reset isi form modal
+                formElement.reset();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Restok',
+                    text: data.message || 'Gagal memperbarui stok produk.',
+                    customClass: { popup: 'rounded-2xl font-sans' }
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Error Restock AJAX:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Terjadi Kesalahan',
+                text: err.message || 'Sistem mengalami kendala saat menyimpan stok.',
+                customClass: { popup: 'rounded-2xl font-sans' }
+            });
+        })
+        .finally(() => {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = originalBtnText;
+            }
+        });
+    }
+
+    // UPDATE ANGKA STOK DI TABEL SECARA REALTIME SESUAI ID PRODUK
+    function updateTableRowStock(productId, addedQty, serverNewStock = null) {
+        // 1. Cari elemen span angka stok spesifik berdasarkan ID produk
+        const stockValEl = document.getElementById(`stock-val-${productId}`);
+        const stockBadgeEl = document.getElementById(`stock-badge-${productId}`);
+
+        if (stockValEl && stockBadgeEl) {
+            let currentStock = parseInt(stockValEl.innerText.trim(), 10) || 0;
+            let finalStock = (serverNewStock !== null && serverNewStock !== undefined) ? serverNewStock : (currentStock + addedQty);
+            
+            // Tampilkan angka stok baru di layar
+            stockValEl.innerText = finalStock;
+            stockBadgeEl.setAttribute('data-stock', finalStock);
+
+            // Animasikan warna hijau sejenak untuk memberi efek visual berhasil
+            stockBadgeEl.classList.remove('bg-slate-100', 'text-slate-800', 'border-slate-200');
+            stockBadgeEl.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600', 'scale-110');
+
+            setTimeout(() => {
+                stockBadgeEl.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-600', 'scale-110');
+                stockBadgeEl.classList.add('bg-slate-100', 'text-slate-800', 'border-slate-200');
+            }, 1800);
+        }
+
+        // 2. Update atribut data-stock di modal restok agar data modal selalu sinkron
+        const modalOpt = document.querySelector(`.modal-product-option[value="${productId}"]`);
+        if (modalOpt) {
+            let currentModalStock = parseInt(modalOpt.getAttribute('data-stock') || 0, 10);
+            let newModalStock = (serverNewStock !== null && serverNewStock !== undefined) ? serverNewStock : (currentModalStock + addedQty);
+            modalOpt.setAttribute('data-stock', newModalStock);
+        }
+    }
 
     function switchCategoryTab(catKey, btnElement) {
         activeCategory = catKey.toLowerCase();

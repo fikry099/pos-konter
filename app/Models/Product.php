@@ -39,9 +39,16 @@ class Product extends Model
         return $this->hasMany(TransactionDetail::class);
     }
 
+    // Relasi Stok Cabang
     public function storeStocks(): HasMany
     {
         return $this->hasMany(StoreProductStock::class);
+    }
+
+    // ALIAS DIBUTUHKAN CONTROLLER (agar $query->with('stocks') tidak error)
+    public function stocks(): HasMany
+    {
+        return $this->storeStocks();
     }
 
     // Helper mengambil stok spesifik cabang tertentu

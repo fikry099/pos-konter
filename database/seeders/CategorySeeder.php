@@ -40,7 +40,7 @@ class CategorySeeder extends Seeder
             ]);
         }
 
-        // 3. KARTU PERDANA & SUB-KATEGORI PROVIDER (BARU)
+        // 3. KARTU PERDANA & SUB-KATEGORI PROVIDER
         $perdanaRoot = Category::create([
             'name'      => 'Kartu Perdana',
             'slug'      => 'kartu-perdana',
@@ -54,7 +54,24 @@ class CategorySeeder extends Seeder
             ]);
         }
 
-        // 4. TOP-UP E-WALLET
+        // 4. HANDPHONE (BARU & SECOND)
+        $hpCategory = Category::create([
+            'name'      => 'Handphone',
+            'slug'      => 'handphone',
+            'parent_id' => null,
+        ]);
+        Category::create([
+            'name'      => 'Baru (New)',
+            'slug'      => 'hp-baru',
+            'parent_id' => $hpCategory->id,
+        ]);
+        Category::create([
+            'name'      => 'Second / Bekas',
+            'slug'      => 'hp-second',
+            'parent_id' => $hpCategory->id,
+        ]);
+
+        // 5. TOP-UP E-WALLET
         $ewalletRoot = Category::create([
             'name'      => 'Top-Up E-Wallet',
             'slug'      => 'topup-ewallet',
@@ -69,7 +86,7 @@ class CategorySeeder extends Seeder
             ]);
         }
 
-        // 5. TRANSFER BANK
+        // 6. TRANSFER BANK
         $bankRoot = Category::create([
             'name'      => 'Transfer Bank',
             'slug'      => 'transfer-bank',
@@ -84,11 +101,26 @@ class CategorySeeder extends Seeder
             ]);
         }
 
-        // 6. TOKEN PLN (TANPA SUB-KATEGORI)
+        // 7. TOKEN PLN
         Category::create([
             'name'      => 'Token PLN',
             'slug'      => 'token-pln',
             'parent_id' => null,
         ]);
+
+        // 8. AKSESORIS HP
+        $accRoot = Category::create([
+            'name'      => 'Aksesoris HP',
+            'slug'      => 'aksesoris-hp',
+            'parent_id' => null,
+        ]);
+        $accessories = ['Proteksi', 'Power', 'Audio', 'Penyimpanan', 'Mount & Stand'];
+        foreach ($accessories as $acc) {
+            Category::create([
+                'name'      => $acc,
+                'slug'      => 'acc-' . Str::slug($acc),
+                'parent_id' => $accRoot->id,
+            ]);
+        }
     }
 }

@@ -22,11 +22,17 @@
         </a>
     </div>
 
+    <!-- TAB KATEGORI UTAMA -->
     <div class="bg-white p-1.5 sm:p-2 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
             <button type="button" onclick="switchCategoryTab('all', this)" class="category-tab active-tab bg-indigo-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center space-x-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-border-all text-xs"></i>
                 <span>Semua ({{ count($products) }})</span>
+            </button>
+
+            <button type="button" onclick="switchCategoryTab('handphone', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
+                <i class="fa-solid fa-mobile-screen-button text-sky-500"></i>
+                <span>Handphone</span>
             </button>
 
             <button type="button" onclick="switchCategoryTab('pulsa', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
@@ -66,6 +72,7 @@
         </div>
     </div>
 
+    <!-- FILTER PROVIDER & PENCARIAN -->
     <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
         <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5">
             <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider shrink-0 mr-1" id="filter_label">FILTER:</span>
@@ -78,6 +85,7 @@
         </div>
     </div>
 
+    <!-- TABEL KATALOG -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto no-scrollbar">
             <table class="w-full text-left border-collapse">
@@ -87,7 +95,7 @@
                         <th class="py-3 px-3">Kategori</th>
                         <th class="py-3 px-3 text-right">Modal / Jual</th>
                         <th class="py-3 px-3 text-right">Margin</th>
-                        <th class="py-3 px-3 text-center">Stok</th>
+                        <th class="py-3 px-3 text-center">Stok Cabang</th>
                         <th class="py-3 px-3 text-center">Status</th>
                         <th class="py-3 px-3 text-center">Aksi</th>
                     </tr>
@@ -114,6 +122,10 @@
                             $prodName = strtolower($product->name);
                             $prodCode = strtolower($product->code ?? '');
                             $margin = $product->selling_price - $product->cost_price;
+
+                            $storeStockRecord = $product->stocks->first();
+                            $currentStock = $storeStockRecord ? $storeStockRecord->stock : 0;
+                            $minStock = $storeStockRecord ? $storeStockRecord->min_stock : 5;
                         @endphp
                         <tr class="product-row hover:bg-indigo-50/40 transition"
                             data-category="{{ $catSearchData }}"
@@ -125,6 +137,7 @@
                             data-name="{{ $prodName }}"
                             data-code="{{ $prodCode }}">
                             
+                            <!-- PRODUK & SKU -->
                             <td class="py-3 px-3 min-w-[140px]">
                                 <div class="font-extrabold text-slate-800 text-xs leading-snug">{{ $product->name }}</div>
                                 <div class="flex items-center space-x-1 mt-1">
@@ -135,6 +148,7 @@
                                 </div>
                             </td>
 
+                            <!-- KATEGORI -->
                             <td class="py-3 px-3">
                                 <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200 inline-block whitespace-nowrap">
                                     @if($parentCat)
@@ -144,44 +158,42 @@
                                 </span>
                             </td>
 
+                            <!-- HARGA MODAL / JUAL -->
                             <td class="py-3 px-3 text-right whitespace-nowrap">
                                 <div class="text-[10px] text-slate-400 font-mono">M: Rp {{ number_format($product->cost_price, 0, ',', '.') }}</div>
                                 <div class="font-black text-indigo-700 font-mono text-xs mt-0.5">J: Rp {{ number_format($product->selling_price, 0, ',', '.') }}</div>
                             </td>
 
+                            <!-- MARGIN -->
                             <td class="py-3 px-3 text-right font-bold font-mono text-xs whitespace-nowrap {{ $margin > 0 ? 'text-emerald-600' : 'text-rose-500' }}">
                                 +Rp {{ number_format($margin, 0, ',', '.') }}
                             </td>
 
+                            <!-- STOK CABANG AKTIF -->
                             <td class="py-3 px-3 text-center font-bold text-xs whitespace-nowrap">
                                 @if($product->type === 'physical')
-                                    <span class="{{ $product->stock <= $product->min_stock ? 'text-rose-600 font-black animate-pulse' : 'text-slate-800' }}">
-                                        {{ $product->stock }} Pcs
+                                    <span class="{{ $currentStock <= $minStock ? 'text-rose-600 font-black animate-pulse' : 'text-slate-800' }}">
+                                        {{ $currentStock }} Pcs
                                     </span>
                                 @else
                                     <span class="text-slate-400 font-mono text-base">∞</span>
                                 @endif
                             </td>
 
+                            <!-- STATUS -->
                             <td class="py-3 px-3 text-center whitespace-nowrap">
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $product->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
                                     {{ $product->is_active ? 'Aktif' : 'Nonaktif' }}
                                 </span>
                             </td>
 
+                            <!-- AKSI EDIT -->
                             <td class="py-3 px-3 text-center whitespace-nowrap">
-                                <div class="flex items-center justify-center space-x-1">
-                                    <a href="{{ route('products.edit', $product->id) }}" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 transition">
-                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
-                                    </a>
-                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus produk ini?')" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-100 transition">
-                                            <i class="fa-solid fa-trash-can text-xs"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <a href="{{ route('products.edit', $product->id) }}" 
+                                   class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-xl shadow-xs transition inline-flex items-center justify-center space-x-1.5 cursor-pointer">
+                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                    <span>Edit</span>
+                                </a>
                             </td>
                         </tr>
                     @empty
@@ -217,8 +229,7 @@
                 </div>
             </div>
 
-            <div id="pagination_buttons_wrapper" class="flex items-center space-x-1 shrink-0 justify-center w-full sm:w-auto">
-                </div>
+            <div id="pagination_buttons_wrapper" class="flex items-center space-x-1 shrink-0 justify-center w-full sm:w-auto"></div>
         </div>
     </div>
 
@@ -245,6 +256,19 @@
                 { name: 'Telkomsel', key: 'telkomsel' },
                 { name: 'Indosat', key: 'indosat' },
                 { name: 'XL Axiata', key: 'xl' }
+            ]
+        },
+        'handphone': {
+            label: 'KONDISI / MERK:',
+            items: [
+                { name: 'Semua', key: '' },
+                { name: 'Baru (New)', key: 'baru' },
+                { name: 'Second / Bekas', key: 'second' },
+                { name: 'Samsung', key: 'samsung' },
+                { name: 'Oppo', key: 'oppo' },
+                { name: 'Vivo', key: 'vivo' },
+                { name: 'Xiaomi', key: 'xiaomi' },
+                { name: 'iPhone', key: 'iphone' }
             ]
         },
         'pulsa': {
@@ -331,7 +355,9 @@
         'power': ['power', 'charger', 'kabel-data', 'power-bank'],
         'audio': ['audio', 'tws', 'headset', 'bluetooth-speaker'],
         'penyimpanan': ['penyimpanan', 'flashdisk', 'memory-card'],
-        'mount': ['mount-stand', 'holder', 'ring-light-tripod']
+        'mount': ['mount-stand', 'holder', 'ring-light-tripod'],
+        'baru': ['baru', 'new'],
+        'second': ['second', 'bekas', 'sec']
     };
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -405,6 +431,11 @@
             let matchCat = false;
             if (activeCategory === 'all') {
                 matchCat = true;
+            } else if (activeCategory === 'handphone') {
+                // PERBAIKAN LOGIKA DETEKSI KATEGORI HANDPHONE
+                matchCat = catData.includes('handphone') || catData.includes('hp') || 
+                           parentSlug.includes('handphone') || parentSlug.includes('hp') || 
+                           catSlug.includes('handphone') || catSlug.includes('hp');
             } else if (activeCategory === 'perdana') {
                 matchCat = catData.includes('perdana') || catData.includes('kartu') || parentSlug.includes('perdana') || catSlug.includes('perdana');
             } else if (activeCategory === 'bank') {
@@ -442,10 +473,9 @@
             if (matchCat && matchSub && matchSearch) {
                 matchedRowsList.push(row);
             }
-            row.classList.add('hidden'); // Sembunyikan semua terlebih dahulu
+            row.classList.add('hidden');
         });
 
-        // TAMPILKAN ATAU SEMBUNYIKAN NOTIFIKASI KOSONG
         let noMatchRow = document.getElementById('no_matching_products_row');
         if (rows.length > 0 && matchedRowsList.length === 0) {
             if (noMatchRow) noMatchRow.classList.remove('hidden');
@@ -456,7 +486,6 @@
         renderClientPagination();
     }
 
-    // FUNGSI UTAMA RENDER PAGINASI CLIENT-SIDE
     function renderClientPagination() {
         let totalItems = matchedRowsList.length;
         let infoText = document.getElementById('pagination_info_text');
@@ -474,7 +503,6 @@
         let startIdx = (currentPage - 1) * itemsPerPage;
         let endIdx = Math.min(startIdx + itemsPerPage, totalItems);
 
-        // Tampilkan hanya baris pada halaman aktif
         for (let i = startIdx; i < endIdx; i++) {
             if (matchedRowsList[i]) {
                 matchedRowsList[i].classList.remove('hidden');
@@ -483,10 +511,8 @@
 
         infoText.innerText = `Menampilkan ${startIdx + 1}-${endIdx} dari ${totalItems} produk`;
 
-        // GENERATE TOMBOL NAVIGASI HALAMAN
         buttonsWrapper.innerHTML = '';
 
-        // Tombol Previous
         let prevBtn = document.createElement('button');
         prevBtn.type = 'button';
         prevBtn.disabled = currentPage === 1;
@@ -495,7 +521,6 @@
         prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left text-[10px]"></i>';
         buttonsWrapper.appendChild(prevBtn);
 
-        // Nomor Halaman
         for (let i = 1; i <= totalPages; i++) {
             if (totalPages > 5 && (i < currentPage - 1 || i > currentPage + 1) && i !== 1 && i !== totalPages) {
                 if (i === currentPage - 2 || i === currentPage + 2) {
@@ -515,7 +540,6 @@
             buttonsWrapper.appendChild(pageBtn);
         }
 
-        // Tombol Next
         let nextBtn = document.createElement('button');
         nextBtn.type = 'button';
         nextBtn.disabled = currentPage === totalPages;
@@ -527,7 +551,6 @@
 
     function goToPage(page) {
         currentPage = page;
-        // Sembunyikan dulu baris yang sedang tampil
         matchedRowsList.forEach(row => row.classList.add('hidden'));
         renderClientPagination();
     }
@@ -536,7 +559,6 @@
         let selectEl = document.getElementById('items_per_page_select');
         itemsPerPage = parseInt(selectEl.value) || 10;
         currentPage = 1;
-        // Sembunyikan dulu baris yang sedang tampil
         matchedRowsList.forEach(row => row.classList.add('hidden'));
         renderClientPagination();
     }

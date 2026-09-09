@@ -47,38 +47,76 @@
         </form>
     </div>
 
-    <!-- WIDGET RINGKASAN PEMBUKUAN KEUANGAN -->
-    <div class="grid grid-cols-2 gap-3">
-        <!-- TOTAL OMSET -->
-        <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block truncate">Total Omset</span>
-            <div class="text-sm sm:text-lg font-black text-slate-800 font-mono truncate">Rp {{ number_format($financialSummary['total_omset'], 0, ',', '.') }}</div>
-            <span class="text-[9px] text-slate-400 block truncate">Pendapatan Kotor</span>
-        </div>
-
-        <!-- LABA KOTOR -->
-        <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block truncate">Laba Kotor (Gross)</span>
-            <div class="text-sm sm:text-lg font-black text-indigo-600 font-mono truncate">Rp {{ number_format($financialSummary['gross_profit'], 0, ',', '.') }}</div>
-            <span class="text-[9px] text-slate-400 block truncate">Omset − HPP Barang</span>
-        </div>
-
-        <!-- PENGELUARAN & ALOKASI BONUS -->
-        <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block truncate">Beban & Bonus</span>
-            <div class="text-sm sm:text-lg font-black text-rose-600 font-mono truncate">
-                Rp {{ number_format($financialSummary['total_expenses'] + $financialSummary['total_bonus_allocation'], 0, ',', '.') }}
+    <!-- WIDGET RINGKASAN PEMBUKUAN KEUANGAN & PEMBAYARAN -->
+    <div class="space-y-3">
+        <!-- BARIS 1: WIDGET UTAMA (4 CARD) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- TOTAL OMSET -->
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block truncate">Total Omset</span>
+                <div class="text-sm sm:text-lg font-black text-slate-800 font-mono truncate">Rp {{ number_format($financialSummary['total_omset'], 0, ',', '.') }}</div>
+                <span class="text-[9px] text-slate-400 block truncate">Pendapatan Kotor</span>
             </div>
-            <div class="text-[9px] text-slate-500 font-medium truncate">
-                Ops: Rp {{ number_format($financialSummary['total_expenses'], 0, ',', '.') }} | B: Rp {{ number_format($financialSummary['total_bonus_allocation'], 0, ',', '.') }}
+
+            <!-- LABA KOTOR -->
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block truncate">Laba Kotor (Gross)</span>
+                <div class="text-sm sm:text-lg font-black text-indigo-600 font-mono truncate">Rp {{ number_format($financialSummary['gross_profit'], 0, ',', '.') }}</div>
+                <span class="text-[9px] text-slate-400 block truncate">Omset − HPP Barang</span>
+            </div>
+
+            <!-- PENGELUARAN & ALOKASI BONUS -->
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block truncate">Beban & Bonus</span>
+                <div class="text-sm sm:text-lg font-black text-rose-600 font-mono truncate">
+                    Rp {{ number_format($financialSummary['total_expenses'] + $financialSummary['total_bonus_allocation'], 0, ',', '.') }}
+                </div>
+                <div class="text-[9px] text-slate-500 font-medium truncate">
+                    Ops: Rp {{ number_format($financialSummary['total_expenses'], 0, ',', '.') }} | B: Rp {{ number_format($financialSummary['total_bonus_allocation'], 0, ',', '.') }}
+                </div>
+            </div>
+
+            <!-- LABA BERSIH OWNER -->
+            <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-3.5 sm:p-4 rounded-2xl text-white shadow-md shadow-indigo-600/20 space-y-1">
+                <span class="text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block truncate">Laba Bersih (Net)</span>
+                <div class="text-sm sm:text-lg font-black font-mono truncate">Rp {{ number_format($financialSummary['net_profit'], 0, ',', '.') }}</div>
+                <span class="text-[9px] text-indigo-100 block truncate">Bersih Diterima Owner</span>
             </div>
         </div>
 
-        <!-- LABA BERSIH OWNER -->
-        <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-3.5 sm:p-4 rounded-2xl text-white shadow-md shadow-indigo-600/20 space-y-1">
-            <span class="text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block truncate">Laba Bersih (Net)</span>
-            <div class="text-sm sm:text-lg font-black font-mono truncate">Rp {{ number_format($financialSummary['net_profit'], 0, ',', '.') }}</div>
-            <span class="text-[9px] text-indigo-100 block truncate">Bersih Diterima Owner</span>
+        <!-- BARIS 2: RINCIAN SALDO MASUK (TUNAI / LACI vs QRIS / REKENING) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- CARD TOTAL TUNAI (CASH) -->
+            <div class="bg-emerald-50/50 p-3.5 sm:p-4 rounded-2xl border border-emerald-200/80 shadow-xs flex items-center justify-between">
+                <div class="space-y-0.5">
+                    <span class="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block flex items-center">
+                        <i class="fa-solid fa-money-bill-wave text-emerald-600 mr-1.5"></i> Total Uang Tunai (Laci Kasir)
+                    </span>
+                    <div class="text-base sm:text-xl font-black text-emerald-900 font-mono">
+                        Rp {{ number_format($financialSummary['total_cash'] ?? 0, 0, ',', '.') }}
+                    </div>
+                    <span class="text-[10px] text-emerald-700/80 font-medium block">Fisik uang yang wajib ada di laci konter</span>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg shrink-0 border border-emerald-200">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+            </div>
+
+            <!-- CARD TOTAL SALDO QRIS / TRANSFER -->
+            <div class="bg-purple-50/50 p-3.5 sm:p-4 rounded-2xl border border-purple-200/80 shadow-xs flex items-center justify-between">
+                <div class="space-y-0.5">
+                    <span class="text-[10px] font-extrabold text-purple-800 uppercase tracking-wider block flex items-center">
+                        <i class="fa-solid fa-qrcode text-purple-600 mr-1.5"></i> Total Saldo Masuk QRIS / Non-Tunai
+                    </span>
+                    <div class="text-base sm:text-xl font-black text-purple-900 font-mono">
+                        Rp {{ number_format($financialSummary['total_qris'] ?? 0, 0, ',', '.') }}
+                    </div>
+                    <span class="text-[10px] text-purple-700/80 font-medium block">Uang masuk langsung ke rekening / E-Wallet</span>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg shrink-0 border border-purple-200">
+                    <i class="fa-solid fa-building-columns"></i>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -155,75 +193,32 @@
         </div>
     </div>
 
-    <!-- TABEL HISTORI RESTOK & PURCHASING BARANG -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-2 mt-4">
-        <div class="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-                <h3 class="text-xs sm:text-sm font-black text-slate-800 flex items-center">
-                    <i class="fa-solid fa-boxes-packing text-indigo-600 mr-2"></i> Histori Restok & Reorder Barang
-                </h3>
-                <p class="text-[10px] text-slate-400 font-medium">Rekap penambahan stok fisik & voucher oleh karyawan/owner periode ini</p>
+    <!-- CARD ACTION: PEMISAHAN REKAP HISTORI RESTOK -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition hover:border-indigo-200">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shrink-0 border border-indigo-100">
+                <i class="fa-solid fa-boxes-packing"></i>
             </div>
-            <div class="bg-indigo-50 text-indigo-700 text-[10px] font-black px-3 py-1 rounded-xl border border-indigo-100 self-start sm:self-auto font-mono">
-                Total Estimasi Modal Restok: Rp {{ number_format($totalRestockCost ?? 0, 0, ',', '.') }}
+            <div>
+                <h4 class="font-extrabold text-slate-800 text-xs sm:text-sm">Histori Restok & Reorder Barang</h4>
+                <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                    Estimasi Modal Restok Periode Ini: 
+                    <span class="font-mono font-bold text-indigo-600">Rp {{ number_format($totalRestockCost ?? 0, 0, ',', '.') }}</span>
+                </p>
             </div>
         </div>
 
-        <div class="overflow-x-auto no-scrollbar">
-            <table class="w-full text-left border-collapse min-w-[650px] text-xs">
-                <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-[10px] uppercase font-extrabold">
-                        <th class="py-3 px-3 pl-4">Waktu & Petugas</th>
-                        <th class="py-3 px-3">Nama Produk / Item</th>
-                        <th class="py-3 px-3 text-center">Tambahan Stok</th>
-                        <th class="py-3 px-3 text-right">Harga Modal / Pcs</th>
-                        <th class="py-3 px-3 text-right pr-4">Total Modal PO</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                    @forelse($restockHistories ?? [] as $restock)
-                        <tr class="hover:bg-slate-50/70 transition">
-                            <td class="py-3 px-3 pl-4 whitespace-nowrap">
-                                <div class="font-bold text-slate-800 text-xs">{{ $restock->user->name ?? 'Kasir Cabang' }}</div>
-                                <div class="text-[10px] text-slate-400 font-mono mt-0.5">
-                                    <i class="fa-regular fa-clock mr-1"></i>{{ $restock->created_at->format('d M Y, H:i') }}
-                                </div>
-                            </td>
-                            <td class="py-3 px-3">
-                                <span class="font-extrabold text-slate-800">{{ $restock->product->name ?? 'Produk Dihapus' }}</span>
-                                @if($restock->notes)
-                                    <span class="block text-[10px] text-slate-400 italic">Ket: {{ $restock->notes }}</span>
-                                @endif
-                            </td>
-                            <td class="py-3 px-3 text-center whitespace-nowrap">
-                                <span class="bg-emerald-50 text-emerald-700 font-black px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
-                                    +{{ $restock->qty_add }} Pcs
-                                </span>
-                            </td>
-                            <td class="py-3 px-3 text-right font-mono text-slate-600">
-                                Rp {{ number_format($restock->cost_price, 0, ',', '.') }}
-                            </td>
-                            <td class="py-3 px-3 text-right pr-4 font-mono font-black text-indigo-700">
-                                Rp {{ number_format($restock->total_cost, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="py-10 text-center text-slate-400">
-                                <i class="fa-solid fa-box-open text-3xl mb-1 text-slate-300 block"></i>
-                                <span class="text-xs font-bold text-slate-500">Belum ada riwayat restok barang pada periode bulan ini.</span>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+        <a href="{{ route('owner.restock.history', ['month' => $month, 'year' => $year]) }}" 
+           class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold transition shadow-xs flex items-center justify-center space-x-2 shrink-0 cursor-pointer">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Buka Tabel Histori Restok</span>
+            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        </a>
     </div>
 
 </div>
 @endsection
 
-{{-- DITARUH DI BAGIAN SCRIPT/MODAL STACK AGAR RENDER DI LUAR LAYOUT DENGAN CLEAN TANPA GARIS/RUANG PUTIH --}}
 @push('scripts')
 <!-- MODAL REKAP ABSENSI KARYAWAN -->
 <div id="attendance_modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 transition-all duration-300">
@@ -260,7 +255,6 @@
                     </div>
 
                     <div class="flex items-center space-x-3">
-                        <!-- BADGE RINGKASAN -->
                         <div class="hidden sm:flex items-center space-x-1.5 text-xs">
                             <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded-md text-[10px]">
                                 ⚡ {{ $emp['total_ontime'] }}x Tepat
@@ -270,7 +264,6 @@
                             </span>
                         </div>
 
-                        <!-- TOMBOL LIHAT DETAIL -->
                         <a href="{{ route('owner.attendances.detail', ['user' => $emp['user_id'], 'month' => $month, 'year' => $year]) }}" 
                            class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5 cursor-pointer shadow-xs">
                             <span>Lihat Detail</span>

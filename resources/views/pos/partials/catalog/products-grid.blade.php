@@ -109,8 +109,7 @@
     <div class="flex items-center space-x-2">
         <span>Tampilkan</span>
         <select id="pos_items_per_page" onchange="changePosPerPage()" class="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 font-bold text-gray-800 focus:outline-none cursor-pointer">
-            <option value="10" selected>10</option>
-            <option value="12">12</option>
+            <option value="12" selected>12</option>
             <option value="24">24</option>
             <option value="48">48</option>
         </select>

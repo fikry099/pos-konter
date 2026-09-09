@@ -22,7 +22,9 @@
                         $grandParentCat = $parentCat?->parent ?? null;
                     @endphp
 
+                    <!-- PENYESUAIAN 1: Tambahkan data-id milik product -->
                     <tr class="product-row hover:bg-indigo-50/30 transition"
+                        data-id="{{ $product->id }}"
                         data-category="{{ strtolower($cat->name ?? '') }}"
                         data-cat-slug="{{ strtolower($cat->slug ?? '') }}"
                         data-cat-name="{{ strtolower($cat->name ?? '') }}"
@@ -65,8 +67,9 @@
 
                         <!-- STOK SAAT INI (CABANG) -->
                         <td class="py-3.5 px-4 text-center">
-                            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 font-black text-xs font-mono inline-block border border-slate-200">
-                                {{ $stockItem->stock }} Pcs
+                            <!-- PENYESUAIAN 2: Berikan id unik & data attribute pada badge stok -->
+                            <span id="stock-badge-{{ $product->id }}" data-stock="{{ $stockItem->stock }}" class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 font-black text-xs font-mono inline-block border border-slate-200 transition-all duration-300">
+                                <span id="stock-val-{{ $product->id }}">{{ $stockItem->stock }}</span> Pcs
                             </span>
                         </td>
 
