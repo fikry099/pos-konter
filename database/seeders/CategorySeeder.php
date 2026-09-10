@@ -13,114 +13,146 @@ class CategorySeeder extends Seeder
         $operators = ['Telkomsel', 'Indosat', 'XL', 'Tri', 'Axis', 'Smartfren'];
 
         // 1. PULSA REGULER & SUB-KATEGORI PROVIDER
-        $pulsaRoot = Category::create([
-            'name'      => 'Pulsa Reguler',
-            'slug'      => 'pulsa-reguler',
-            'parent_id' => null,
-        ]);
+        $pulsaRoot = Category::updateOrCreate(
+            ['slug' => 'pulsa-reguler'],
+            [
+                'name'      => 'Pulsa Reguler',
+                'parent_id' => null,
+            ]
+        );
         foreach ($operators as $op) {
-            Category::create([
-                'name'      => $op,
-                'slug'      => 'pulsa-' . Str::slug($op),
-                'parent_id' => $pulsaRoot->id,
-            ]);
+            Category::updateOrCreate(
+                ['slug' => 'pulsa-' . Str::slug($op)],
+                [
+                    'name'      => $op,
+                    'parent_id' => $pulsaRoot->id,
+                ]
+            );
         }
 
         // 2. VOUCHER INTERNET & SUB-KATEGORI PROVIDER
-        $voucherRoot = Category::create([
-            'name'      => 'Voucher Internet',
-            'slug'      => 'voucher-internet',
-            'parent_id' => null,
-        ]);
+        $voucherRoot = Category::updateOrCreate(
+            ['slug' => 'voucher-internet'],
+            [
+                'name'      => 'Voucher Internet',
+                'parent_id' => null,
+            ]
+        );
         foreach ($operators as $op) {
-            Category::create([
-                'name'      => "Voucher {$op}",
-                'slug'      => 'voucher-' . Str::slug($op),
-                'parent_id' => $voucherRoot->id,
-            ]);
+            Category::updateOrCreate(
+                ['slug' => 'voucher-' . Str::slug($op)],
+                [
+                    'name'      => "Voucher {$op}",
+                    'parent_id' => $voucherRoot->id,
+                ]
+            );
         }
 
         // 3. KARTU PERDANA & SUB-KATEGORI PROVIDER
-        $perdanaRoot = Category::create([
-            'name'      => 'Kartu Perdana',
-            'slug'      => 'kartu-perdana',
-            'parent_id' => null,
-        ]);
+        $perdanaRoot = Category::updateOrCreate(
+            ['slug' => 'kartu-perdana'],
+            [
+                'name'      => 'Kartu Perdana',
+                'parent_id' => null,
+            ]
+        );
         foreach ($operators as $op) {
-            Category::create([
-                'name'      => "Perdana {$op}",
-                'slug'      => 'perdana-' . Str::slug($op),
-                'parent_id' => $perdanaRoot->id,
-            ]);
+            Category::updateOrCreate(
+                ['slug' => 'perdana-' . Str::slug($op)],
+                [
+                    'name'      => "Perdana {$op}",
+                    'parent_id' => $perdanaRoot->id,
+                ]
+            );
         }
 
         // 4. HANDPHONE (BARU & SECOND)
-        $hpCategory = Category::create([
-            'name'      => 'Handphone',
-            'slug'      => 'handphone',
-            'parent_id' => null,
-        ]);
-        Category::create([
-            'name'      => 'Baru (New)',
-            'slug'      => 'hp-baru',
-            'parent_id' => $hpCategory->id,
-        ]);
-        Category::create([
-            'name'      => 'Second / Bekas',
-            'slug'      => 'hp-second',
-            'parent_id' => $hpCategory->id,
-        ]);
+        $hpCategory = Category::updateOrCreate(
+            ['slug' => 'handphone'],
+            [
+                'name'      => 'Handphone',
+                'parent_id' => null,
+            ]
+        );
+        Category::updateOrCreate(
+            ['slug' => 'hp-baru'],
+            [
+                'name'      => 'Baru (New)',
+                'parent_id' => $hpCategory->id,
+            ]
+        );
+        Category::updateOrCreate(
+            ['slug' => 'hp-second'],
+            [
+                'name'      => 'Second / Bekas',
+                'parent_id' => $hpCategory->id,
+            ]
+        );
 
         // 5. TOP-UP E-WALLET
-        $ewalletRoot = Category::create([
-            'name'      => 'Top-Up E-Wallet',
-            'slug'      => 'topup-ewallet',
-            'parent_id' => null,
-        ]);
+        $ewalletRoot = Category::updateOrCreate(
+            ['slug' => 'topup-ewallet'],
+            [
+                'name'      => 'Top-Up E-Wallet',
+                'parent_id' => null,
+            ]
+        );
         $ewallets = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'LinkAja', 'Maxim'];
         foreach ($ewallets as $wallet) {
-            Category::create([
-                'name'      => $wallet,
-                'slug'      => 'ewallet-' . Str::slug($wallet),
-                'parent_id' => $ewalletRoot->id,
-            ]);
+            Category::updateOrCreate(
+                ['slug' => 'ewallet-' . Str::slug($wallet)],
+                [
+                    'name'      => $wallet,
+                    'parent_id' => $ewalletRoot->id,
+                ]
+            );
         }
 
         // 6. TRANSFER BANK
-        $bankRoot = Category::create([
-            'name'      => 'Transfer Bank',
-            'slug'      => 'transfer-bank',
-            'parent_id' => null,
-        ]);
+        $bankRoot = Category::updateOrCreate(
+            ['slug' => 'transfer-bank'],
+            [
+                'name'      => 'Transfer Bank',
+                'parent_id' => null,
+            ]
+        );
         $banks = ['BCA', 'BRI', 'Mandiri', 'BNI', 'BSI', 'Permata'];
         foreach ($banks as $bank) {
-            Category::create([
-                'name'      => "Bank {$bank}",
-                'slug'      => 'bank-' . Str::slug($bank),
-                'parent_id' => $bankRoot->id,
-            ]);
+            Category::updateOrCreate(
+                ['slug' => 'bank-' . Str::slug($bank)],
+                [
+                    'name'      => "Bank {$bank}",
+                    'parent_id' => $bankRoot->id,
+                ]
+            );
         }
 
         // 7. TOKEN PLN
-        Category::create([
-            'name'      => 'Token PLN',
-            'slug'      => 'token-pln',
-            'parent_id' => null,
-        ]);
+        Category::updateOrCreate(
+            ['slug' => 'token-pln'],
+            [
+                'name'      => 'Token PLN',
+                'parent_id' => null,
+            ]
+        );
 
         // 8. AKSESORIS HP
-        $accRoot = Category::create([
-            'name'      => 'Aksesoris HP',
-            'slug'      => 'aksesoris-hp',
-            'parent_id' => null,
-        ]);
+        $accRoot = Category::updateOrCreate(
+            ['slug' => 'aksesoris-hp'],
+            [
+                'name'      => 'Aksesoris HP',
+                'parent_id' => null,
+            ]
+        );
         $accessories = ['Proteksi', 'Power', 'Audio', 'Penyimpanan', 'Mount & Stand'];
         foreach ($accessories as $acc) {
-            Category::create([
-                'name'      => $acc,
-                'slug'      => 'acc-' . Str::slug($acc),
-                'parent_id' => $accRoot->id,
-            ]);
+            Category::updateOrCreate(
+                ['slug' => 'acc-' . Str::slug($acc)],
+                [
+                    'name'      => $acc,
+                    'parent_id' => $accRoot->id,
+                ]
+            );
         }
     }
 }
