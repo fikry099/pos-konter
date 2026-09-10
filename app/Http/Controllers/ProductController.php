@@ -115,14 +115,19 @@ class ProductController extends Controller
         $categories = Category::whereNull('parent_id')->with('allChildren')->get();
         $storeId    = $this->getActiveStoreId();
 
-        // Ambil stok khusus cabang aktif dari tabel StoreProductStock
         $storeStock = StoreProductStock::where('store_id', $storeId)
             ->where('product_id', $product->id)
             ->first();
 
-        // Tempelkan nilai stok cabang ke objek $product
+        // Tempelkan nilai stok & harga spesifik cabang ke objek $product
         $product->current_store_stock = $storeStock ? $storeStock->stock : 0;
         $product->current_min_stock   = $storeStock ? $storeStock->min_stock : 5;
+        
+        // Gunakan harga spesifik cabang jika ada, jika belum ada fallback ke harga katalog utama
+        if ($storeStock) {
+            if ($storeStock->selling_price !== null) $product->selling_price = $storeStock->selling_price;
+            if ($storeStock->cost_price !== null) $product->cost_price = $storeStock->cost_price;
+        }
 
         return view('products.edit', compact('product', 'categories'));
     }
@@ -145,18 +150,16 @@ class ProductController extends Controller
             'min_stock'     => 'required_if:type,physical|nullable|numeric|min:0',
         ]);
 
-        // 1. Update Master Katalog Produk
+        // 1. Update Master Informasi Produk (Tanpa Merubah Harga Global Cabang Lain)
         $product->update([
-            'category_id'   => $request->category_id,
-            'name'          => $request->name,
-            'code'          => $request->code,
-            'type'          => $request->type,
-            'cost_price'    => $request->cost_price,
-            'selling_price' => $request->selling_price,
-            'is_active'     => $request->has('is_active'),
+            'category_id' => $request->category_id,
+            'name'        => $request->name,
+            'code'        => $request->code,
+            'type'        => $request->type,
+            'is_active'   => $request->has('is_active'),
         ]);
 
-        // 2. Update atau Inisialisasi Stok di Cabang Aktif saat ini
+        // 2. Update Stok & Harga Jual Kusus Cabang Aktif Saat Ini
         if ($request->type === 'physical') {
             $storeId = $this->getActiveStoreId();
 
@@ -166,13 +169,15 @@ class ProductController extends Controller
                     'product_id' => $product->id,
                 ],
                 [
-                    'stock'     => $request->stock ?? 0,
-                    'min_stock' => $request->min_stock ?? 5,
+                    'stock'         => $request->stock ?? 0,
+                    'min_stock'     => $request->min_stock ?? 5,
+                    'cost_price'    => $request->cost_price,    // <-- Spesifik Cabang Aktif
+                    'selling_price' => $request->selling_price, // <-- Spesifik Cabang Aktif
                 ]
             );
         }
 
-        return redirect()->route('products.index')->with('success', 'Data produk dan stok cabang berhasil diperbarui!');
+        return redirect()->route('products.index')->with('success', 'Data produk dan harga khusus cabang berhasil diperbarui!');
     }
 
     /**
@@ -376,6 +381,10 @@ class ProductController extends Controller
             $prod = $stock->product;
             if ($prod) {
                 $prod->stock = $stock->stock;
+                // Gunakan harga spesifik cabang jika ada
+                if ($stock->selling_price !== null) {
+                    $prod->selling_price = $stock->selling_price;
+                }
             }
             return $prod;
         })->filter();
