@@ -16,9 +16,12 @@ use Illuminate\Support\Facades\DB;
 
 class PosController extends Controller
 {
+    /**
+     * Helper privat menentukan store_id cabang aktif (prioritaskan Tab Session)
+     */
     private function getActiveStoreId()
     {
-        return Auth::user()->store_id ?? session('selected_store_id') ?? 1;
+        return session('selected_store_id') ?? Auth::user()->store_id ?? 1;
     }
 
     private function getProductStock($storeId, $productId)
@@ -44,7 +47,7 @@ class PosController extends Controller
     }
 
     /**
-     * Helper untuk mendapatkan biaya perak modal e-wallet/bank
+     * Helper biaya perak modal e-wallet/bank
      */
     private function getEwalletFeePerak(string $providerName): int
     {
@@ -55,7 +58,7 @@ class PosController extends Controller
         if (str_contains($provider, 'shopee')) return 75;
         if (str_contains($provider, 'ovo')) return 631;
 
-        return 0; // Default untuk Bank / Transfer / Provider lainnya
+        return 0;
     }
 
     /**
@@ -66,11 +69,11 @@ class PosController extends Controller
         $nominalInThousand = $nominal / 1000;
 
         if ($nominalInThousand < 100) {
-            return 2000; // < 100rb = Admin 2.000
+            return 2000;
         } elseif ($nominalInThousand >= 100 && $nominalInThousand < 400) {
-            return 3000; // 100rb - 399rb = Admin 3.000
+            return 3000;
         } else {
-            return $nominal * 0.01; // >= 400rb = Admin 1%
+            return $nominal * 0.01;
         }
     }
 
@@ -82,14 +85,12 @@ class PosController extends Controller
         $storeId = $this->getActiveStoreId();
         $activeShift = Shift::getActiveShift($storeId);
 
-        // Load Kategori Utama
         $categories = Category::whereNull('parent_id')
             ->with(['allChildren'])
             ->get();
 
         $products = collect();
 
-        // Ambil Karyawan Shift
         $shiftStaffs = collect();
         if ($activeShift) {
             if ($activeShift->user_ids && is_array($activeShift->user_ids)) {
@@ -99,7 +100,6 @@ class PosController extends Controller
             }
         }
 
-        // Sinkronisasi Keranjang
         $cart = session()->get('pos_cart', []);
         if ($shiftStaffs->count() === 1) {
             $defaultUserId = $shiftStaffs->first()->id;
@@ -120,7 +120,7 @@ class PosController extends Controller
     }
 
     /**
-     * API ENDPOINT: Load Produk Berdasarkan Kategori & Provider/Sub-Kategori
+     * API ENDPOINT: Load Produk (MENGAMBIL HARGA & STOK CABANG AKTIF)
      */
     public function getProductsByCategory(Request $request)
     {
@@ -128,8 +128,14 @@ class PosController extends Controller
         $categoryKey = strtolower(trim($request->input('category', '')));
         $providerKey = strtolower(trim($request->input('provider', '')));
 
+        // Override selling_price & cost_price dengan data dari tabel store_product_stocks
         $query = Product::query()
-            ->select('products.*', DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'))
+            ->select(
+                'products.*',
+                DB::raw('COALESCE(store_product_stocks.stock, products.stock, 0) as current_stock'),
+                DB::raw('COALESCE(store_product_stocks.cost_price, products.cost_price, 0) as cost_price'),
+                DB::raw('COALESCE(store_product_stocks.selling_price, products.selling_price, 0) as selling_price')
+            )
             ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
                 $join->on('products.id', '=', 'store_product_stocks.product_id')
                     ->where('store_product_stocks.store_id', '=', $storeId);
@@ -170,7 +176,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%hydrogel%')
                         ->orWhere('products.name', 'like', '%tempered%')
                         ->orWhere('products.code', 'like', '%acc-case%');
-
                     } elseif ($providerKey === 'charger') {
                         $q->where('products.name', 'like', '%charger%')
                         ->orWhere('products.name', 'like', '%batok%')
@@ -191,7 +196,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%power%')
                         ->orWhere('products.name', 'like', '%batok%')
                         ->orWhere('products.name', 'like', '%pb%');
-
                     } elseif ($providerKey === 'tws') {
                         $q->where('products.name', 'like', '%tws%')
                         ->orWhere('products.name', 'like', '%earbuds%')
@@ -208,7 +212,6 @@ class PosController extends Controller
                         ->orWhere('products.name', 'like', '%tws%')
                         ->orWhere('products.name', 'like', '%speaker%')
                         ->orWhere('products.name', 'like', '%earphone%');
-
                     } elseif ($providerKey === 'flashdisk') {
                         $q->where('products.name', 'like', '%flashdisk%')
                         ->orWhere('products.name', 'like', '%flash drive%')
@@ -221,7 +224,6 @@ class PosController extends Controller
                         $q->where('products.name', 'like', '%flashdisk%')
                         ->orWhere('products.name', 'like', '%microsd%')
                         ->orWhere('products.name', 'like', '%memory%');
-
                     } elseif ($providerKey === 'holder') {
                         $q->where('products.name', 'like', '%holder%')
                         ->orWhere('products.name', 'like', '%stand%');
@@ -320,7 +322,6 @@ class PosController extends Controller
                         $q->where('products.name', 'like', '%indosat%')
                         ->orWhere('products.name', 'like', '%im3%')
                         ->orWhere('products.code', 'like', '%isat%');
-                    // --- DUKUNGAN PEMFILTERAN BANK BARU ---
                     } elseif (in_array($providerKey, ['seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd'])) {
                         $q->where('products.name', 'like', "%{$providerKey}%")
                         ->orWhere('products.name', 'like', "%{$cleanProviderSearch}%")
@@ -347,7 +348,7 @@ class PosController extends Controller
     }
 
     /**
-     * Menambahkan Item ke Keranjang
+     * Menambahkan Item ke Keranjang (MENGGUNAKAN HARGA KHUSUS CABANG AKTIF)
      */
     public function addToCart(Request $request)
     {
@@ -404,8 +405,6 @@ class PosController extends Controller
             $accName   = $request->input('account_name');
 
             $serviceLower = strtolower($serviceType);
-            
-            // --- DETEKSI KELOMPOK BANK (TERMASUK DUKUNGAN BANK BARU) ---
             $bankKeywords = ['bank', 'bca', 'bri', 'mandiri', 'bni', 'bsi', 'seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd'];
             $isBank = false;
             foreach ($bankKeywords as $kw) {
@@ -423,8 +422,6 @@ class PosController extends Controller
             }
 
             $cartKey = 'custom_' . time() . '_' . rand(100, 999);
-
-            // SET PRODUCT_ID KE NULL JIKA HANYA DIISI SECARA FALLBACK KUSTOM
             $finalProductId = ($request->filled('product_id') && $request->product_id != 1) ? $request->product_id : null;
 
             $cart[$cartKey] = [
@@ -451,6 +448,19 @@ class PosController extends Controller
 
             $product = Product::findOrFail($productId);
             $qty     = (int) ($request->quantity ?? $request->qty ?? 1);
+
+            // BACA HARGA MODAL & JUAL SPESIFIK CABANG AKTIF
+            $storeStock = StoreProductStock::where('store_id', $storeId)
+                ->where('product_id', $product->id)
+                ->first();
+
+            $costPrice = ($storeStock && $storeStock->cost_price !== null) 
+                ? (float) $storeStock->cost_price 
+                : (float) $product->cost_price;
+
+            $sellingPrice = ($storeStock && $storeStock->selling_price !== null) 
+                ? (float) $storeStock->selling_price 
+                : (float) $product->selling_price;
 
             $targetNum = $request->input('target_number') ?? $request->input('account_number') ?? $request->input('target_phone');
             $cartKey   = $product->id . ($targetNum ? '_' . $targetNum : '');
@@ -487,11 +497,11 @@ class PosController extends Controller
                     'name'              => $product->name,
                     'type'              => $product->type,
                     'target_phone'      => $targetNum,
-                    'cost_price'        => (float) $product->cost_price,
-                    'selling_price'     => (float) $product->selling_price,
+                    'cost_price'        => $costPrice,
+                    'selling_price'     => $sellingPrice,
                     'qty'               => $qty,
-                    'subtotal'          => (float) ($product->selling_price * $qty),
-                    'profit'            => (float) (($product->selling_price - $product->cost_price) * $qty),
+                    'subtotal'          => (float) ($sellingPrice * $qty),
+                    'profit'            => (float) (($sellingPrice - $costPrice) * $qty),
                     'digital_provider'  => $defaultProvider,
                     'served_by_user_id' => $isDigital ? null : $defaultStaffId,
                 ];
@@ -681,7 +691,6 @@ class PosController extends Controller
                     'profit'            => $item['profit'],
                 ]);
 
-                // --- OTOMATIS POTONG SALDO SERVER PPOB JIKA TRANSAKSI DIGITAL ---
                 if ($productType === 'digital' && !empty($provider)) {
                     $ppobServer = PpobServer::whereRaw('LOWER(name) = ?', [strtolower(trim($provider))])->first();
                     

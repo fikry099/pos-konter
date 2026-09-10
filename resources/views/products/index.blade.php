@@ -121,9 +121,20 @@
                             $catSearchData = strtolower($catHierarchyText);
                             $prodName = strtolower($product->name);
                             $prodCode = strtolower($product->code ?? '');
-                            $margin = $product->selling_price - $product->cost_price;
 
+                            // AMBIL STOK DAN HARGA DARI STOREPRODUCTSTOCK CABANG AKTIF
                             $storeStockRecord = $product->stocks->first();
+                            
+                            $currentCostPrice  = ($storeStockRecord && $storeStockRecord->cost_price !== null) 
+                                                ? $storeStockRecord->cost_price 
+                                                : $product->cost_price;
+                                                
+                            $currentSellingPrice = ($storeStockRecord && $storeStockRecord->selling_price !== null) 
+                                                  ? $storeStockRecord->selling_price 
+                                                  : $product->selling_price;
+
+                            $margin = $currentSellingPrice - $currentCostPrice;
+
                             $currentStock = $storeStockRecord ? $storeStockRecord->stock : 0;
                             $minStock = $storeStockRecord ? $storeStockRecord->min_stock : 5;
                         @endphp
@@ -158,13 +169,13 @@
                                 </span>
                             </td>
 
-                            <!-- HARGA MODAL / JUAL -->
+                            <!-- HARGA MODAL / JUAL (DISESUAIKAN DENGAN HARGA CABANG AKTIF) -->
                             <td class="py-3 px-3 text-right whitespace-nowrap">
-                                <div class="text-[10px] text-slate-400 font-mono">M: Rp {{ number_format($product->cost_price, 0, ',', '.') }}</div>
-                                <div class="font-black text-indigo-700 font-mono text-xs mt-0.5">J: Rp {{ number_format($product->selling_price, 0, ',', '.') }}</div>
+                                <div class="text-[10px] text-slate-400 font-mono">M: Rp {{ number_format($currentCostPrice, 0, ',', '.') }}</div>
+                                <div class="font-black text-indigo-700 font-mono text-xs mt-0.5">J: Rp {{ number_format($currentSellingPrice, 0, ',', '.') }}</div>
                             </td>
 
-                            <!-- MARGIN -->
+                            <!-- MARGIN (DISESUAIKAN DENGAN MARGIN CABANG AKTIF) -->
                             <td class="py-3 px-3 text-right font-bold font-mono text-xs whitespace-nowrap {{ $margin > 0 ? 'text-emerald-600' : 'text-rose-500' }}">
                                 +Rp {{ number_format($margin, 0, ',', '.') }}
                             </td>
@@ -239,7 +250,6 @@
     let activeCategory = 'all';
     let activeSubFilter = '';
 
-    // VARIABEL PAGINASI CLIENT-SIDE
     let currentPage = 1;
     let itemsPerPage = 10;
     let matchedRowsList = [];
@@ -432,7 +442,6 @@
             if (activeCategory === 'all') {
                 matchCat = true;
             } else if (activeCategory === 'handphone') {
-                // PERBAIKAN LOGIKA DETEKSI KATEGORI HANDPHONE
                 matchCat = catData.includes('handphone') || catData.includes('hp') || 
                            parentSlug.includes('handphone') || parentSlug.includes('hp') || 
                            catSlug.includes('handphone') || catSlug.includes('hp');

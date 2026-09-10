@@ -7,7 +7,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StoreProductStock extends Model
 {
-    protected $fillable = ['store_id', 'product_id', 'stock', 'min_stock'];
+    protected $fillable = [
+        'store_id', 
+        'product_id', 
+        'stock', 
+        'min_stock',
+        'cost_price',    // Kolom harga modal spesifik cabang
+        'selling_price', // Kolom harga jual spesifik cabang
+    ];
+
+    protected $casts = [
+        'stock'         => 'integer',
+        'min_stock'     => 'integer',
+        'cost_price'    => 'decimal:2',
+        'selling_price' => 'decimal:2',
+    ];
 
     public function store(): BelongsTo
     {

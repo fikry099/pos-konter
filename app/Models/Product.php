@@ -61,4 +61,28 @@ class Product extends Model
         $storeStock = $this->storeStocks()->where('store_id', $storeId)->first();
         return $storeStock ? $storeStock->stock : 0;
     }
+
+    // Helper mengambil record stok & harga spesifik cabang
+    public function getStoreStockRecord($storeId)
+    {
+        return $this->storeStocks()->where('store_id', $storeId)->first();
+    }
+
+    // Helper mengambil harga jual spesifik cabang (fallback ke katalog jika null)
+    public function getSellingPriceForStore($storeId)
+    {
+        $storeStock = $this->getStoreStockRecord($storeId);
+        return ($storeStock && $storeStock->selling_price !== null) 
+            ? $storeStock->selling_price 
+            : $this->selling_price;
+    }
+
+    // Helper mengambil harga modal spesifik cabang (fallback ke katalog jika null)
+    public function getCostPriceForStore($storeId)
+    {
+        $storeStock = $this->getStoreStockRecord($storeId);
+        return ($storeStock && $storeStock->cost_price !== null) 
+            ? $storeStock->cost_price 
+            : $this->cost_price;
+    }
 }
