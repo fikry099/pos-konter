@@ -59,7 +59,7 @@ class PpobServerController extends Controller
     {
         $request->validate([
             'ppob_server_id' => 'required|exists:ppob_servers,id',
-            'amount' => 'required|numeric|min:1000',
+            'amount' => 'required|numeric|min:1',
             'notes' => 'nullable|string|max:255'
         ]);
 

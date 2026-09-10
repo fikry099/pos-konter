@@ -14,6 +14,10 @@
 
         <!-- TOMBOL AKSI -->
         <div class="flex items-center gap-2 shrink-0">
+            <button type="button" onclick="document.getElementById('modalAddServer').classList.remove('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2.5 rounded-xl font-extrabold transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer active:scale-95 border border-slate-200/80">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Tambah Server</span>
+            </button>
 
             <button type="button" onclick="document.getElementById('modalDeposit').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2.5 rounded-xl font-extrabold transition shadow-md shadow-indigo-200 flex items-center space-x-1.5 whitespace-nowrap cursor-pointer active:scale-95">
                 <i class="fa-solid fa-wallet text-xs"></i>
@@ -26,6 +30,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         @forelse($servers as $server)
             @php
+                // Saldo dianggap menipis jika di bawah atau sama dengan Rp 100.000 namun masih lebih besar dari 0
                 $isLow = $server->balance <= 100000 && $server->balance > 0;
                 $isEmpty = $server->balance <= 0;
             @endphp
@@ -49,6 +54,7 @@
                 </div>
 
                 <div class="space-y-2">
+                    <!-- Tampilan saldo mendukung nominal perak secara presisi -->
                     <div class="text-2xl font-black font-mono tracking-tight {{ $isEmpty ? 'text-rose-600' : ($isLow ? 'text-amber-600' : 'text-slate-900') }}">
                         Rp {{ number_format($server->balance, 0, ',', '.') }}
                     </div>
@@ -148,7 +154,7 @@
             </table>
         </div>
 
-        <!-- PAGINASI KUSTOM (LIGHT THEME & GESER DARI IKON AI) -->
+        <!-- PAGINASI KUSTOM -->
         <div class="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold text-slate-500">
             <div>
                 Showing {{ $recentDeposits->firstItem() ?? 0 }} to {{ $recentDeposits->lastItem() ?? 0 }} of {{ $recentDeposits->total() }} results
@@ -156,7 +162,6 @@
 
             @if ($recentDeposits->hasPages())
                 <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center space-x-1.5 pr-12 sm:pr-16">
-                    {{-- Previous Page Link --}}
                     @if ($recentDeposits->onFirstPage())
                         <span class="w-9 h-9 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100">
                             <i class="fa-solid fa-chevron-left text-xs"></i>
@@ -167,7 +172,6 @@
                         </a>
                     @endif
 
-                    {{-- Pagination Elements --}}
                     @foreach ($recentDeposits->links()->elements as $element)
                         @if (is_string($element))
                             <span class="px-1 text-slate-400 font-bold">{{ $element }}</span>
@@ -188,7 +192,6 @@
                         @endif
                     @endforeach
 
-                    {{-- Next Page Link --}}
                     @if ($recentDeposits->hasMorePages())
                         <a href="{{ $recentDeposits->nextPageUrl() }}" class="w-9 h-9 flex items-center justify-center rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition active:scale-95 border border-slate-100">
                             <i class="fa-solid fa-chevron-right text-xs"></i>
@@ -218,7 +221,6 @@
         <form action="{{ route('ppob_servers.deposit') }}" method="POST" class="space-y-3.5" onsubmit="prepareForm(this)">
             @csrf
             
-            <!-- PILIH SERVER PPOB (TAMPILAN CUSTOM DROPDOWN MODAL) -->
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Server PPOB</label>
                 
@@ -243,7 +245,8 @@
 
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Nominal Saldo Ditambahkan (Rp)</label>
-                <input type="text" id="display_amount" required autocomplete="off" placeholder="Contoh: 1.000.000" class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-2xl font-bold font-mono focus:outline-none focus:border-indigo-500" oninput="formatRupiah(this, 'raw_amount')">
+                <!-- DUKUNGAN INPUT MINIMAL DARI RP 1 (PERAK) -->
+                <input type="text" id="display_amount" required autocomplete="off" placeholder="Contoh: 200 atau 1.000.000" class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-2xl font-bold font-mono focus:outline-none focus:border-indigo-500" oninput="formatRupiah(this, 'raw_amount')">
                 <input type="hidden" name="amount" id="raw_amount" required>
             </div>
             <div>
