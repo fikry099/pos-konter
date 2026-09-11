@@ -74,8 +74,8 @@ class TransactionController extends Controller
             $query->whereDate('created_at', $request->date);
         }
 
-        // 3. Filter Shift Kerja
-        if ($request->filled('shift_id')) {
+        // 3. Filter Shift Kerja (Abaikan jika di-set 'all')
+        if ($request->filled('shift_id') && $request->shift_id !== 'all') {
             $query->where('shift_id', $request->shift_id);
         }
 
@@ -92,7 +92,6 @@ class TransactionController extends Controller
             $selectedCategory = Category::find($targetCatId);
             $catName = strtolower($selectedCategory->name ?? '');
 
-            // JIKA KATEGORI ADALAH PULSA REGULER
             if (str_contains($catName, 'pulsa')) {
                 $query->where('invoice_code', 'NOT LIKE', 'WD-%');
 
@@ -113,7 +112,6 @@ class TransactionController extends Controller
                     });
                 });
             } 
-            // JIKA KATEGORI ADALAH E-WALLET / TOP-UP
             elseif (str_contains($catName, 'wallet') || str_contains($catName, 'top-up') || str_contains($catName, 'topup')) {
                 $query->whereHas('details', function ($qd) use ($allCategoryIds) {
                     $qd->where(function ($qSub) use ($allCategoryIds) {
@@ -131,7 +129,6 @@ class TransactionController extends Controller
                     });
                 });
             }
-            // JIKA KATEGORI ADALAH BANK / TRANSFER
             elseif (str_contains($catName, 'bank') || str_contains($catName, 'transfer')) {
                 $query->whereHas('details', function ($qd) use ($allCategoryIds) {
                     $qd->where(function ($qSub) use ($allCategoryIds) {
@@ -143,7 +140,6 @@ class TransactionController extends Controller
                     });
                 });
             }
-            // KATEGORI LAINNYA (Aksesoris, HP, Provider Spesifik, dll)
             else {
                 $query->whereHas('details.product', function ($qp) use ($allCategoryIds) {
                     $qp->whereIn('category_id', $allCategoryIds);
@@ -157,6 +153,15 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $storeId = $this->getActiveStoreId();
+
+        // JIKA baru pertama kali masuk halaman (tidak ada query parameter 'has_filter' atau 'shift_id')
+        if (!$request->has('has_filter') && !$request->has('shift_id')) {
+            $activeShift = Shift::getActiveShift($storeId);
+            if ($activeShift) {
+                // Set default ke ID Shift yang sedang AKTIF saat ini
+                $request->merge(['shift_id' => $activeShift->id]);
+            }
+        }
 
         $categories = Category::whereNull('parent_id')->get();
         $shifts     = Shift::where('store_id', $storeId)->latest()->get();

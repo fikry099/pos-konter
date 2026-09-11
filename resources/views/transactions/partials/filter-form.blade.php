@@ -1,6 +1,9 @@
 <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
     <form action="{{ route('transactions.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
         
+        <!-- MARKER BAHWA FORM FILTER SUDAH PERNAH DI-SUBMIT -->
+        <input type="hidden" name="has_filter" value="1">
+
         <!-- 1. CARI NOTA / NO HP (3 Kolom) -->
         <div class="md:col-span-3 space-y-1">
             <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Cari Nota / No. HP</label>
@@ -48,10 +51,10 @@
             </div>
 
             <div id="modal_shift_card" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 max-h-60 overflow-y-auto space-y-1.5">
-                <div onclick="selectCardOption('shift_id', '', '-- Semua Shift --', 'modal_shift_card', 'label_shift_id')" 
-                     class="p-2.5 rounded-xl text-xs font-bold cursor-pointer transition flex items-center justify-between {{ request('shift_id') == '' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-50 text-slate-700 hover:bg-slate-100' }}">
+                <div onclick="selectCardOption('shift_id', 'all', '-- Semua Shift --', 'modal_shift_card', 'label_shift_id')" 
+                     class="p-2.5 rounded-xl text-xs font-bold cursor-pointer transition flex items-center justify-between {{ (request('shift_id') == '' || request('shift_id') == 'all') ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-50 text-slate-700 hover:bg-slate-100' }}">
                     <span>-- Semua Shift --</span>
-                    @if(request('shift_id') == '') <i class="fa-solid fa-check text-xs"></i> @endif
+                    @if(request('shift_id') == '' || request('shift_id') == 'all') <i class="fa-solid fa-check text-xs"></i> @endif
                 </div>
                 @if(isset($shifts))
                     @foreach($shifts as $shift)
@@ -154,7 +157,6 @@
                 <span id="label_sub_category_id">
                     @php
                         $activeSubText = '-- Semua Sub-Kategori --';
-                        // Label akan otomatis di-handle oleh script saat fetch
                     @endphp
                     {{ $activeSubText }}
                 </span>
@@ -166,7 +168,6 @@
                      class="p-2.5 rounded-xl text-xs font-bold cursor-pointer transition flex items-center justify-between bg-slate-50 text-slate-700 hover:bg-slate-100">
                     <span>-- Semua Sub-Kategori --</span>
                 </div>
-                <!-- Diisi secara dinamis melalui JavaScript -->
             </div>
         </div>
 
