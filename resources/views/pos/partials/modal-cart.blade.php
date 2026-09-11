@@ -10,7 +10,7 @@
                 </div>
                 <div>
                     <h3 class="font-bold text-gray-800 text-base" id="modal_product_name">Nama Produk</h3>
-                    <p class="text-xs text-gray-400">Masukkan detail transaksi pembeli</p>
+                    <p class="text-xs text-gray-400">Masukkan detail transaksi pembeli (Opsional)</p>
                 </div>
             </div>
             <button onclick="closeAddToCartModal()" type="button" class="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition">
@@ -30,14 +30,12 @@
                     <label for="modal_custom_price" class="block text-xs font-bold text-indigo-900">
                         <i class="fa-solid fa-money-bill-wave text-indigo-600 mr-1"></i> Nominal Transfer / Top-Up (Rp):
                     </label>
-                    <!-- UBAH KE TYPE="TEXT" DAN TAMBAHKAN ONINPUT -->
                     <input type="text" id="modal_custom_price" name="custom_price" placeholder="Contoh: 137.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 transition">
                 </div>
                 <div class="space-y-1.5">
                     <label for="modal_admin_fee" class="block text-xs font-bold text-indigo-900">
                         <i class="fa-solid fa-receipt text-indigo-600 mr-1"></i> Biaya Admin / Jasa (Rp):
                     </label>
-                    <!-- UBAH KE TYPE="TEXT" DAN TAMBAHKAN ONINPUT -->
                     <input type="text" id="modal_admin_fee" name="admin_fee" value="2.500" placeholder="Contoh: 2.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-gray-700 transition">
                 </div>
             </div>
@@ -45,24 +43,24 @@
             <!-- 2. FIELD NO HP / ID PELANGGAN -->
             <div id="phone_field_container" class="space-y-1.5">
                 <label for="modal_target_phone" class="block text-xs font-bold text-gray-700">
-                    <i class="fa-solid fa-phone text-indigo-500 mr-1"></i> Nomor HP / ID Pelanggan:
+                    <i class="fa-solid fa-phone text-indigo-500 mr-1"></i> Nomor HP / ID Pelanggan <span class="text-gray-400 font-normal">(Opsional)</span>:
                 </label>
-                <input type="text" id="modal_target_phone" name="target_number" placeholder="Contoh: 081234567890 / ID PLN" autocomplete="off" aria-autocomplete="none" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition">
+                <input type="text" id="modal_target_phone" name="target_number" placeholder="Contoh: 081234567890 / ID PLN (Bisa Kosong)" autocomplete="off" aria-autocomplete="none" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition">
             </div>
 
             <!-- 3. FIELD TRANSFER BANK -->
             <div id="bank_field_container" class="hidden space-y-3">
                 <div class="space-y-1.5">
                     <label for="modal_account_number" class="block text-xs font-bold text-gray-700">
-                        <i class="fa-solid fa-credit-card text-teal-600 mr-1"></i> Nomor Rekening Tujuan:
+                        <i class="fa-solid fa-credit-card text-teal-600 mr-1"></i> Nomor Rekening Tujuan <span class="text-gray-400 font-normal">(Opsional)</span>:
                     </label>
-                    <input type="text" id="modal_account_number" name="account_number" placeholder="Contoh: 1234567890" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
+                    <input type="text" id="modal_account_number" name="account_number" placeholder="Contoh: 1234567890 (Bisa Kosong)" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
                 </div>
                 <div class="space-y-1.5">
                     <label for="modal_account_name" class="block text-xs font-bold text-gray-700">
-                        <i class="fa-solid fa-user text-teal-600 mr-1"></i> Nama Pemilik Rekening:
+                        <i class="fa-solid fa-user text-teal-600 mr-1"></i> Nama Pemilik Rekening <span class="text-gray-400 font-normal">(Opsional)</span>:
                     </label>
-                    <input type="text" id="modal_account_name" name="account_name" placeholder="Contoh: Budi Santoso" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
+                    <input type="text" id="modal_account_name" name="account_name" placeholder="Contoh: Budi Santoso (Bisa Kosong)" autocomplete="off" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white font-medium transition">
                 </div>
             </div>
 
@@ -88,9 +86,34 @@
     </div>
 </div>
 
-<!-- SCRIPT PEMFORMATAN RUPIAH -->
+<!-- SCRIPT PEMFORMATAN RUPIAH & PEMBERSIH ATRIBUT REQUIRED -->
 <script>
-    // 1. Fungsi Format Angka ke Rupiah (Titik Ribuan)
+    // 1. Fungsi Menghapus Atribut Required Secara Paksa
+    function clearModalRequiredFields() {
+        const modalInputs = document.querySelectorAll('#cartModal input');
+        modalInputs.forEach(input => {
+            input.removeAttribute('required');
+            input.required = false;
+        });
+    }
+
+    // Monitor perubahan modal jika JS eksternal mencoba menyisipkan required
+    document.addEventListener('DOMContentLoaded', function() {
+        const cartModal = document.getElementById('cartModal');
+        if (cartModal) {
+            const observer = new MutationObserver(function() {
+                clearModalRequiredFields();
+            });
+
+            observer.observe(cartModal, { 
+                attributes: true, 
+                subtree: true, 
+                childList: true 
+            });
+        }
+    });
+
+    // 2. Fungsi Format Angka ke Rupiah (Titik Ribuan)
     function formatRupiahInput(element) {
         let value = element.value.replace(/[^,\d]/g, '').toString();
         let split = value.split(',');
@@ -107,8 +130,10 @@
         element.value = rupiah;
     }
 
-    // 2. Fungsi Pembersih Titik Sebelum Form Di-Submit ke Laravel
+    // 3. Pembersih Titik & Required Sebelum Form Di-Submit
     function prepareCleanNumbers(e) {
+        clearModalRequiredFields();
+
         let customPriceInput = document.getElementById('modal_custom_price');
         let adminFeeInput = document.getElementById('modal_admin_fee');
 

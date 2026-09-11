@@ -401,8 +401,13 @@ class PosController extends Controller
             $sellingPrice = $customPrice + $adminFee;
             $profit       = $sellingPrice - $costPrice;
 
+            // PENYESUAIAN: Jika nomor target kosong / null, set ke '-'
             $targetNum = $request->input('account_number') ?? $request->input('target_number');
-            $accName   = $request->input('account_name');
+            if (empty(trim((string)$targetNum))) {
+                $targetNum = '-';
+            }
+
+            $accName = $request->input('account_name');
 
             $serviceLower = strtolower($serviceType);
             $bankKeywords = ['bank', 'bca', 'bri', 'mandiri', 'bni', 'bsi', 'seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd'];
@@ -462,8 +467,13 @@ class PosController extends Controller
                 ? (float) $storeStock->selling_price 
                 : (float) $product->selling_price;
 
+            // PENYESUAIAN: Jika nomor target kosong / null, set ke '-'
             $targetNum = $request->input('target_number') ?? $request->input('account_number') ?? $request->input('target_phone');
-            $cartKey   = $product->id . ($targetNum ? '_' . $targetNum : '');
+            if (empty(trim((string)$targetNum))) {
+                $targetNum = '-';
+            }
+
+            $cartKey   = $product->id . ($targetNum !== '-' ? '_' . $targetNum : '');
 
             $productType = strtolower(trim($product->type ?? 'physical'));
             $isDigital   = ($productType === 'digital');
