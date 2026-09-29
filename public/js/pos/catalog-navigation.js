@@ -4,12 +4,27 @@
 let navLevel = 1;
 let selectedCategory = '';
 let selectedProvider = '';
-let currentSubDetailKey = ''; // Menyimpan key sub-detail (proteksi, power, audio, dll)
+let selectedBrand = 'all'; // Menyimpan filter merek aktif
 window.selectedProviderTitle = '';
 
 let posCurrentPage = 1;
-let posItemsPerPage = 10;
+let posItemsPerPage = 12;
 let posVisibleProducts = [];
+
+// ==========================================
+// DAFTAR MEREK KHUSUS CABLE DATA & AUX
+// ==========================================
+const CABLE_DATA_BRANDS = [
+    { key: 'vivan', name: 'Vivan' },
+    { key: 'robot', name: 'Robot' },
+    { key: 'log-on', name: 'Log-on' },
+    { key: 'oraimo', name: 'Oraimo' },
+    { key: 'roket', name: 'Rocket' },
+    { key: 'olike', name: 'Olike' },
+    { key: 'tecnix', name: 'Tecnix' },
+    { key: 'rapa', name: 'Rapa' },
+    { key: 'luna', name: 'Luna' }
+];
 
 function togglePriceFilterVisibility(show) {
     let priceFilter = document.getElementById('price_filter_container');
@@ -29,11 +44,10 @@ function togglePriceFilterVisibility(show) {
     }
 }
 
-// 1. DARI LEVEL 1 KE LEVEL 2
+// 1. DARI LEVEL 1 KE LEVEL 2 (SUB-KATEGORI / PROVIDER)
 function navigateToSubCategory(catType, title) {
     navLevel = 2;
     selectedCategory = catType.toLowerCase();
-    currentSubDetailKey = '';
 
     document.getElementById('view_main_categories').classList.add('hidden');
     document.getElementById('view_sub_providers').classList.remove('hidden');
@@ -49,11 +63,13 @@ function navigateToSubCategory(catType, title) {
         titleText.innerHTML = '<i class="fa-solid fa-list mr-2 text-indigo-600"></i> Pilih ' + title;
     }
 
-    // Sembunyikan semua grid sub-kategori
+    // Sembunyikan semua grid sub-kategori utama
     let grids = [
-        'sub_cellular_grid', 'sub_ewallet_grid', 'sub_bank_grid', 
-        'sub_handphone_grid', 'sub_aksesoris_grid', 'sub_proteksi_grid', 
-        'sub_power_grid', 'sub_audio_grid', 'sub_penyimpanan_grid', 'sub_mount_grid'
+        'sub_cellular_grid', 
+        'sub_ewallet_grid', 
+        'sub_bank_grid', 
+        'sub_handphone_grid', 
+        'sub_aksesoris_grid'
     ];
     grids.forEach(g => {
         let el = document.getElementById(g);
@@ -80,61 +96,50 @@ function navigateToSubCategory(catType, title) {
     }
 }
 
-// 2. DARI LEVEL 2 KE LEVEL 3 (SUB-DETAIL AKSESORIS)
-function navigateToSubDetail(subKey) {
-    navLevel = 3;
-    currentSubDetailKey = subKey.toLowerCase();
+// 2. SELEKSI SUB-ITEM / PROVIDER UNTUK MENGAMBIL DAFTAR PRODUK (LEVEL 2 KE LEVEL 3)
+function selectProviderFilter(providerKey, title) {
+    let catLower = (selectedCategory || '').toLowerCase();
+    let provLower = (providerKey || '').toLowerCase();
 
-    document.getElementById('view_main_categories').classList.add('hidden');
-    document.getElementById('view_sub_providers').classList.remove('hidden');
-    document.getElementById('view_products_grid').classList.add('hidden');
-
-    togglePriceFilterVisibility(false);
-
-    let titleText = document.getElementById('catalog_title_text');
-    let titleMap = {
-        'proteksi': 'Proteksi (Casing, TG, Hydrogel)',
-        'power': 'Power (Charger, Kabel, PB)',
-        'audio': 'Audio (TWS, Headset, Speaker)',
-        'penyimpanan': 'Penyimpanan (Flashdisk, MicroSD)',
-        'mount-stand': 'Mount & Stand (Holder, Tripod)'
-    };
-
-    if (titleText) {
-        titleText.innerHTML = '<i class="fa-solid fa-layer-group mr-2 text-indigo-600"></i> Pilih ' + (titleMap[currentSubDetailKey] || 'Kategori');
+    // JIKA KATEGORI/PROVIDER ADALAH E-WALLET ATAU BANK, LANGSUNG BUKA MODAL NOMINAL BEBAS
+    if (
+        catLower.includes('wallet') || catLower.includes('ewallet') || 
+        catLower.includes('bank') || catLower.includes('transfer') ||
+        ['dana', 'gopay', 'ovo', 'shopee', 'shopeepay', 'linkaja', 'maxim', 
+         'bca', 'bri', 'mandiri', 'bni', 'bsi', 'seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd', 'lainnya'].includes(provLower)
+    ) {
+        let displayTitle = title || providerKey;
+        if ((catLower.includes('bank') || catLower.includes('transfer')) && !displayTitle.toLowerCase().includes('bank')) {
+            displayTitle = 'Bank ' + displayTitle;
+        }
+        openCustomAmountModal(displayTitle);
+        return;
     }
 
-    let grids = [
-        'sub_cellular_grid', 'sub_ewallet_grid', 'sub_bank_grid', 
-        'sub_handphone_grid', 'sub_aksesoris_grid', 'sub_proteksi_grid', 
-        'sub_power_grid', 'sub_audio_grid', 'sub_penyimpanan_grid', 'sub_mount_grid'
-    ];
-    grids.forEach(g => {
-        let el = document.getElementById(g);
-        if (el) el.classList.add('hidden');
-    });
-
-    let targetGridMap = {
-        'proteksi': 'sub_proteksi_grid',
-        'power': 'sub_power_grid',
-        'audio': 'sub_audio_grid',
-        'penyimpanan': 'sub_penyimpanan_grid',
-        'mount-stand': 'sub_mount_grid'
-    };
-
-    let targetGrid = document.getElementById(targetGridMap[currentSubDetailKey]);
-    if (targetGrid) targetGrid.classList.remove('hidden');
-}
-
-// 3. SELEKSI SUB-ITEM / PROVIDER UNTUK MENGAMBIL DAFTAR PRODUK
-function selectProviderFilter(providerKey, title) {
-    navLevel = currentSubDetailKey !== '' ? 4 : 3;
+    navLevel = 3;
     selectedProvider = providerKey.toLowerCase();
+    selectedBrand = 'all'; // Reset filter merek ke 'Semua Merek'
     window.selectedProviderTitle = title || providerKey;
 
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
+    // =========================================================================
+    // HANYA TAMPILKAN SIDEBAR MEREK JIKA PROVIDER ADALAH CABLE DATA & AUX
+    // =========================================================================
+    let brandSidebar = document.getElementById('brand_sidebar_container');
+    let isCableData = provLower.includes('cable') || provLower.includes('kabel') || provLower.includes('aux');
+
+    if (brandSidebar) {
+        if (isCableData) {
+            brandSidebar.classList.remove('hidden');
+            renderDynamicBrandList(selectedCategory, selectedProvider);
+        } else {
+            // Sembunyikan sidebar merek untuk kategori/provider lainnya (seperti Softcase, Adaptor, dll.)
+            brandSidebar.classList.add('hidden');
+        }
+    }
+
     togglePriceFilterVisibility(true);
     
     let titleText = document.getElementById('catalog_title_text');
@@ -145,18 +150,67 @@ function selectProviderFilter(providerKey, title) {
     fetchProductsFromServer(selectedCategory, selectedProvider);
 }
 
-// 4. MENGARAH LANGSUNG KE PRODUK DARI UTAMA (PLN / LAINNYA)
+/**
+ * FUNGSI DEDIKASI: Merender HTML Tombol Merek di Sidebar
+ */
+function renderDynamicBrandList(category, provider) {
+    let catLower = (category || '').toLowerCase();
+    let provLower = (provider || '').toLowerCase();
+    let wrapper = document.getElementById('brand_list_wrapper');
+    if (!wrapper) return;
+
+    // Cek apakah provider khusus Cable Data & AUX
+    let isCableData = provLower.includes('cable') || provLower.includes('kabel') || provLower.includes('aux');
+
+    if (isCableData) {
+        let html = `
+            <button type="button" 
+                    onclick="selectBrandFilter('all')" 
+                    data-brand-btn="all"
+                    class="brand-filter-btn w-full text-left px-3 py-2 rounded-xl bg-indigo-600 text-white font-bold transition flex items-center justify-between">
+                <span>Semua Merek</span>
+                <i class="fa-solid fa-check text-[10px]"></i>
+            </button>
+        `;
+
+        CABLE_DATA_BRANDS.forEach(b => {
+            html += `
+                <button type="button" 
+                        onclick="selectBrandFilter('${b.key}')" 
+                        data-brand-btn="${b.key}"
+                        class="brand-filter-btn w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition flex items-center justify-between">
+                    <span>${b.name}</span>
+                </button>
+            `;
+        });
+
+        wrapper.innerHTML = html;
+    } else {
+        // Jika bukan Cable Data & AUX, kembalikan ke tombol merek default
+        resetBrandSidebarUI();
+    }
+
+    // Reset input pencarian di sidebar
+    let searchInput = document.getElementById('search_brand_input');
+    if (searchInput) searchInput.value = '';
+    filterBrandList();
+}
+
+// 3. MENGARAH LANGSUNG KE PRODUK DARI UTAMA (PLN / LAINNYA)
 function navigateToDirectCategory(slugKey, title) {
     navLevel = 3;
     selectedCategory = slugKey.toLowerCase();
     selectedProvider = '';
-    currentSubDetailKey = '';
+    selectedBrand = 'all';
     window.selectedProviderTitle = title || '';
 
     document.getElementById('view_main_categories').classList.add('hidden');
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
+    let brandSidebar = document.getElementById('brand_sidebar_container');
+    if (brandSidebar) brandSidebar.classList.add('hidden');
+
     togglePriceFilterVisibility(true);
     
     let backBtn = document.getElementById('btn_back_category');
@@ -170,18 +224,21 @@ function navigateToDirectCategory(slugKey, title) {
     fetchProductsFromServer(selectedCategory, '');
 }
 
-// 5. TAMPILKAN SEMUA PRODUK ON-DEMAND
+// 4. TAMPILKAN SEMUA PRODUK ON-DEMAND
 function showAllProducts() {
     navLevel = 3;
     selectedCategory = 'all';
     selectedProvider = '';
-    currentSubDetailKey = '';
+    selectedBrand = 'all';
     window.selectedProviderTitle = '';
 
     document.getElementById('view_main_categories').classList.add('hidden');
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
+    let brandSidebar = document.getElementById('brand_sidebar_container');
+    if (brandSidebar) brandSidebar.classList.add('hidden');
+
     togglePriceFilterVisibility(true);
     
     let backBtn = document.getElementById('btn_back_category');
@@ -195,7 +252,7 @@ function showAllProducts() {
     fetchProductsFromServer('all', '');
 }
 
-// 6. FETCH AJAX DATA PRODUK
+// 5. FETCH AJAX DATA PRODUK
 function fetchProductsFromServer(category, provider) {
     let gridView = document.getElementById('view_products_grid');
     if (!gridView) return;
@@ -229,7 +286,7 @@ function fetchProductsFromServer(category, provider) {
         });
 }
 
-// 7. RENDER ITEM PRODUK KETIKA DILOAD (DIPERBAIKI DENGAN DATA-NAME SPESIFIK)
+// 6. RENDER ITEM PRODUK KETIKA DILOAD
 function renderProductsHTML(products, container) {
     container.innerHTML = '';
 
@@ -242,7 +299,6 @@ function renderProductsHTML(products, container) {
     if (isBankOrWallet) {
         let providerTitleParam = (window.selectedProviderTitle || selectedProvider || '').replace(/'/g, "\\'");
 
-        // PERBAIKAN: Buat kata kunci data-name presisi agar tidak memicu deteksi "pulsa"
         let customDataName = "nominal bebas kustom transfer topup ewallet " + provStr;
         if (catStr.includes('bank') || provStr.includes('bank') || catStr.includes('transfer')) {
             customDataName = "nominal bebas kustom transfer bank " + provStr;
@@ -333,6 +389,7 @@ function renderProductsHTML(products, container) {
                      ${clickAttr}
                      data-name="${(product.name || '').toLowerCase()}"
                      data-code="${(product.code || '').toLowerCase()}"
+                     data-brand="${(product.brand || '').toLowerCase()}"
                      data-price="${product.selling_price}">
                     <div>
                         <div class="flex items-center justify-between mb-2">
@@ -364,37 +421,74 @@ function renderProductsHTML(products, container) {
     applyProductFilters();
 }
 
+// 7. FILTER & MINI SEARCH SIDEBAR MEREK
+function filterBrandList() {
+    let input = document.getElementById('search_brand_input');
+    let filter = input ? input.value.toLowerCase().trim() : '';
+    let buttons = document.querySelectorAll('#brand_list_wrapper .brand-filter-btn');
+
+    buttons.forEach(btn => {
+        let brandName = btn.innerText.toLowerCase();
+        let brandAttr = btn.getAttribute('data-brand-btn');
+        if (brandAttr === 'all' || brandName.includes(filter)) {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+        }
+    });
+}
+
+function selectBrandFilter(brandKey) {
+    selectedBrand = brandKey.toLowerCase();
+
+    // Update style tombol aktif di sidebar
+    let buttons = document.querySelectorAll('#brand_list_wrapper .brand-filter-btn');
+    buttons.forEach(btn => {
+        let attr = btn.getAttribute('data-brand-btn');
+        if (attr === selectedBrand) {
+            btn.className = 'brand-filter-btn w-full text-left px-3 py-2 rounded-xl bg-indigo-600 text-white font-bold transition flex items-center justify-between';
+            if (!btn.querySelector('.fa-check')) {
+                btn.insertAdjacentHTML('beforeend', '<i class="fa-solid fa-check text-[10px]"></i>');
+            }
+        } else {
+            btn.className = 'brand-filter-btn w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition flex items-center justify-between';
+            let checkIcon = btn.querySelector('.fa-check');
+            if (checkIcon) checkIcon.remove();
+        }
+    });
+
+    applyProductFilters();
+}
+
+function resetBrandSidebarUI() {
+    let searchInput = document.getElementById('search_brand_input');
+    if (searchInput) searchInput.value = '';
+    filterBrandList();
+    selectBrandFilter('all');
+}
+
 // 8. LOGIKA MUNDUR BERTAHAP SAAT KLIK TOMBOL KEMBALI
 function resetCategoryNavigation() {
-    // JIKA BERADA DI DAFTAR PRODUK HASIL PILIHAN SUB-DETAIL (LEVEL 4) -> MUNDUR KE PILIHAN SUB-DETAIL LEVEL 3
-    if (navLevel === 4 && currentSubDetailKey !== '') {
-        navigateToSubDetail(currentSubDetailKey);
-        return;
-    }
-
-    // JIKA BERADA DI PILIHAN SUB-DETAIL LEVEL 3 -> MUNDUR KE SUB AKSESORIS LEVEL 2
-    if (navLevel === 3 && currentSubDetailKey !== '') {
-        navigateToSubCategory('aksesoris', 'Sub Aksesoris');
-        return;
-    }
-
-    // JIKA BERADA DI GRID PRODUK HASIL LEVEL 2 -> MUNDUR KE LEVEL 2
-    if (navLevel === 3 && ['pulsa', 'voucher', 'perdana', 'kartu-perdana', 'handphone', 'hp', 'ewallet', 'bank', 'transfer', 'transfer-bank', 'aksesoris', 'aksesoris-hp'].includes(selectedCategory)) {
+    // JIKA BERADA DI GRID PRODUK RESULT (LEVEL 3) -> MUNDUR KE PILIHAN SUB-KATEGORI/PROVIDER LEVEL 2
+    if (navLevel === 3) {
         navLevel = 2;
         selectedProvider = '';
-        currentSubDetailKey = '';
+        selectedBrand = 'all';
         window.selectedProviderTitle = '';
         
         document.getElementById('view_products_grid').classList.add('hidden');
         document.getElementById('view_sub_providers').classList.remove('hidden');
         
+        let brandSidebar = document.getElementById('brand_sidebar_container');
+        if (brandSidebar) brandSidebar.classList.add('hidden');
+
         togglePriceFilterVisibility(false);
         
         let titleText = document.getElementById('catalog_title_text');
         if (titleText) {
             let labelTitle = 'Operator / Provider';
             if (selectedCategory.includes('handphone') || selectedCategory === 'hp') labelTitle = 'Tipe Handphone';
-            else if (selectedCategory.includes('aksesoris')) labelTitle = 'Sub Aksesoris';
+            else if (selectedCategory.includes('aksesoris')) labelTitle = 'Aksesoris HP';
             else if (selectedCategory.includes('ewallet') || selectedCategory.includes('wallet')) labelTitle = 'E-Wallet';
             else if (selectedCategory.includes('bank') || selectedCategory.includes('transfer')) labelTitle = 'Bank';
 
@@ -402,9 +496,11 @@ function resetCategoryNavigation() {
         }
 
         let grids = [
-            'sub_cellular_grid', 'sub_ewallet_grid', 'sub_bank_grid', 
-            'sub_handphone_grid', 'sub_aksesoris_grid', 'sub_proteksi_grid', 
-            'sub_power_grid', 'sub_audio_grid', 'sub_penyimpanan_grid', 'sub_mount_grid'
+            'sub_cellular_grid', 
+            'sub_ewallet_grid', 
+            'sub_bank_grid', 
+            'sub_handphone_grid', 
+            'sub_aksesoris_grid'
         ];
         grids.forEach(g => {
             let el = document.getElementById(g);
@@ -435,13 +531,16 @@ function resetCategoryNavigation() {
     navLevel = 1;
     selectedCategory = '';
     selectedProvider = '';
-    currentSubDetailKey = '';
+    selectedBrand = 'all';
     window.selectedProviderTitle = '';
     
     document.getElementById('view_main_categories').classList.remove('hidden');
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.add('hidden');
     
+    let brandSidebar = document.getElementById('brand_sidebar_container');
+    if (brandSidebar) brandSidebar.classList.add('hidden');
+
     togglePriceFilterVisibility(false);
     
     let backBtn = document.getElementById('btn_back_category');
@@ -479,12 +578,16 @@ function applyProductFilters() {
     items.forEach(item => {
         let name = (item.getAttribute('data-name') || '').toLowerCase();
         let code = (item.getAttribute('data-code') || '').toLowerCase();
+        let brand = (item.getAttribute('data-brand') || '').toLowerCase();
         let price = parseFloat(item.getAttribute('data-price')) || 0;
 
         let matchSearch = searchKeyword === '' || name.includes(searchKeyword) || code.includes(searchKeyword);
         let matchPrice = (price >= minPrice && price <= maxPrice);
+        
+        // Match Filter Merek dari Sidebar
+        let matchBrand = (selectedBrand === 'all') || brand.includes(selectedBrand) || name.includes(selectedBrand);
 
-        if (matchSearch && matchPrice) {
+        if (matchSearch && matchPrice && matchBrand) {
             posVisibleProducts.push(item);
         } else {
             item.classList.add('hidden');
@@ -493,7 +596,7 @@ function applyProductFilters() {
 
     let selectEl = document.getElementById('pos_items_per_page');
     if (selectEl) {
-        posItemsPerPage = parseInt(selectEl.value) || 10;
+        posItemsPerPage = parseInt(selectEl.value) || 12;
     }
 
     posCurrentPage = 1;
@@ -578,7 +681,7 @@ function goToPosPage(page) {
 
 function changePosPerPage() {
     let selectEl = document.getElementById('pos_items_per_page');
-    posItemsPerPage = parseInt(selectEl ? selectEl.value : 10) || 10;
+    posItemsPerPage = parseInt(selectEl ? selectEl.value : 12) || 12;
     posCurrentPage = 1;
     renderPosPagination();
 }

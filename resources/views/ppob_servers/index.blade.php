@@ -1,5 +1,4 @@
 @extends('layouts.app')
-
 @section('content')
 <div class="space-y-5 w-full pb-24 sm:pb-12">
     
@@ -11,14 +10,12 @@
             </h1>
             <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Pantau sisa deposit aplikasi transaksi secara real-time untuk kelancaran operasional konter.</p>
         </div>
-
         <!-- TOMBOL AKSI -->
         <div class="flex items-center gap-2 shrink-0">
             <button type="button" onclick="document.getElementById('modalAddServer').classList.remove('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3.5 py-2.5 rounded-xl font-extrabold transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer active:scale-95 border border-slate-200/80">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Tambah Server</span>
             </button>
-
             <button type="button" onclick="document.getElementById('modalDeposit').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2.5 rounded-xl font-extrabold transition shadow-md shadow-indigo-200 flex items-center space-x-1.5 whitespace-nowrap cursor-pointer active:scale-95">
                 <i class="fa-solid fa-wallet text-xs"></i>
                 <span>Isi Ulang Saldo</span>
@@ -30,54 +27,91 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         @forelse($servers as $server)
             @php
-                // Saldo dianggap menipis jika di bawah atau sama dengan Rp 100.000 namun masih lebih besar dari 0
-                $isLow = $server->balance <= 100000 && $server->balance > 0;
+                $sName = strtolower($server->name);
+                
+                // MAPPING ATRIBUT GAMBAR LOGO & WARNA TEMPLATE BORDER/BG
+                if (str_contains($sName, 'propana')) {
+                    $imgFile = 'propana.png';
+                    $cardBg  = 'bg-gradient-to-br from-rose-50/60 via-white to-rose-50/30 border-rose-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } elseif (str_contains($sName, 'shopee')) {
+                    $imgFile = 'mitra-shopee.png';
+                    $cardBg  = 'bg-gradient-to-br from-amber-50/60 via-white to-orange-50/30 border-orange-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } elseif (str_contains($sName, 'seabank')) {
+                    $imgFile = 'seabank.png';
+                    $cardBg  = 'bg-gradient-to-br from-sky-50/60 via-white to-blue-50/30 border-sky-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } elseif (str_contains($sName, 'digipos')) {
+                    $imgFile = 'digipos.png';
+                    $cardBg  = 'bg-gradient-to-br from-purple-50/60 via-white to-indigo-50/30 border-purple-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } elseif (str_contains($sName, 'rita')) {
+                    $imgFile = 'rita.png';
+                    $cardBg  = 'bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/30 border-emerald-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } elseif (str_contains($sName, 'dompul') || str_contains($sName, 'sidompul')) {
+                    $imgFile = 'sidompul.png';
+                    $cardBg  = 'bg-gradient-to-br from-violet-50/60 via-white to-purple-50/30 border-violet-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } elseif (str_contains($sName, 'simpel')) {
+                    $imgFile = 'simpel.png';
+                    $cardBg  = 'bg-gradient-to-br from-cyan-50/60 via-white to-blue-50/30 border-cyan-200/90';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                } else {
+                    $imgFile = null;
+                    $cardBg  = 'bg-white border-slate-200/80';
+                    $btnBg   = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white';
+                }
+
                 $isEmpty = $server->balance <= 0;
             @endphp
-            <div class="bg-white p-5 rounded-2xl sm:rounded-3xl border transition-all duration-200 relative overflow-hidden group shadow-sm hover:shadow-md
-                {{ $isEmpty ? 'border-rose-200 bg-rose-50/20' : ($isLow ? 'border-amber-200 bg-amber-50/20' : 'border-slate-200/80 hover:border-indigo-300') }}">
+
+            <div class="p-5 rounded-3xl border transition-all duration-200 relative overflow-hidden group shadow-xs hover:shadow-md {{ $cardBg }}">
                 
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-2xl {{ $isEmpty ? 'bg-rose-100 text-rose-600' : ($isLow ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-600') }} flex items-center justify-center font-black text-xs transition-transform group-hover:scale-110 shadow-xs">
-                            <i class="fa-solid fa-microchip text-sm"></i>
-                        </div>
+                <!-- SILUET LOGO IMG DI KANAN ATAS (TRANSPARAN MELAYANG) -->
+                @if($imgFile && file_exists(public_path('img/ppob/' . $imgFile)))
+                    <div class="absolute -right-2 -top-2 w-32 h-32 opacity-20 pointer-events-none select-none overflow-hidden transition-transform group-hover:scale-105">
+                        <img src="{{ asset('img/ppob/' . $imgFile) }}" alt="" class="w-full h-full object-contain rotate-12">
+                    </div>
+                @endif
+
+                <!-- HEADER KARTU (LOGO KIRI ATAS TANPA KOTAK PEMBUNGKUS) -->
+                <div class="relative z-10 flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <!-- GAMBAR LOGO LANGSUNG TANPA BACKGROUND KOTAK -->
+                        @if($imgFile && file_exists(public_path('img/ppob/' . $imgFile)))
+                            <img src="{{ asset('img/ppob/' . $imgFile) }}" alt="{{ $server->name }}" class="w-12 h-12 object-contain shrink-0 filter drop-shadow-2xs">
+                        @else
+                            <i class="fa-solid fa-server text-indigo-600 text-2xl w-12 h-12 flex items-center justify-center"></i>
+                        @endif
                         <span class="text-xs font-black text-slate-800 uppercase tracking-wider">{{ $server->name }}</span>
                     </div>
-
-                    <span class="relative flex h-2.5 w-2.5">
-                        @if($isEmpty || $isLow)
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full {{ $isEmpty ? 'bg-rose-400' : 'bg-amber-400' }} opacity-75"></span>
-                        @endif
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 {{ $isEmpty ? 'bg-rose-500' : ($isLow ? 'bg-amber-500' : 'bg-emerald-500') }}"></span>
-                    </span>
                 </div>
 
-                <div class="space-y-2">
-                    <!-- Tampilan saldo mendukung nominal perak secara presisi -->
-                    <div class="text-2xl font-black font-mono tracking-tight {{ $isEmpty ? 'text-rose-600' : ($isLow ? 'text-amber-600' : 'text-slate-900') }}">
+                <div class="relative z-10 space-y-3">
+                    <div class="text-2xl font-black font-mono tracking-tight text-rose-600">
                         Rp {{ number_format($server->balance, 0, ',', '.') }}
                     </div>
 
                     <div class="flex items-center justify-between pt-1">
-                        <span class="text-[11px] font-extrabold flex items-center gap-1 {{ $isEmpty ? 'text-rose-600' : ($isLow ? 'text-amber-600' : 'text-emerald-600') }}">
+                        <span class="text-[11px] font-extrabold flex items-center gap-1.5 {{ $isEmpty ? 'text-rose-600' : 'text-emerald-600' }}">
                             @if($isEmpty)
                                 <i class="fa-solid fa-triangle-exclamation"></i> Saldo Kosong
-                            @elseif($isLow)
-                                <i class="fa-solid fa-circle-exclamation"></i> Saldo Menipis
                             @else
                                 <i class="fa-solid fa-circle-check"></i> Saldo Aman
                             @endif
                         </span>
 
-                        <button type="button" onclick="quickDeposit({{ $server->id }}, '{{ $server->name }}', 'Rp {{ number_format($server->balance, 0, ',', '.') }}')" class="text-[11px] font-extrabold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 py-1.5 rounded-xl transition cursor-pointer active:scale-95 shadow-xs">
+                        <button type="button" onclick="quickDeposit({{ $server->id }}, '{{ $server->name }}', 'Rp {{ number_format($server->balance, 0, ',', '.') }}')" 
+                                class="text-[11px] font-extrabold px-3.5 py-1.5 rounded-xl transition cursor-pointer active:scale-95 shadow-2xs {{ $btnBg }}">
                             + Top Up
                         </button>
                     </div>
                 </div>
             </div>
         @empty
-            <div class="col-span-full bg-white p-8 rounded-2xl sm:rounded-3xl text-center text-slate-400 font-bold text-xs border border-slate-200 shadow-sm">
+            <div class="col-span-full bg-white p-8 rounded-3xl text-center text-slate-400 font-bold text-xs border border-slate-200 shadow-sm">
                 Belum ada data server PPOB. Silakan klik tombol "Tambah Server" di atas.
             </div>
         @endforelse
@@ -85,14 +119,10 @@
 
     <!-- 3. TABEL RIWAYAT TOP-UP SALDO -->
     <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
-        
-        <!-- HEADER TABEL & FILTER BULAN -->
         <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50/50">
             <h3 class="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
                 <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i> Riwayat Isi Ulang Saldo
             </h3>
-
-            <!-- FORM FILTER PER BULAN -->
             <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
                 <div class="relative">
                     <input type="month" name="month" value="{{ request('month', date('Y-m')) }}" onchange="this.form.submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 shadow-2xs cursor-pointer">
@@ -104,7 +134,6 @@
                 @endif
             </form>
         </div>
-
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
                 <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-black border-b border-slate-100">
@@ -153,13 +182,10 @@
                 </tbody>
             </table>
         </div>
-
-        <!-- PAGINASI KUSTOM -->
         <div class="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold text-slate-500">
             <div>
                 Showing {{ $recentDeposits->firstItem() ?? 0 }} to {{ $recentDeposits->lastItem() ?? 0 }} of {{ $recentDeposits->total() }} results
             </div>
-
             @if ($recentDeposits->hasPages())
                 <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center space-x-1.5 pr-12 sm:pr-16">
                     @if ($recentDeposits->onFirstPage())
@@ -171,12 +197,10 @@
                             <i class="fa-solid fa-chevron-left text-xs"></i>
                         </a>
                     @endif
-
                     @foreach ($recentDeposits->links()->elements as $element)
                         @if (is_string($element))
                             <span class="px-1 text-slate-400 font-bold">{{ $element }}</span>
                         @endif
-
                         @if (is_array($element))
                             @foreach ($element as $page => $url)
                                 @if ($page == $recentDeposits->currentPage())
@@ -191,7 +215,6 @@
                             @endforeach
                         @endif
                     @endforeach
-
                     @if ($recentDeposits->hasMorePages())
                         <a href="{{ $recentDeposits->nextPageUrl() }}" class="w-9 h-9 flex items-center justify-center rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition active:scale-95 border border-slate-100">
                             <i class="fa-solid fa-chevron-right text-xs"></i>
@@ -220,21 +243,15 @@
         </div>
         <form action="{{ route('ppob_servers.deposit') }}" method="POST" class="space-y-3.5" onsubmit="prepareForm(this)">
             @csrf
-            
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Server PPOB</label>
-                
                 @php
                     $firstServer = $servers->first();
                     $defaultServerId = $firstServer ? $firstServer->id : '';
                     $defaultServerName = $firstServer ? $firstServer->name . ' (Sisa: Rp ' . number_format($firstServer->balance, 0, ',', '.') . ')' : 'Pilih Server';
                 @endphp
-
                 <input type="hidden" name="ppob_server_id" id="select_server_id" value="{{ $defaultServerId }}" required>
-
-                <button type="button" 
-                        onclick="openServerSelectionModal()" 
-                        class="w-full text-xs font-black bg-indigo-50 border-2 border-indigo-200 hover:border-indigo-400 text-indigo-950 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer active:scale-98 transition-all shadow-xs">
+                <button type="button" onclick="openServerSelectionModal()" class="w-full text-xs font-black bg-indigo-50 border-2 border-indigo-200 hover:border-indigo-400 text-indigo-950 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer active:scale-98 transition-all shadow-xs">
                     <span class="flex items-center space-x-2 truncate">
                         <i class="fa-solid fa-microchip text-indigo-600 text-sm"></i>
                         <span id="selected_server_display" class="truncate font-black">{{ $defaultServerName }}</span>
@@ -242,10 +259,8 @@
                     <i class="fa-solid fa-chevron-down text-indigo-600 text-xs shrink-0 ml-2"></i>
                 </button>
             </div>
-
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Nominal Saldo Ditambahkan (Rp)</label>
-                <!-- DUKUNGAN INPUT MINIMAL DARI RP 1 (PERAK) -->
                 <input type="text" id="display_amount" required autocomplete="off" placeholder="Contoh: 200 atau 1.000.000" class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-2xl font-bold font-mono focus:outline-none focus:border-indigo-500" oninput="formatRupiah(this, 'raw_amount')">
                 <input type="hidden" name="amount" id="raw_amount" required>
             </div>
@@ -273,18 +288,12 @@
                 <i class="fa-solid fa-xmark text-base"></i>
             </button>
         </div>
-
         <div class="space-y-2 max-h-72 overflow-y-auto pt-1">
             @foreach($servers as $s)
                 @php
                     $label = $s->name . ' (Sisa: Rp ' . number_format($s->balance, 0, ',', '.') . ')';
                 @endphp
-                <button type="button" 
-                        onclick="selectServerModal('{{ $s->id }}', '{{ $label }}')" 
-                        class="server-modal-item w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer active:scale-95
-                        {{ $loop->first ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 hover:bg-slate-100' }}"
-                        data-val="{{ $s->id }}"
-                        data-label="{{ $label }}">
+                <button type="button" onclick="selectServerModal('{{ $s->id }}', '{{ $label }}')" class="server-modal-item w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer active:scale-95 {{ $loop->first ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 hover:bg-slate-100' }}" data-val="{{ $s->id }}" data-label="{{ $label }}">
                     <span class="flex items-center space-x-2.5 truncate">
                         <i class="fa-solid fa-microchip text-sm"></i>
                         <span class="truncate">{{ $label }}</span>
@@ -327,22 +336,14 @@
 </div>
 
 <script>
-    function openServerSelectionModal() {
-        document.getElementById('modalServerSelect').classList.remove('hidden');
-    }
-
-    function closeServerSelectionModal() {
-        document.getElementById('modalServerSelect').classList.add('hidden');
-    }
-
+    function openServerSelectionModal() { document.getElementById('modalServerSelect').classList.remove('hidden'); }
+    function closeServerSelectionModal() { document.getElementById('modalServerSelect').classList.add('hidden'); }
     function selectServerModal(id, label) {
         document.getElementById('select_server_id').value = id;
         document.getElementById('selected_server_display').innerText = label;
-
         document.querySelectorAll('.server-modal-item').forEach(btn => {
             let isSelected = btn.getAttribute('data-val') === id.toString();
             let check = btn.querySelector('.check-icon');
-
             if (isSelected) {
                 btn.className = 'server-modal-item w-full text-left px-4 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-between cursor-pointer active:scale-95 bg-indigo-600 text-white shadow-md';
                 if (check) check.classList.remove('hidden');
@@ -351,41 +352,33 @@
                 if (check) check.classList.add('hidden');
             }
         });
-
         closeServerSelectionModal();
     }
-
     function quickDeposit(serverId, serverName, balanceFormatted) {
         let label = serverName + ' (Sisa: ' + balanceFormatted + ')';
         selectServerModal(serverId, label);
         document.getElementById('modalDeposit').classList.remove('hidden');
     }
-
     function formatRupiah(inputElement, rawInputId) {
         let value = inputElement.value.replace(/[^,\d]/g, '');
         let split = value.split(',');
         let sisa = split[0].length % 3;
         let rupiah = split[0].substr(0, sisa);
         let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-
         if (ribuan) {
             let separator = sisa ? '.' : '';
             rupiah += separator + ribuan.join('.');
         }
-
         rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
         inputElement.value = rupiah;
-
         let rawValue = value.replace(/\./g, '');
         document.getElementById(rawInputId).value = rawValue;
     }
-
     function prepareForm(form) {
         let displayVal = document.getElementById('display_amount').value;
         let rawVal = displayVal.replace(/\./g, '');
         document.getElementById('raw_amount').value = rawVal;
     }
-
     function prepareServerForm(form) {
         let displayVal = document.getElementById('display_initial_balance').value;
         let rawVal = displayVal ? displayVal.replace(/\./g, '') : '0';

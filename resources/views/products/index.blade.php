@@ -7,7 +7,7 @@
 </style>
 
 <div class="space-y-3 -mt-6 sm:-mt-8 pb-36 sm:pb-16">
-
+    <!-- HEADER KELOLA KATALOG -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div>
             <h1 class="text-base sm:text-xl font-black text-slate-800 flex items-center">
@@ -15,7 +15,6 @@
             </h1>
             <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Total {{ count($products) }} produk terdaftar dalam sistem konter</p>
         </div>
-
         <a href="{{ route('products.create') }}" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-xl shadow-md shadow-indigo-200 transition flex items-center justify-center space-x-1.5 shrink-0">
             <i class="fa-solid fa-plus text-xs"></i>
             <span>Tambah Produk Baru</span>
@@ -29,42 +28,34 @@
                 <i class="fa-solid fa-border-all text-xs"></i>
                 <span>Semua ({{ count($products) }})</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('handphone', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-mobile-screen-button text-sky-500"></i>
                 <span>Handphone</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('pulsa', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-mobile-screen-button text-indigo-500"></i>
                 <span>Pulsa</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('voucher', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-ticket text-blue-500"></i>
                 <span>Voucher</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('perdana', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-sim-card text-rose-500"></i>
                 <span>Perdana</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('ewallet', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-wallet text-emerald-500"></i>
                 <span>E-Wallet</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('bank', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-building-columns text-teal-500"></i>
                 <span>Transfer</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('pln', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-bolt text-amber-500"></i>
                 <span>PLN</span>
             </button>
-
             <button type="button" onclick="switchCategoryTab('aksesoris', this)" class="category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-plug text-purple-500"></i>
                 <span>Aksesoris</span>
@@ -78,7 +69,6 @@
             <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider shrink-0 mr-1" id="filter_label">FILTER:</span>
             <div id="provider_pills_container" class="flex items-center space-x-1.5 shrink-0"></div>
         </div>
-
         <div class="relative w-full">
             <input type="text" id="search_product_input" onkeyup="filterProductsTable()" placeholder="Cari nama produk / SKU..." class="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-slate-800 transition">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
@@ -106,35 +96,27 @@
                             $currentCat = $product->category;
                             $parentCat = $currentCat ? $currentCat->parent : null;
                             $grandParentCat = $parentCat ? $parentCat->parent : null;
-
                             $catSlug = strtolower($currentCat->slug ?? '');
                             $catNameLower = strtolower($currentCat->name ?? '');
                             $parentSlug = strtolower($parentCat->slug ?? '');
                             $parentNameLower = strtolower($parentCat->name ?? '');
                             $grandParentSlug = strtolower($grandParentCat->slug ?? '');
-
                             $catHierarchyText = '';
                             if ($grandParentCat) { $catHierarchyText .= $grandParentCat->name . ' > '; }
                             if ($parentCat) { $catHierarchyText .= $parentCat->name . ' > '; }
-                            $catHierarchyText .= $currentCat->name ?? 'Tanpa Kategori';
-
+                            $catHierarchyText .=$currentCat->name ?? 'Tanpa Kategori';
                             $catSearchData = strtolower($catHierarchyText);
                             $prodName = strtolower($product->name);
                             $prodCode = strtolower($product->code ?? '');
-
-                            // AMBIL STOK DAN HARGA DARI STOREPRODUCTSTOCK CABANG AKTIF
-                            $storeStockRecord = $product->stocks->first();
                             
-                            $currentCostPrice  = ($storeStockRecord && $storeStockRecord->cost_price !== null) 
+                            $storeStockRecord = $product->stocks->first();$currentCostPrice  = ($storeStockRecord &&$storeStockRecord->cost_price !== null) 
                                                 ? $storeStockRecord->cost_price 
                                                 : $product->cost_price;
                                                 
-                            $currentSellingPrice = ($storeStockRecord && $storeStockRecord->selling_price !== null) 
+                            $currentSellingPrice = ($storeStockRecord &&$storeStockRecord->selling_price !== null) 
                                                   ? $storeStockRecord->selling_price 
                                                   : $product->selling_price;
-
-                            $margin = $currentSellingPrice - $currentCostPrice;
-
+                            $margin = $currentSellingPrice -$currentCostPrice;
                             $currentStock = $storeStockRecord ? $storeStockRecord->stock : 0;
                             $minStock = $storeStockRecord ? $storeStockRecord->min_stock : 5;
                         @endphp
@@ -158,7 +140,6 @@
                                     </span>
                                 </div>
                             </td>
-
                             <!-- KATEGORI -->
                             <td class="py-3 px-3">
                                 <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200 inline-block whitespace-nowrap">
@@ -168,36 +149,31 @@
                                     <span class="text-indigo-700 font-extrabold">{{ $currentCat->name ?? 'Tanpa Kategori' }}</span>
                                 </span>
                             </td>
-
-                            <!-- HARGA MODAL / JUAL (DISESUAIKAN DENGAN HARGA CABANG AKTIF) -->
+                            <!-- HARGA MODAL / JUAL -->
                             <td class="py-3 px-3 text-right whitespace-nowrap">
                                 <div class="text-[10px] text-slate-400 font-mono">M: Rp {{ number_format($currentCostPrice, 0, ',', '.') }}</div>
                                 <div class="font-black text-indigo-700 font-mono text-xs mt-0.5">J: Rp {{ number_format($currentSellingPrice, 0, ',', '.') }}</div>
                             </td>
-
-                            <!-- MARGIN (DISESUAIKAN DENGAN MARGIN CABANG AKTIF) -->
+                            <!-- MARGIN -->
                             <td class="py-3 px-3 text-right font-bold font-mono text-xs whitespace-nowrap {{ $margin > 0 ? 'text-emerald-600' : 'text-rose-500' }}">
                                 +Rp {{ number_format($margin, 0, ',', '.') }}
                             </td>
-
                             <!-- STOK CABANG AKTIF -->
                             <td class="py-3 px-3 text-center font-bold text-xs whitespace-nowrap">
                                 @if($product->type === 'physical')
-                                    <span class="{{ $currentStock <= $minStock ? 'text-rose-600 font-black animate-pulse' : 'text-slate-800' }}">
+                                    <span class="{{ $currentStock <=$minStock ? 'text-rose-600 font-black animate-pulse' : 'text-slate-800' }}">
                                         {{ $currentStock }} Pcs
                                     </span>
                                 @else
                                     <span class="text-slate-400 font-mono text-base">∞</span>
                                 @endif
                             </td>
-
                             <!-- STATUS -->
                             <td class="py-3 px-3 text-center whitespace-nowrap">
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $product->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
                                     {{ $product->is_active ? 'Aktif' : 'Nonaktif' }}
                                 </span>
                             </td>
-
                             <!-- AKSI EDIT -->
                             <td class="py-3 px-3 text-center whitespace-nowrap">
                                 <a href="{{ route('products.edit', $product->id) }}" 
@@ -215,7 +191,6 @@
                             </td>
                         </tr>
                     @endforelse
-
                     <tr id="no_matching_products_row" class="hidden">
                         <td colspan="7" class="py-10 text-center text-slate-400">
                             <i class="fa-solid fa-magnifying-glass text-3xl mb-2 text-slate-300 block"></i>
@@ -225,7 +200,8 @@
                 </tbody>
             </table>
         </div>
-
+        
+        <!-- FOOTER PAGINASI -->
         <div id="table_pagination_container" class="p-3 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div class="flex items-center justify-between w-full sm:w-auto space-x-2 text-slate-500 font-bold">
                 <span id="pagination_info_text">Menampilkan 0 dari 0 produk</span>
@@ -239,17 +215,14 @@
                     </select>
                 </div>
             </div>
-
             <div id="pagination_buttons_wrapper" class="flex items-center space-x-1 shrink-0 justify-center w-full sm:w-auto"></div>
         </div>
     </div>
-
 </div>
 
 <script>
     let activeCategory = 'all';
     let activeSubFilter = '';
-
     let currentPage = 1;
     let itemsPerPage = 10;
     let matchedRowsList = [];
@@ -259,8 +232,9 @@
             label: 'FILTER:',
             items: [
                 { name: 'Semua', key: '' },
+                { name: 'Kabel Data & AUX', key: 'kabel' },
+                { name: 'Adaptor Charger', key: 'charger' },
                 { name: 'Proteksi', key: 'proteksi' },
-                { name: 'Power', key: 'power' },
                 { name: 'Audio', key: 'audio' },
                 { name: 'Penyimpanan', key: 'penyimpanan' },
                 { name: 'Telkomsel', key: 'telkomsel' },
@@ -348,24 +322,29 @@
             ]
         },
         'aksesoris': {
-            label: 'AKSESORIS:',
+            label: 'SUB-KATEGORI AKSESORIS:',
             items: [
                 { name: 'Semua', key: '' },
-                { name: 'Proteksi', key: 'proteksi' },
-                { name: 'Power', key: 'power' },
-                { name: 'Audio', key: 'audio' },
-                { name: 'Penyimpanan', key: 'penyimpanan' },
-                { name: 'Mount & Stand', key: 'mount' }
+                { name: 'Cable Data & AUX', key: 'kabel' },
+                { name: 'Adaptor Charger', key: 'charger' },
+                { name: 'Softcase & Cover', key: 'softcase' },
+                { name: 'Tempered Glass', key: 'tempered-glass' },
+                { name: 'Headset & Audio', key: 'audio' },
+                { name: 'Powerbank', key: 'powerbank' },
+                { name: 'Penyimpanan', key: 'penyimpanan' }
             ]
         }
     };
 
     const subCategoryMapping = {
-        'proteksi': ['proteksi', 'casing', 'tempered-glass', 'hydrogel'],
-        'power': ['power', 'charger', 'kabel-data', 'power-bank'],
-        'audio': ['audio', 'tws', 'headset', 'bluetooth-speaker'],
-        'penyimpanan': ['penyimpanan', 'flashdisk', 'memory-card'],
-        'mount': ['mount-stand', 'holder', 'ring-light-tripod'],
+        'kabel': ['kabel', 'cable', 'aux'],
+        'charger': ['charger', 'adaptor'],
+        'softcase': ['softcase', 'casing', 'cover', 'case'],
+        'tempered-glass': ['tempered-glass', 'tempered', 'antigores', 'hydrogel'],
+        'proteksi': ['proteksi', 'casing', 'tempered-glass', 'hydrogel', 'softcase'],
+        'powerbank': ['powerbank', 'power-bank'],
+        'audio': ['audio', 'tws', 'headset', 'bluetooth-speaker', 'speaker'],
+        'penyimpanan': ['penyimpanan', 'flashdisk', 'memory-card', 'memory'],
         'baru': ['baru', 'new'],
         'second': ['second', 'bekas', 'sec']
     };
@@ -378,12 +357,10 @@
     function switchCategoryTab(catKey, btnElement) {
         activeCategory = catKey.toLowerCase();
         activeSubFilter = '';
-
         document.querySelectorAll('.category-tab').forEach(btn => {
             btn.className = 'category-tab bg-slate-50 text-slate-700 hover:bg-slate-100 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shrink-0 border border-slate-200/80 active:scale-95 cursor-pointer';
         });
         btnElement.className = 'category-tab active-tab bg-indigo-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center space-x-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer';
-
         renderSubFilterPills(activeCategory);
         currentPage = 1;
         filterProductsTable();
@@ -397,7 +374,6 @@
         
         labelEl.innerText = config.label;
         container.innerHTML = '';
-
         config.items.forEach((item, index) => {
             let isDefault = index === 0;
             let btn = document.createElement('button');
@@ -411,13 +387,10 @@
 
     function filterSubCategory(subKeyword, btnElement) {
         activeSubFilter = subKeyword.toLowerCase();
-
         document.querySelectorAll('.prov-pill').forEach(btn => {
             btn.className = 'prov-pill bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-3 py-1.5 rounded-xl shrink-0 transition cursor-pointer active:scale-95';
         });
-
         btnElement.className = 'prov-pill bg-indigo-100 text-indigo-800 border border-indigo-200 text-[11px] font-extrabold px-3 py-1.5 rounded-xl shrink-0 transition cursor-pointer active:scale-95';
-
         currentPage = 1;
         filterProductsTable();
     }
@@ -426,7 +399,6 @@
         let searchKeyword = document.getElementById('search_product_input').value.toLowerCase().trim();
         let rows = document.querySelectorAll('.product-row');
         matchedRowsList = [];
-
         rows.forEach(row => {
             let catData = (row.getAttribute('data-category') || '').toLowerCase();
             let catSlug = (row.getAttribute('data-cat-slug') || '').toLowerCase();
@@ -437,8 +409,8 @@
             
             let name = (row.getAttribute('data-name') || '').toLowerCase();
             let code = (row.getAttribute('data-code') || '').toLowerCase();
-
             let matchCat = false;
+            
             if (activeCategory === 'all') {
                 matchCat = true;
             } else if (activeCategory === 'handphone') {
@@ -491,7 +463,6 @@
         } else {
             if (noMatchRow) noMatchRow.classList.add('hidden');
         }
-
         renderClientPagination();
     }
 
@@ -499,10 +470,10 @@
         let totalItems = matchedRowsList.length;
         let infoText = document.getElementById('pagination_info_text');
         let buttonsWrapper = document.getElementById('pagination_buttons_wrapper');
-
+        
         if (totalItems === 0) {
-            infoText.innerText = "Menampilkan 0 dari 0 produk";
-            buttonsWrapper.innerHTML = '';
+            if (infoText) infoText.innerText = "Menampilkan 0 dari 0 produk";
+            if (buttonsWrapper) buttonsWrapper.innerHTML = '';
             return;
         }
 
@@ -518,8 +489,11 @@
             }
         }
 
-        infoText.innerText = `Menampilkan ${startIdx + 1}-${endIdx} dari ${totalItems} produk`;
+        if (infoText) {
+            infoText.innerText = `Menampilkan ${startIdx + 1}-${endIdx} dari ${totalItems} produk`;
+        }
 
+        if (!buttonsWrapper) return;
         buttonsWrapper.innerHTML = '';
 
         let prevBtn = document.createElement('button');

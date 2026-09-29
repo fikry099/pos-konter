@@ -22,14 +22,15 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             AksesorisSeeder::class,
             PpobServerSeeder::class,
-            
-            // MATIKAN SEMUA SEEDER PRODUK & STOK AGAR HARGA TIDAK TERTIMPA
-            // PulsaProductSeeder::class,
-            // VoucherProductSeeder::class,
-            // PerdanaProductSeeder::class,
-            // EwalletBankProductSeeder::class,
-            // AksesorisProductSeeder::class,
-            // StoreProductStockSeeder::class,
+
+            PulsaProductSeeder::class,
+            VoucherProductSeeder::class,
+            PerdanaProductSeeder::class,
+            EwalletBankProductSeeder::class,
+            StoreProductStockSeeder::class,
+
+
+            \Database\Seeders\Accessories\CableDataProductSeeder::class,
         ]);
     }
 }

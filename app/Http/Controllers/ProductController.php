@@ -27,13 +27,21 @@ class ProductController extends Controller
     {
         $storeId = $this->getActiveStoreId();
 
-        // Load relasi category dan stok khusus cabang aktif
-        $query = Product::with([
-            'category.parent',
-            'stocks' => function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
-            }
-        ]);
+        // PERBAIKAN QUERY: 
+        // - Jika produk tipe FISIK -> wajib ada di store_product_stocks cabang aktif
+        // - Jika produk tipe DIGITAL -> selalu tampilkan
+        $query = Product::where(function ($q) use ($storeId) {
+                $q->where('type', 'digital')
+                ->orWhereHas('storeStocks', function ($qs) use ($storeId) {
+                    $qs->where('store_id', '=', $storeId);
+                });
+            })
+            ->with([
+                'category.parent.parent',
+                'stocks' => function ($q) use ($storeId) {
+                    $q->where('store_id', '=', $storeId);
+                }
+            ]);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
@@ -43,13 +51,13 @@ class ProductController extends Controller
             $search = strtolower(trim($request->search));
             $query->where(function($q) use ($search) {
                 $q->whereRaw('LOWER(products.name) LIKE ?', ["%{$search}%"])
-                  ->orWhereRaw('LOWER(products.code) LIKE ?', ["%{$search}%"]);
+                ->orWhereRaw('LOWER(products.code) LIKE ?', ["%{$search}%"]);
             });
         }
 
         $products = $query->latest()->get();
 
-        // Overwrite harga modal & harga jual objek $product dengan harga khusus cabang aktif
+        // Overwrite harga modal & harga jual jika ada penyesuaian khusus cabang
         $products->transform(function ($product) {
             $storeStock = $product->stocks->first();
             if ($storeStock) {
@@ -65,7 +73,7 @@ class ProductController extends Controller
 
         $categories = Category::whereNull('parent_id')->with('allChildren')->get();
 
-        return view('products.index', compact('products', 'categories'));
+        return view('products.index', compact('products', 'categories', 'storeId'));
     }
 
     /**
@@ -108,7 +116,6 @@ class ProductController extends Controller
 
         // 2. Daftarkan Stok & Harga ke Cabang Aktif Saat Ini (Baik Fisik Maupun Digital)
         $storeId = $this->getActiveStoreId();
-
         StoreProductStock::create([
             'store_id'      => $storeId,
             'product_id'    => $product->id,
@@ -129,7 +136,6 @@ class ProductController extends Controller
         $product    = Product::findOrFail($id);
         $categories = Category::whereNull('parent_id')->with('allChildren')->get();
         $storeId    = $this->getActiveStoreId();
-
         $storeStock = StoreProductStock::where('store_id', $storeId)
             ->where('product_id', $product->id)
             ->first();
@@ -152,7 +158,6 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
-
         $request->validate([
             'category_id'   => 'required|exists:categories,id',
             'name'          => 'required|string|max:255',
@@ -175,7 +180,6 @@ class ProductController extends Controller
 
         // 2. Update Stok & Harga Khusus Cabang Aktif Saat Ini (Semua Jenis Barang)
         $storeId = $this->getActiveStoreId();
-
         StoreProductStock::updateOrCreate(
             [
                 'store_id'   => $storeId,
@@ -211,7 +215,6 @@ class ProductController extends Controller
     public function reorderOrder()
     {
         $storeId = $this->getActiveStoreId();
-
         $lowStockProducts = StoreProductStock::with([
                 'product' => function ($qp) {
                     $qp->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'cost_price')
@@ -251,7 +254,6 @@ class ProductController extends Controller
     public function restockView()
     {
         $storeId = $this->getActiveStoreId();
-
         $stocks = StoreProductStock::with([
                 'product' => function ($q) {
                     $q->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'is_active')
@@ -265,7 +267,6 @@ class ProductController extends Controller
             ->get();
 
         $products = $stocks;
-
         $categories = Category::whereNull('parent_id')
             ->select('id', 'name', 'slug')
             ->with('allChildren:id,parent_id,name,slug')
@@ -289,7 +290,6 @@ class ProductController extends Controller
         ]);
 
         $storeId = $this->getActiveStoreId();
-
         $storeStock = StoreProductStock::firstOrCreate(
             [
                 'store_id'   => $storeId,
@@ -341,7 +341,6 @@ class ProductController extends Controller
     public function exportExcel(Request $request)
     {
         $storeId = $this->getActiveStoreId();
-
         $query = StoreProductStock::with([
                 'product' => function ($q) {
                     $q->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'is_active')
