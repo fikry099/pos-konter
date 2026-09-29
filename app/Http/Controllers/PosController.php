@@ -124,9 +124,13 @@ class PosController extends Controller
                 DB::raw('COALESCE(store_product_stocks.cost_price, products.cost_price, 0) as cost_price'),
                 DB::raw('COALESCE(store_product_stocks.selling_price, products.selling_price, 0) as selling_price')
             )
-            // KUNCI UTAMA: Filter agar hanya produk yang didaftarkan di store_id aktif yang akan diambil dari DB
-            ->whereHas('storeStocks', function ($q) use ($storeId) {
-                $q->where('store_id', '=', $storeId);
+            // KUNCI PERBAIKAN: Jika produk tipe DIGITAL, TIDAK WAJIB ada di store_product_stocks.
+            // Jika produk FISIK, WAJIB terdaftar di store_id aktif.
+            ->where(function ($q) use ($storeId) {
+                $q->where('products.type', '=', 'digital')
+                  ->orWhereHas('storeStocks', function ($qs) use ($storeId) {
+                      $qs->where('store_id', '=', $storeId);
+                  });
             })
             ->leftJoin('store_product_stocks', function ($join) use ($storeId) {
                 $join->on('products.id', '=', 'store_product_stocks.product_id')

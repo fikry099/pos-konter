@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <!-- FORM INPUT TARIK TUNAI (GRID 2 KOLOM PADA LAYAR MEDIUM/BESAR) -->
+    <!-- FORM INPUT TARIK TUNAI -->
     <form action="{{ route('cash_out.store') }}" method="POST" autocomplete="off" onsubmit="prepareCleanNumbers(event)" class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm">
         @csrf
         
@@ -72,11 +72,11 @@
                         
                         <input type="hidden" name="admin_payment_method" id="admin_payment_method_value" value="transfer">
                         <div class="grid grid-cols-12 gap-2">
-                            <!-- INPUT NOMINAL BIAYA ADMIN -->
+                            <!-- INPUT NOMINAL BIAYA ADMIN (OTOMATIS / MANUAL EDIT) -->
                             <div class="col-span-6 relative">
                                 <span class="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</span>
-                                <input type="text" id="admin_fee_input" value="5.000" autocomplete="off" required oninput="formatRupiahInput(this); calculateTotalTransfer();" class="w-full pl-7 pr-2 py-3 bg-slate-50 text-slate-800 border-2 border-slate-200 rounded-2xl font-black text-xs focus:border-indigo-600 focus:outline-none">
-                                <input type="hidden" name="admin_fee" id="admin_fee_raw" value="5000">
+                                <input type="text" id="admin_fee_input" value="0" autocomplete="off" required oninput="formatRupiahInput(this); calculateTotalTransferManual();" class="w-full pl-7 pr-2 py-3 bg-slate-50 text-slate-800 border-2 border-slate-200 rounded-2xl font-black text-xs focus:border-indigo-600 focus:outline-none">
+                                <input type="hidden" name="admin_fee" id="admin_fee_raw" value="0">
                             </div>
                             <!-- DROPDOWN MODAL METODE BAYAR ADMIN -->
                             <div class="col-span-6">
@@ -100,7 +100,7 @@
                         <span class="text-xs sm:text-sm font-black uppercase text-indigo-900 block">Total Transfer Pelanggan</span>
                         <span id="transfer_breakdown_label" class="text-xs sm:text-sm text-indigo-600 font-bold">Uang Fisik + Biaya Admin</span>
                     </div>
-                    <span id="total_transfer_display" class="text-lg sm:text-2xl font-black text-indigo-700 font-mono">Rp 5.000</span>
+                    <span id="total_transfer_display" class="text-lg sm:text-2xl font-black text-indigo-700 font-mono">Rp 0</span>
                 </div>
 
             </div>
@@ -244,7 +244,6 @@
         document.getElementById('target_bank_value').value = val;
         document.getElementById('target_bank_display').innerText = label;
         
-        // Ganti ikon secara dinamis (fa-qrcode untuk QRIS, fa-building-columns untuk Bank)
         let iconEl = document.getElementById('target_bank_icon');
         if (iconEl) {
             iconEl.className = 'fa-solid ' + (iconClass || 'fa-qrcode') + ' text-indigo-600 text-sm';
@@ -287,7 +286,7 @@
             }
         });
         closeAdminMethodModal();
-        calculateTotalTransfer();
+        calculateTotalTransferManual();
     }
 
     // --- 3. PERHITUNGAN & FORMATTING ---
@@ -305,19 +304,59 @@
         element.value = rupiah;
     }
 
+    // --- LOGIKA BIAYA ADMIN OTOMATIS BERDASARKAN TIERING ---
+    function calculateAutoAdminFee(amount) {
+        if (amount <= 0) return 0;
+        
+        if (amount < 100000) {
+            return 2000;
+        } else if (amount >= 100000 && amount < 350000) {
+            return 3000;
+        } else if (amount >= 350000 && amount < 500000) {
+            return 4000;
+        } else {
+            let thousands = Math.floor(amount / 100000);
+            return thousands * 1000;
+        }
+    }
+
+    // Kalkulasi Otomatis saat Kasir mengetik Nominal Ditarik
     function calculateTotalTransfer() {
         let cashVal = parseInt(document.getElementById('cash_amount_input').value.replace(/\D/g, ''), 10) || 0;
-        let adminVal = parseInt(document.getElementById('admin_fee_input').value.replace(/\D/g, ''), 10) || 0;
+        
+        let calculatedAdmin = calculateAutoAdminFee(cashVal);
+        
+        let adminInput = document.getElementById('admin_fee_input');
+        adminInput.value = calculatedAdmin.toLocaleString('id-ID');
+        document.getElementById('admin_fee_raw').value = calculatedAdmin;
+
+        let adminVal = calculatedAdmin;
         document.getElementById('cash_amount_raw').value = cashVal;
-        document.getElementById('admin_fee_raw').value = adminVal;
+        
         let adminMethod = document.getElementById('admin_payment_method_value').value || 'transfer';
         let total = (adminMethod === 'transfer') ? (cashVal + adminVal) : cashVal;
+        
         let breakdownLabel = document.getElementById('transfer_breakdown_label');
         if (adminMethod === 'transfer') {
             breakdownLabel.innerText = 'Uang Fisik + Biaya Admin';
         } else {
             breakdownLabel.innerText = 'Hanya Nominal Uang Fisik (Admin Tunai)';
         }
+        
+        document.getElementById('total_transfer_display').innerText = 'Rp ' + total.toLocaleString('id-ID');
+    }
+
+    // Kalkulasi Manual saat Kasir mengubah Admin Fee secara khusus
+    function calculateTotalTransferManual() {
+        let cashVal = parseInt(document.getElementById('cash_amount_input').value.replace(/\D/g, ''), 10) || 0;
+        let adminVal = parseInt(document.getElementById('admin_fee_input').value.replace(/\D/g, ''), 10) || 0;
+
+        document.getElementById('cash_amount_raw').value = cashVal;
+        document.getElementById('admin_fee_raw').value = adminVal;
+
+        let adminMethod = document.getElementById('admin_payment_method_value').value || 'transfer';
+        let total = (adminMethod === 'transfer') ? (cashVal + adminVal) : cashVal;
+
         document.getElementById('total_transfer_display').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 

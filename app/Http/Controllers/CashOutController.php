@@ -6,6 +6,7 @@ use App\Models\Shift;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\Product;
+use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -63,11 +64,11 @@ class CashOutController extends Controller
             return redirect()->route('shifts.index')->with('error', 'Shift tidak aktif! Silakan buka shift terlebih dahulu.');
         }
 
-        $cashAmount = (float) $request->cash_amount;
-        $adminFee   = (float) $request->admin_fee;
+        $cashAmount  = (float) $request->cash_amount;
+        $adminFee    = (float) $request->admin_fee;
         $adminMethod = $request->admin_payment_method; // 'transfer' atau 'cash'
 
-        // Hitung total transfer masuk berdasarkan pilihan bayar admin
+        // Total transfer masuk dari pelanggan (ke QRIS / Rekening Bank)
         $totalTransfer = ($adminMethod === 'transfer') ? ($cashAmount + $adminFee) : $cashAmount;
 
         $bankName = strtoupper(trim($request->target_bank));
@@ -93,17 +94,18 @@ class CashOutController extends Controller
 
         DB::beginTransaction();
         try {
+            // 1. SIMPAN TRANSAKSI (UNTUK MENCATAT OMSET & KEUNTUNGAN DARI BIAYA ADMIN)
             $transaction = Transaction::create([
                 'store_id'       => $storeId,
                 'invoice_code'   => 'WD-' . date('YmdHis') . '-' . rand(100, 999),
                 'user_id'        => Auth::id() ?? $activeShift->user_id,
                 'shift_id'       => $activeShift->id,
                 'total_cost'     => 0,
-                'total_price'    => $adminFee,
-                'total_profit'   => $adminFee,
+                'total_price'    => $adminFee, // OMSET DARI BIAYA ADMIN
+                'total_profit'   => $adminFee, // PROFIT DARI BIAYA ADMIN
                 'pay_amount'     => $totalTransfer,
                 'change_amount'  => 0,
-                'payment_method' => 'qris',
+                'payment_method' => str_contains(strtolower($bankName), 'qris') ? 'qris' : 'transfer',
                 'payment_proof'  => $request->payment_proof,
             ]);
 
@@ -121,9 +123,26 @@ class CashOutController extends Controller
                 'profit'            => $adminFee,
             ]);
 
+            // 2. HITUNG PENGURANGAN NETT UANG KAS FISIK DI LACI
+            // - Jika Admin Transfer: Laci berkurang murni sebesar Nominal Cash Ditarik.
+            // - Jika Admin Cash: Pelanggan menyerahkan admin_fee tunai ke laci, jadi net pengeluaran laci = (cash_amount - admin_fee).
+            $netCashOutFromDrawer = ($adminMethod === 'cash') ? ($cashAmount - $adminFee) : $cashAmount;
+
+            // 3. CATAT EXPENSE SHIFT UNTUK MEMOTONG EKSPEKTASI UANG KAS LACI DI SHIFTCONTROLLER
+            if ($netCashOutFromDrawer > 0) {
+                Expense::create([
+                    'store_id'    => $storeId,
+                    'shift_id'    => $activeShift->id,
+                    'user_id'     => Auth::id(),
+                    'category'    => 'operational', // Masuk sebagai penyesuaian kas laci
+                    'description' => 'Penyerahan Uang Laci: ' . $customName,
+                    'amount'      => $netCashOutFromDrawer,
+                ]);
+            }
+
             DB::commit();
 
-            return redirect()->route('transactions.index')->with('success', 'Transaksi Tarik Tunai sebesar Rp ' . number_format($cashAmount, 0, ',', '.') . ' berhasil diproses!');
+            return redirect()->route('transactions.index')->with('success', 'Tarik Tunai Rp ' . number_format($cashAmount, 0, ',', '.') . ' berhasil diproses! Uang laci terpotong Rp ' . number_format($netCashOutFromDrawer, 0, ',', '.') . ' & omset admin tercatat.');
 
         } catch (\Exception $e) {
             DB::rollBack();
