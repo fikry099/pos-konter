@@ -30,7 +30,7 @@ class DatabaseSeeder extends Seeder
             StoreProductStockSeeder::class,
 
 
-            \Database\Seeders\Accessories\CableDataProductSeeder::class,
+            \Database\Seeders\accessories\CableDataProductSeeder::class,
         ]);
     }
 }
