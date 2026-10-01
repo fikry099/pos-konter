@@ -29,8 +29,8 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\accessories\ChargerSetProductSeeder::class,
             \Database\Seeders\accessories\AdapterHeadProductSeeder::class,
             \Database\Seeders\accessories\HeadsetEarphoneProductSeeder::class,
-            \Database\Seeders\Accessories\StorageProductSeeder::class,
-            \Database\Seeders\Accessories\PowerbankProductSeeder::class,
+            \Database\Seeders\accessories\StorageProductSeeder::class,
+            \Database\Seeders\accessories\PowerbankProductSeeder::class,
         ]);
     }
 }
