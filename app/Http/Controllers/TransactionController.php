@@ -81,7 +81,31 @@ class TransactionController extends Controller
 
         // 4. Filter Metode Pembayaran
         if ($request->filled('payment_method')) {
-            $query->where('payment_method', $request->payment_method);
+            $method = strtolower($request->payment_method);
+            
+            if ($method === 'qris') {
+                // Filter QRIS:
+                // Ambil transaksi yang payment_method = 'qris' TAPI KECUALIKAN transaksi yang itemnya mengandung '(ADMIN TUNAI)' / '(ADMIN CASH)'
+                $query->where(function($q) {
+                    $q->where('payment_method', 'qris')
+                    ->whereDoesntHave('details', function($qd) {
+                        $qd->whereRaw('LOWER(custom_name) LIKE ?', ['%admin tunai%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%admin cash%']);
+                    });
+                });
+            } elseif ($method === 'cash' || $method === 'tunai') {
+                // Filter TUNAI:
+                // Ambil transaksi cash/tunai ATAU transaksi Tarik Tunai yang itemnya secara spesifik mengandung '(ADMIN TUNAI)' / '(ADMIN CASH)'
+                $query->where(function($q) {
+                    $q->whereIn('payment_method', ['cash', 'tunai'])
+                    ->orWhereHas('details', function($qd) {
+                        $qd->whereRaw('LOWER(custom_name) LIKE ?', ['%admin tunai%'])
+                            ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%admin cash%']);
+                    });
+                });
+            } else {
+                $query->where('payment_method', $request->payment_method);
+            }
         }
 
         // 5. Filter Kategori ID & Sub-Kategori ID
@@ -227,12 +251,35 @@ class TransactionController extends Controller
                 ], 400);
             }
 
+            // 1. PENGEMBALIAN STOK PRODUK LENGKAP (STOK CABANG & MASTER)
             foreach ($transaction->details as $detail) {
-                if ($detail->product && $detail->product->type === 'physical') {
-                    $detail->product->increment('stock', $detail->qty);
+                if ($detail->product_id) {
+                    $product = \App\Models\Product::find($detail->product_id);
+
+                    // Kembalikan Stok Cabang (store_product_stocks)
+                    $storeStock = \App\Models\StoreProductStock::where('store_id', $transaction->store_id)
+                        ->where('product_id', $detail->product_id)
+                        ->first();
+
+                    if ($storeStock) {
+                        $storeStock->increment('stock', $detail->qty);
+                    } else {
+                        \App\Models\StoreProductStock::create([
+                            'store_id'   => $transaction->store_id,
+                            'product_id' => $detail->product_id,
+                            'stock'      => $detail->qty,
+                            'min_stock'  => 5,
+                        ]);
+                    }
+
+                    // Kembalikan Stok Master jika produk bernilai Fisik
+                    if ($product && $product->type === 'physical') {
+                        $product->increment('stock', $detail->qty);
+                    }
                 }
             }
 
+            // 2. UPDATE STATUS TRANSAKSI MENJADI BATAL
             $transaction->update([
                 'status'        => 'cancelled',
                 'cancel_reason' => $request->cancel_reason,
@@ -244,7 +291,7 @@ class TransactionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Transaksi berhasil dibatalkan dan stok produk telah dikembalikan!'
+                'message' => 'Transaksi berhasil dibatalkan, stok produk telah dikembalikan, dan laci kasir telah disesuaikan!'
             ]);
 
         } catch (\Exception $e) {

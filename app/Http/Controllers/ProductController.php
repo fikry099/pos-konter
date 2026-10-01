@@ -27,19 +27,23 @@ class ProductController extends Controller
     {
         $storeId = $this->getActiveStoreId();
 
-        // PERBAIKAN QUERY: 
-        // - Jika produk tipe FISIK -> wajib ada di store_product_stocks cabang aktif
-        // - Jika produk tipe DIGITAL -> selalu tampilkan
-        $query = Product::where(function ($q) use ($storeId) {
+        // Mengambil seluruh produk yang relevan dengan cabang aktif
+        $query = Product::select('id', 'category_id', 'name', 'code', 'type', 'cost_price', 'selling_price', 'is_active')
+            ->where(function ($q) use ($storeId) {
                 $q->where('type', 'digital')
-                ->orWhereHas('storeStocks', function ($qs) use ($storeId) {
-                    $qs->where('store_id', '=', $storeId);
+                ->orWhereIn('id', function ($sub) use ($storeId) {
+                    $sub->select('product_id')
+                        ->from('store_product_stocks')
+                        ->where('store_id', $storeId);
                 });
             })
             ->with([
-                'category.parent.parent',
+                'category:id,name,slug,parent_id',
+                'category.parent:id,name,slug,parent_id',
+                'category.parent.parent:id,name,slug,parent_id',
                 'stocks' => function ($q) use ($storeId) {
-                    $q->where('store_id', '=', $storeId);
+                    $q->select('id', 'store_id', 'product_id', 'stock', 'min_stock', 'cost_price', 'selling_price')
+                    ->where('store_id', '=', $storeId);
                 }
             ]);
 
@@ -55,25 +59,20 @@ class ProductController extends Controller
             });
         }
 
+        // Gunakan get() agar seluruh 533 data dikirim ke View untuk diolah oleh JavaScript Filter
         $products = $query->latest()->get();
 
         // Overwrite harga modal & harga jual jika ada penyesuaian khusus cabang
         $products->transform(function ($product) {
             $storeStock = $product->stocks->first();
             if ($storeStock) {
-                if ($storeStock->selling_price !== null) {
-                    $product->selling_price = $storeStock->selling_price;
-                }
-                if ($storeStock->cost_price !== null) {
-                    $product->cost_price = $storeStock->cost_price;
-                }
+                if ($storeStock->selling_price !== null) $product->selling_price = $storeStock->selling_price;
+                if ($storeStock->cost_price !== null) $product->cost_price = $storeStock->cost_price;
             }
             return $product;
         });
 
-        $categories = Category::whereNull('parent_id')->with('allChildren')->get();
-
-        return view('products.index', compact('products', 'categories', 'storeId'));
+        return view('products.index', compact('products', 'storeId'));
     }
 
     /**
@@ -81,7 +80,7 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $categories = Category::whereNull('parent_id')->with('allChildren')->get();
+        $categories = Category::select('id', 'name', 'parent_id')->get();
         return view('products.create', compact('categories'));
     }
 
@@ -134,7 +133,10 @@ class ProductController extends Controller
     public function edit($id)
     {
         $product    = Product::findOrFail($id);
-        $categories = Category::whereNull('parent_id')->with('allChildren')->get();
+        
+        // OPTIMASI: Mengambil data kategori ringan tanpa eager loading 'allChildren'
+        $categories = Category::select('id', 'name', 'parent_id')->get();
+        
         $storeId    = $this->getActiveStoreId();
         $storeStock = StoreProductStock::where('store_id', $storeId)
             ->where('product_id', $product->id)

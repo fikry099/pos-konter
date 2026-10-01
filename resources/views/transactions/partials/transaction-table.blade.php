@@ -63,12 +63,16 @@
                 <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                     @forelse($transactions as $trx)
                         @php
-                            $isCashOut = str_starts_with($trx->invoice_code, 'WD-') ||$trx->details->contains(fn($d) => str_contains(strtolower($d->custom_name ?? ''), 'tarik tunai'));
+                            $allDetailsNames = strtolower($trx->details->pluck('custom_name')->implode(' '));
+                            $isWithdrawal    = str_starts_with($trx->invoice_code, 'WD-') || str_contains($allDetailsNames, 'tarik tunai');
                             
-                            $isCancelled =$trx->status === 'cancelled';
+                            $isAdminTunai    = str_contains($allDetailsNames, 'admin tunai') || str_contains($allDetailsNames, 'admin cash');
+                            $isAdminTransfer = str_contains($allDetailsNames, 'admin transfer') || str_contains($allDetailsNames, 'admin tf') || str_contains($allDetailsNames, 'admin qris');
+                            
+                            $isCancelled     = $trx->status === 'cancelled';
                         @endphp
 
-                        <tr class="transition {{ $isCancelled ? 'bg-rose-50/70 border-l-4 border-l-rose-500' : ($isCashOut ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-slate-50/70') }}">
+                        <tr class="transition {{ $isCancelled ? 'bg-rose-50/70 border-l-4 border-l-rose-500' : ($isWithdrawal ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-slate-50/70') }}">
                             
                             <td class="py-3 px-3 pl-4 whitespace-nowrap align-top">
                                 <div class="font-mono font-bold text-xs flex items-center space-x-1.5 {{ $isCancelled ? 'text-rose-900 line-through' : 'text-slate-800' }}">
@@ -81,34 +85,42 @@
 
                             <td class="py-3 px-3 whitespace-nowrap align-top">
                                 @php
-                                    $storeName =$trx->store->name 
+                                    $storeName = $trx->store->name 
                                         ?? $trx->user->store->name 
                                         ?? session('selected_store_name') 
                                         ?? 'Cabang';
 
-                                    $accessoryStaffNames =$trx->details
+                                    $accessoryStaffNames = $trx->details
                                         ->filter(function ($d) {
                                             if (empty($d->served_by_user_id) || !$d->servedBy) {
                                                 return false;
                                             }
 
                                             $itemName = strtolower($d->custom_name ?? $d->product->name ?? '');
-                                            $ignoredKeywords = ['voucher', 'pulsa', 'kuota', 'perdana', 'paket', 'top-up', 'topup', 'dana', 'gopay', 'ovo', 'shopee', 'linkaja', 'transfer', 'bank'];
+                                            // MENAMBAHKAN 'admin', 'tarik', 'tunai', 'qris' AGAR TRANSAKSI TARIK TUNAI DIABAIKAN DAN TAMPIL NAMA TOKO (ARKANCELL)
+                                            $ignoredKeywords = [
+                                                'voucher', 'pulsa', 'kuota', 'perdana', 'paket', 
+                                                'top-up', 'topup', 'dana', 'gopay', 'ovo', 
+                                                'shopee', 'linkaja', 'transfer', 'bank',
+                                                'admin', 'tarik', 'tunai', 'qris'
+                                            ];
 
                                             foreach ($ignoredKeywords as $keyword) {
-                                                if (str_contains($itemName,$keyword)) {
+                                                if (str_contains($itemName, $keyword)) {
                                                     return false;
                                                 }
                                             }
 
                                             return true;
                                         })
-                                        ->map(fn($d) =>$d->servedBy->name)
+                                        ->map(fn($d) => $d->servedBy->name)
                                         ->filter()
                                         ->unique()
                                         ->implode(', ');
 
-                                    $cashierDisplay = !empty($accessoryStaffNames) ? $accessoryStaffNames :$storeName;
+                                    // PAKSA UPPERCASE AGAR TAMPILAN KASIR/TOKO SELALU KAPITAL KONSISTEN
+                                    $rawDisplay = !empty($accessoryStaffNames) ? $accessoryStaffNames : $storeName;
+                                    $cashierDisplay = strtoupper($rawDisplay);
                                 @endphp
 
                                 <div class="font-bold {{ $isCancelled ? 'text-rose-800' : 'text-slate-800' }}">
@@ -121,31 +133,34 @@
 
                             <td class="py-3 px-3 align-top">
                                 @php
-                                    $allDetails =$trx->details ?? collect();
-                                    $totalItemsCount = $allDetails->count();$limit = 2;
-                                    $visibleDetails =$allDetails->take($limit);$remainingCount = $totalItemsCount -$limit;
+                                    $allDetails = $trx->details ?? collect();
+                                    $totalItemsCount = $allDetails->count();
+                                    $limit = 2;
+                                    $visibleDetails = $allDetails->take($limit);
+                                    $remainingCount = $totalItemsCount - $limit;
                                 @endphp
 
                                 <div class="space-y-2 min-w-[220px]">
                                     @foreach($visibleDetails as $detail)
                                         @php
-                                            $rawName =$detail->custom_name ? $detail->custom_name : ($detail->product->name ?? 'Produk');
-                                            $serverBadge =$detail->digital_provider ?? '';
-                                            $displayName =$rawName;
+                                            $rawName = $detail->custom_name ? $detail->custom_name : ($detail->product->name ?? 'Produk');
+                                            $serverBadge = $detail->digital_provider ?? '';
+                                            $displayName = $rawName;
                                             $isTransferLabel = str_contains(strtolower($displayName), 'transfer') || str_contains(strtolower($displayName), 'top-up');
                                             
-                                            if ($isCashOut) {$targetLabel = 'PENGIRIM/REK';
-                                            } elseif ($isTransferLabel) {$targetLabel = 'TUJUAN/REK';
+                                            if ($isWithdrawal) {
+                                                $targetLabel = 'PENGIRIM/REK';
+                                            } elseif ($isTransferLabel) {
+                                                $targetLabel = 'TUJUAN/REK';
                                             } else {
                                                 $targetLabel = 'NO';
                                             }
 
-                                            // CEK APAKAH PRODUK DIGITAL ATAU MEMILIKI NOMOR TELEPON/TARGET YANG VALID
                                             $cleanTargetPhone = trim($detail->target_phone ?? '');
                                             $productType = strtolower(trim($detail->product->type ?? ''));
-                                            $isDigitalProduct = ($productType === 'digital') || !empty($serverBadge) || $isCashOut ||$isTransferLabel;
+                                            $isDigitalProduct = ($productType === 'digital') || !empty($serverBadge) || $isWithdrawal || $isTransferLabel;
 
-                                            $hasValidTarget =$isDigitalProduct && !empty($cleanTargetPhone) &&$cleanTargetPhone !== '-';
+                                            $hasValidTarget = $isDigitalProduct && !empty($cleanTargetPhone) && $cleanTargetPhone !== '-';
                                         @endphp
 
                                         <div class="text-xs">
@@ -158,7 +173,7 @@
                                                 <div class="flex flex-wrap items-center gap-1 mt-1">
                                                     @if($hasValidTarget)
                                                         <span class="bg-indigo-50 text-indigo-700 font-mono text-[9px] px-1.5 py-0.5 rounded border border-indigo-100 font-bold">
-                                                            <i class="fa-solid fa-phone text-[8px] mr-0.5"></i>{{ $targetLabel }}: {{$cleanTargetPhone }}
+                                                            <i class="fa-solid fa-phone text-[8px] mr-0.5"></i>{{ $targetLabel }}: {{ $cleanTargetPhone }}
                                                         </span>
                                                     @endif
 
@@ -195,11 +210,18 @@
                                         </div>
                                     @endif
                                 @else
-                                    @if($isCashOut)
-                                        <span class="bg-amber-50 text-amber-800 border border-amber-300 font-bold text-[9px] px-2 py-0.5 rounded-full inline-flex items-center space-x-1 shadow-2xs">
-                                            <i class="fa-solid fa-money-bill-transfer text-[10px] text-amber-600"></i>
-                                            <span>TARIK TUNAI</span>
-                                        </span>
+                                    @if($isWithdrawal)
+                                        @if($isAdminTunai)
+                                            <span class="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[9px] px-2.5 py-0.5 rounded-full inline-flex items-center space-x-1 shadow-2xs">
+                                                <i class="fa-solid fa-money-bill-wave text-[10px] text-amber-700"></i>
+                                                <span>TARIK TUNAI (TUNAI)</span>
+                                            </span>
+                                        @else
+                                            <span class="bg-blue-100 text-blue-800 border border-blue-300 font-extrabold text-[9px] px-2.5 py-0.5 rounded-full inline-flex items-center space-x-1 shadow-2xs">
+                                                <i class="fa-solid fa-qrcode text-[10px] text-blue-700"></i>
+                                                <span>TARIK TUNAI (QRIS)</span>
+                                            </span>
+                                        @endif
                                     @elseif(strtolower($trx->payment_method) === 'qris')
                                         <span class="bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[9px] px-2 py-0.5 rounded-full inline-flex items-center space-x-1">
                                             <i class="fa-solid fa-qrcode text-[10px]"></i>

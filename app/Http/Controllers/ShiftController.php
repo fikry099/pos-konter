@@ -29,16 +29,8 @@ class ShiftController extends Controller
 
         $expectedCash = 0;
         if ($activeShift) {
-            // Hitung total penjualan khusus TUNAI (cash) pada shift ini
-            $totalCashSales = Transaction::where('shift_id', $activeShift->id)
-                ->where('payment_method', 'cash')
-                ->sum('total_price');
-
-            // Hitung pengeluaran pada shift ini
-            $totalExpenses = Expense::where('shift_id', $activeShift->id)->sum('amount');
-
-            // Kalkulasi Ekspektasi Kas di Laci
-            $expectedCash = ($activeShift->cash_initial + $totalCashSales) - $totalExpenses;
+            // Menggunakan helper dari model Shift yang sudah menyaring transaksi completed & tunai
+            $expectedCash = $activeShift->calculateExpectedCash();
         }
 
         // Ambil ID Karyawan yang SUDAH ABSEN HARI INI DI CABANG MANAPUN
@@ -186,15 +178,10 @@ class ShiftController extends Controller
 
         $shift = Shift::findOrFail($id);
 
-        // PERBAIKAN BUG: Hitung Penjualan Khusus TUNAI (cash) Agar Akurat dengan Laci Kas
-        $totalCashSales = Transaction::where('shift_id', $shift->id)
-            ->where('payment_method', 'cash')
-            ->sum('total_price');
-
-        $totalExpenses = Expense::where('shift_id', $shift->id)->sum('amount');
-        
-        $expectedCash = ($shift->cash_initial + $totalCashSales) - $totalExpenses;
-        $difference = $request->cash_actual - $expectedCash;
+        // PERBAIKAN: Menggunakan method calculateExpectedCash() dari model Shift
+        // Method ini secara akurat hanya menghitung transaksi TUNAI yang berstatus 'completed' (bukan cancelled)
+        $expectedCash = $shift->calculateExpectedCash();
+        $difference   = $request->cash_actual - $expectedCash;
 
         $shift->update([
             'end_time'      => now(),

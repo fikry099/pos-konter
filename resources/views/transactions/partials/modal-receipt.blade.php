@@ -444,7 +444,39 @@
                 let qrisContainer = document.getElementById('qris_proof_container');
                 let qrisImg = document.getElementById('res_qris_img');
 
-                if (data.payment_method && data.payment_method.toLowerCase() === 'qris') {
+                // Kumpulkan seluruh nama item dalam transaksi
+                let allItemNames = '';
+                if (data.details && data.details.length > 0) {
+                    allItemNames = data.details.map(d => (d.custom_name || d.product?.name || '').toLowerCase()).join(' ');
+                }
+
+                let invCode = (data.invoice_code || '').toUpperCase();
+                let isWithdrawal = invCode.startsWith('WD-') || allItemNames.includes('tarik tunai');
+
+                // PENGECEKAN PERSIS BERDASARKAN FRASA ADMIN
+                let isAdminTunai = allItemNames.includes('admin tunai') || allItemNames.includes('admin cash');
+                let isAdminTransfer = allItemNames.includes('admin transfer') || allItemNames.includes('admin tf') || allItemNames.includes('admin qris');
+
+                if (isWithdrawal) {
+                    if (isAdminTunai) {
+                        // JIKA BIAYA ADMIN DIBAYAR CASH / TUNAI
+                        methodEl.innerText = 'TUNAI (ADMIN CASH)';
+                        qrisContainer.classList.add('hidden');
+                    } else if (isAdminTransfer) {
+                        // JIKA BIAYA ADMIN DIGABUNG TRANSFER / QRIS
+                        methodEl.innerText = 'QRIS / TRANSFER';
+                        if (data.payment_proof) {
+                            qrisImg.src = data.payment_proof.startsWith('data:') ? data.payment_proof : `/storage/${data.payment_proof}`;
+                            qrisContainer.classList.remove('hidden');
+                        } else {
+                            qrisContainer.classList.add('hidden');
+                        }
+                    } else {
+                        // DEFAULT FALLBACK UNTUK TARIK TUNAI
+                        methodEl.innerText = (data.payment_method && data.payment_method.toLowerCase() === 'qris') ? 'QRIS / TRANSFER' : 'TUNAI (ADMIN CASH)';
+                        qrisContainer.classList.add('hidden');
+                    }
+                } else if (data.payment_method && data.payment_method.toLowerCase() === 'qris') {
                     methodEl.innerText = 'QRIS';
                     if (data.payment_proof) {
                         qrisImg.src = data.payment_proof.startsWith('data:') ? data.payment_proof : `/storage/${data.payment_proof}`;
@@ -453,7 +485,7 @@
                         qrisContainer.classList.add('hidden');
                     }
                 } else {
-                    methodEl.innerText = 'CASH';
+                    methodEl.innerText = 'CASH / TUNAI';
                     qrisContainer.classList.add('hidden');
                 }
 

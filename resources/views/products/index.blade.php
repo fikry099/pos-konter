@@ -337,6 +337,7 @@
     };
 
     const subCategoryMapping = {
+        'three': ['three', 'tri', ' 3 ', '3/'],
         'kabel': ['kabel', 'cable', 'aux'],
         'charger': ['charger', 'adaptor'],
         'softcase': ['softcase', 'casing', 'cover', 'case'],
@@ -417,6 +418,11 @@
                 matchCat = catData.includes('handphone') || catData.includes('hp') || 
                            parentSlug.includes('handphone') || parentSlug.includes('hp') || 
                            catSlug.includes('handphone') || catSlug.includes('hp');
+            } else if (activeCategory === 'voucher') {
+                // TAMBAHKAN PENGECEKAN INI DENGAN BENAR:
+                matchCat = catData.includes('voucher') || parentSlug.includes('voucher') || catSlug.includes('voucher');
+            } else if (activeCategory === 'pulsa') {
+                matchCat = catData.includes('pulsa') || parentSlug.includes('pulsa') || catSlug.includes('pulsa');
             } else if (activeCategory === 'perdana') {
                 matchCat = catData.includes('perdana') || catData.includes('kartu') || parentSlug.includes('perdana') || catSlug.includes('perdana');
             } else if (activeCategory === 'bank') {

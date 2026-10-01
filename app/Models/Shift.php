@@ -80,14 +80,31 @@ class Shift extends Model
         return $query->first();
     }
 
+    /**
+     * Hitung Total Penjualan Shift (Hanya Transaksi Completed / Tidak Batal)
+     */
     public function getTotalSalesAttribute(): float
     {
-        return (float) $this->transactions()->sum('total_price');
+        return (float) $this->transactions()->where('status', 'completed')->sum('total_price');
     }
 
+    /**
+     * Hitung Total Penjualan Tunai / Cash Shift (Spesifik Uang Fisik Laci)
+     */
+    public function getTotalCashSalesAttribute(): float
+    {
+        return (float) $this->transactions()
+            ->where('status', 'completed')
+            ->whereIn('payment_method', ['cash', 'tunai'])
+            ->sum('total_price');
+    }
+
+    /**
+     * Hitung Total Profit Shift (Hanya Transaksi Completed / Tidak Batal)
+     */
     public function getTotalProfitAttribute(): float
     {
-        return (float) $this->transactions()->sum('total_profit');
+        return (float) $this->transactions()->where('status', 'completed')->sum('total_profit');
     }
 
     public function getTotalExpensesAttribute(): float
@@ -95,9 +112,12 @@ class Shift extends Model
         return (float) $this->expenses()->sum('amount');
     }
 
+    /**
+     * Hitung Estimasi Uang Fisik Laci Kasir (Modal Awal + Tunai Sukses - Pengeluaran)
+     */
     public function calculateExpectedCash(): float
     {
-        return ($this->cash_initial + $this->total_sales) - $this->total_expenses;
+        return ($this->cash_initial + $this->total_cash_sales) - $this->total_expenses;
     }
 
     public function getPhotoUrlAttribute(): ?string
