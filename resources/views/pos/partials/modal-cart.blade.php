@@ -23,20 +23,44 @@
             @csrf
             <input type="hidden" name="product_id" id="modal_product_id">
             <input type="hidden" name="is_custom_amount" id="modal_is_custom_amount" value="0">
+            <input type="hidden" name="is_quota_inject" id="modal_is_quota_inject" value="0">
 
-            <!-- 1. FIELD NOMINAL CUSTOM (TOP-UP / TRANSFER BEBAS) -->
+            <!-- FIELD KHUSUS KUOTA TEMBAK -->
+            <div id="quota_inject_container" class="hidden space-y-3 p-3.5 bg-violet-50/70 rounded-2xl border border-violet-100">
+                <div class="space-y-1.5">
+                    <label for="modal_package_name" class="block text-xs font-bold text-violet-900">
+                        <i class="fa-solid fa-box-archive text-violet-600 mr-1"></i> Nama Paket / Kuota:
+                    </label>
+                    <input type="text" id="modal_package_name" name="package_name" placeholder="Contoh: Indosat Freedom 10GB 30 Hari" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 font-bold text-violet-900 transition">
+                </div>
+                <div class="space-y-1.5">
+                    <label for="modal_cost_price" class="block text-xs font-bold text-violet-900">
+                        <i class="fa-solid fa-wallet text-violet-600 mr-1"></i> Modal / Saldo Terpotong (Rp):
+                    </label>
+                    <input type="text" id="modal_cost_price" name="cost_price" placeholder="Contoh: 25.000" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 font-bold text-rose-600 transition">
+                </div>
+                <div class="space-y-1.5">
+                    <label for="modal_selling_price" class="block text-xs font-bold text-violet-900">
+                        <i class="fa-solid fa-tags text-violet-600 mr-1"></i> Harga Jual (Rp):
+                    </label>
+                    <input type="text" id="modal_selling_price" name="selling_price" placeholder="Contoh: 30.000" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 font-bold text-emerald-600 transition">
+                </div>
+            </div>
+
+            <!-- 1. FIELD NOMINAL CUSTOM (TOP-UP / TRANSFER BEBAS / PLN) -->
             <div id="custom_amount_container" class="hidden space-y-3 p-3.5 bg-indigo-50/70 rounded-2xl border border-indigo-100">
                 <div class="space-y-1.5">
                     <label for="modal_custom_price" class="block text-xs font-bold text-indigo-900">
                         <i class="fa-solid fa-money-bill-wave text-indigo-600 mr-1"></i> Nominal Transfer / Top-Up (Rp):
                     </label>
-                    <input type="text" id="modal_custom_price" name="custom_price" placeholder="Contoh: 137.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 transition">
+                    <input type="text" id="modal_custom_price" name="custom_price" placeholder="Contoh: 100.000" oninput="onCustomPriceInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 transition">
                 </div>
+
                 <div class="space-y-1.5">
                     <label for="modal_admin_fee" class="block text-xs font-bold text-indigo-900">
-                        <i class="fa-solid fa-receipt text-indigo-600 mr-1"></i> Biaya Admin / Jasa (Rp):
+                        <i class="fa-solid fa-receipt text-indigo-600 mr-1"></i> Biaya Admin / Jasa Toko (Rp):
                     </label>
-                    <input type="text" id="modal_admin_fee" name="admin_fee" value="2.500" placeholder="Contoh: 2.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-gray-700 transition">
+                    <input type="text" id="modal_admin_fee" name="admin_fee" value="2.000" placeholder="Contoh: 2.500" oninput="formatRupiahInput(this)" autocomplete="off" class="w-full px-4 py-2.5 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-gray-700 transition">
                 </div>
             </div>
 
@@ -86,9 +110,8 @@
     </div>
 </div>
 
-<!-- SCRIPT PEMFORMATAN RUPIAH & PEMBERSIH ATRIBUT REQUIRED -->
+<!-- SCRIPT PEMFORMATAN RUPIAH & HITUNG ADMIN OTOMATIS -->
 <script>
-    // 1. Fungsi Menghapus Atribut Required Secara Paksa
     function clearModalRequiredFields() {
         const modalInputs = document.querySelectorAll('#cartModal input');
         modalInputs.forEach(input => {
@@ -97,7 +120,6 @@
         });
     }
 
-    // Monitor perubahan modal jika JS eksternal mencoba menyisipkan required
     document.addEventListener('DOMContentLoaded', function() {
         const cartModal = document.getElementById('cartModal');
         if (cartModal) {
@@ -113,7 +135,36 @@
         }
     });
 
-    // 2. Fungsi Format Angka ke Rupiah (Titik Ribuan)
+    function calculateAutoAdminFee(transferAmount) {
+        let amount = parseFloat(transferAmount) || 0;
+        if (amount <= 0) return 2000;
+
+        let amountInThousands = amount / 1000;
+
+        if (amountInThousands < 100) {
+            return 2000;
+        } else if (amountInThousands <= 350) {
+            return 3000;
+        } else if (amountInThousands < 500) {
+            return 4000;
+        } else {
+            let hundredThousandsAbove500 = Math.floor((amountInThousands - 500) / 100);
+            return 5000 + (hundredThousandsAbove500 * 1000);
+        }
+    }
+
+    function onCustomPriceInput(element) {
+        formatRupiahInput(element);
+        let rawVal = element.value.replace(/[^0-9]/g, '');
+        let amount = parseFloat(rawVal) || 0;
+        let autoFee = calculateAutoAdminFee(amount);
+
+        let adminFeeInput = document.getElementById('modal_admin_fee');
+        if (adminFeeInput) {
+            adminFeeInput.value = autoFee.toLocaleString('id-ID');
+        }
+    }
+
     function formatRupiahInput(element) {
         let value = element.value.replace(/[^,\d]/g, '').toString();
         let split = value.split(',');
@@ -130,12 +181,13 @@
         element.value = rupiah;
     }
 
-    // 3. Pembersih Titik & Required Sebelum Form Di-Submit
     function prepareCleanNumbers(e) {
         clearModalRequiredFields();
 
         let customPriceInput = document.getElementById('modal_custom_price');
         let adminFeeInput = document.getElementById('modal_admin_fee');
+        let costPriceInput = document.getElementById('modal_cost_price');
+        let sellingPriceInput = document.getElementById('modal_selling_price');
 
         if (customPriceInput && customPriceInput.value) {
             customPriceInput.value = customPriceInput.value.replace(/[^0-9]/g, '');
@@ -143,6 +195,14 @@
 
         if (adminFeeInput && adminFeeInput.value) {
             adminFeeInput.value = adminFeeInput.value.replace(/[^0-9]/g, '');
+        }
+
+        if (costPriceInput && costPriceInput.value) {
+            costPriceInput.value = costPriceInput.value.replace(/[^0-9]/g, '');
+        }
+
+        if (sellingPriceInput && sellingPriceInput.value) {
+            sellingPriceInput.value = sellingPriceInput.value.replace(/[^0-9]/g, '');
         }
     }
 </script>

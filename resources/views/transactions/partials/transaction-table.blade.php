@@ -63,10 +63,9 @@
                 <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                     @forelse($transactions as $trx)
                         @php
-                            $isCashOut = str_starts_with($trx->invoice_code, 'WD-') || 
-                                         $trx->details->contains(fn($d) => str_contains(strtolower($d->custom_name ?? ''), 'tarik tunai'));
+                            $isCashOut = str_starts_with($trx->invoice_code, 'WD-') ||$trx->details->contains(fn($d) => str_contains(strtolower($d->custom_name ?? ''), 'tarik tunai'));
                             
-                            $isCancelled = $trx->status === 'cancelled';
+                            $isCancelled =$trx->status === 'cancelled';
                         @endphp
 
                         <tr class="transition {{ $isCancelled ? 'bg-rose-50/70 border-l-4 border-l-rose-500' : ($isCashOut ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-slate-50/70') }}">
@@ -82,12 +81,12 @@
 
                             <td class="py-3 px-3 whitespace-nowrap align-top">
                                 @php
-                                    $storeName = $trx->store->name 
+                                    $storeName =$trx->store->name 
                                         ?? $trx->user->store->name 
                                         ?? session('selected_store_name') 
                                         ?? 'Cabang';
 
-                                    $accessoryStaffNames = $trx->details
+                                    $accessoryStaffNames =$trx->details
                                         ->filter(function ($d) {
                                             if (empty($d->served_by_user_id) || !$d->servedBy) {
                                                 return false;
@@ -97,19 +96,19 @@
                                             $ignoredKeywords = ['voucher', 'pulsa', 'kuota', 'perdana', 'paket', 'top-up', 'topup', 'dana', 'gopay', 'ovo', 'shopee', 'linkaja', 'transfer', 'bank'];
 
                                             foreach ($ignoredKeywords as $keyword) {
-                                                if (str_contains($itemName, $keyword)) {
+                                                if (str_contains($itemName,$keyword)) {
                                                     return false;
                                                 }
                                             }
 
                                             return true;
                                         })
-                                        ->map(fn($d) => $d->servedBy->name)
+                                        ->map(fn($d) =>$d->servedBy->name)
                                         ->filter()
                                         ->unique()
                                         ->implode(', ');
 
-                                    $cashierDisplay = !empty($accessoryStaffNames) ? $accessoryStaffNames : $storeName;
+                                    $cashierDisplay = !empty($accessoryStaffNames) ? $accessoryStaffNames :$storeName;
                                 @endphp
 
                                 <div class="font-bold {{ $isCancelled ? 'text-rose-800' : 'text-slate-800' }}">
@@ -122,28 +121,31 @@
 
                             <td class="py-3 px-3 align-top">
                                 @php
-                                    $allDetails = $trx->details ?? collect();
-                                    $totalItemsCount = $allDetails->count();
-                                    $limit = 2;
-                                    $visibleDetails = $allDetails->take($limit);
-                                    $remainingCount = $totalItemsCount - $limit;
+                                    $allDetails =$trx->details ?? collect();
+                                    $totalItemsCount = $allDetails->count();$limit = 2;
+                                    $visibleDetails =$allDetails->take($limit);$remainingCount = $totalItemsCount -$limit;
                                 @endphp
 
                                 <div class="space-y-2 min-w-[220px]">
                                     @foreach($visibleDetails as $detail)
                                         @php
-                                            $rawName = $detail->custom_name ? $detail->custom_name : ($detail->product->name ?? 'Produk');
-                                            $serverBadge = $detail->digital_provider ?? '';
-                                            $displayName = $rawName;
+                                            $rawName =$detail->custom_name ? $detail->custom_name : ($detail->product->name ?? 'Produk');
+                                            $serverBadge =$detail->digital_provider ?? '';
+                                            $displayName =$rawName;
                                             $isTransferLabel = str_contains(strtolower($displayName), 'transfer') || str_contains(strtolower($displayName), 'top-up');
                                             
-                                            if ($isCashOut) {
-                                                $targetLabel = 'PENGIRIM/REK';
-                                            } elseif ($isTransferLabel) {
-                                                $targetLabel = 'TUJUAN/REK';
+                                            if ($isCashOut) {$targetLabel = 'PENGIRIM/REK';
+                                            } elseif ($isTransferLabel) {$targetLabel = 'TUJUAN/REK';
                                             } else {
                                                 $targetLabel = 'NO';
                                             }
+
+                                            // CEK APAKAH PRODUK DIGITAL ATAU MEMILIKI NOMOR TELEPON/TARGET YANG VALID
+                                            $cleanTargetPhone = trim($detail->target_phone ?? '');
+                                            $productType = strtolower(trim($detail->product->type ?? ''));
+                                            $isDigitalProduct = ($productType === 'digital') || !empty($serverBadge) || $isCashOut ||$isTransferLabel;
+
+                                            $hasValidTarget =$isDigitalProduct && !empty($cleanTargetPhone) &&$cleanTargetPhone !== '-';
                                         @endphp
 
                                         <div class="text-xs">
@@ -152,11 +154,11 @@
                                                 <span class="{{ $isCancelled ? 'text-rose-400' : 'text-slate-400' }} font-bold shrink-0">x{{ $detail->qty }}</span>
                                             </div>
                                             
-                                            @if($detail->target_phone || !empty($serverBadge))
+                                            @if($hasValidTarget || !empty($serverBadge))
                                                 <div class="flex flex-wrap items-center gap-1 mt-1">
-                                                    @if($detail->target_phone)
+                                                    @if($hasValidTarget)
                                                         <span class="bg-indigo-50 text-indigo-700 font-mono text-[9px] px-1.5 py-0.5 rounded border border-indigo-100 font-bold">
-                                                            <i class="fa-solid fa-phone text-[8px] mr-0.5"></i>{{ $targetLabel }}: {{ $detail->target_phone }}
+                                                            <i class="fa-solid fa-phone text-[8px] mr-0.5"></i>{{ $targetLabel }}: {{$cleanTargetPhone }}
                                                         </span>
                                                     @endif
 
@@ -230,7 +232,7 @@
                                     </button>
 
                                     @if(auth()->check() && auth()->user()->role !== 'owner' && !$isCancelled)
-                                        <button type="button" onclick="openCancelModal({{ $trx->id }}, '{{ $trx->invoice_code }}')" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer inline-flex items-center justify-center w-7 h-7" title="Batalkan Transaksi Ini">
+                                        <button type="button" onclick="openCancelModal({{ $trx->id }}, '{{$trx->invoice_code }}')" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer inline-flex items-center justify-center w-7 h-7" title="Batalkan Transaksi Ini">
                                             <i class="fa-solid fa-ban text-[11px]"></i>
                                         </button>
                                     @endif
@@ -252,11 +254,10 @@
         <!-- PAGINATION CUSTOM LIGHT THEME (INLINE) -->
         <div class="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold text-slate-500">
             <div>
-                Showing {{ $transactions->firstItem() ?? 0 }} to {{ $transactions->lastItem() ?? 0 }} of {{ $transactions->total() }} results
+                Showing {{ $transactions->firstItem() ?? 0 }} to {{ $transactions->lastItem() ?? 0 }} of {{$transactions->total() }} results
             </div>
 
             @if ($transactions->hasPages())
-                {{-- Ditambahkan pr-12 sm:pr-16 agar posisi tombol bergeser ke kiri dari ikon AI --}}
                 <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center space-x-1.5 pr-12 sm:pr-16">
                     {{-- Previous Page Link --}}
                     @if ($transactions->onFirstPage())
@@ -276,8 +277,8 @@
                         @endif
 
                         @if (is_array($element))
-                            @foreach ($element as $page => $url)
-                                @if ($page == $transactions->currentPage())
+                            @foreach ($element as $page =>$url)
+                                @if ($page ==$transactions->currentPage())
                                     <span class="w-9 h-9 flex items-center justify-center rounded-2xl bg-indigo-600 text-white font-black shadow-md shadow-indigo-200 text-xs">
                                         {{ $page }}
                                     </span>

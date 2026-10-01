@@ -21,16 +21,20 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $activeStoreId = $this->getActiveStoreId(); // <--- Dapatkan ID Store Aktif
+        $activeStoreId = $this->getActiveStoreId();
 
         $today = Carbon::today();
         $startOfMonth = Carbon::now()->startOfMonth();
 
-        // 1. STATISTIK HARI INI (FILTER BY STORE_ID)
+        // 1. STATISTIK HARI INI (FILTER BY STORE_ID & CATEGORY OPERATIONAL)
         $todaySales = Transaction::forStore($activeStoreId)->whereDate('created_at', $today)->sum('total_price');
         $todayProfit = Transaction::forStore($activeStoreId)->whereDate('created_at', $today)->sum('total_profit');
         
-        $todayExpenses = Expense::where('store_id', $activeStoreId)->whereDate('created_at', $today)->sum('amount');
+        $todayExpenses = Expense::where('store_id', $activeStoreId)
+            ->whereDate('created_at', $today)
+            ->where('category', 'operational')
+            ->sum('amount');
+
         $todayNetProfit = $todayProfit - $todayExpenses;
 
         // 2. STATISTIK BULAN INI (FILTER BY STORE_ID)
@@ -44,7 +48,7 @@ class DashboardController extends Controller
         // 4. TRANSAKSI TERBARU (FILTER BY STORE_ID)
         $latestTransactions = Transaction::forStore($activeStoreId)->with(['user', 'details.product'])->latest()->take(5)->get();
 
-        // 5. DATA GRAFIK PENJUALAN & PROFIT 6 BULAN TERAKHIR (FILTER BY STORE_ID)
+        // 5. DATA GRAFIK PENJUALAN & PROFIT 6 BULAN TERAKHIR
         $monthlyChartData = [];
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
@@ -56,20 +60,55 @@ class DashboardController extends Controller
                 ->whereMonth('created_at', $month)
                 ->sum('total_price');
 
-            $profit = Transaction::forStore($activeStoreId)
+            $grossProfit = Transaction::forStore($activeStoreId)
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->sum('total_profit');
 
+            $expenses = Expense::where('store_id', $activeStoreId)
+                ->whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->where('category', 'operational')
+                ->sum('amount');
+
+            $netProfit = $grossProfit - $expenses;
+
             $monthlyChartData[] = [
                 'month_name' => $date->format('M Y'),
                 'sales'      => (float) $sales,
-                'profit'     => (float) $profit,
+                'profit'     => (float) $netProfit,
+            ];
+        }
+
+        // 6. DATA GRAFIK HARIAN (KHUSUS 7 HARI TERAKHIR)
+        $dailyChartData = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+
+            $sales = Transaction::forStore($activeStoreId)
+                ->whereDate('created_at', $date)
+                ->sum('total_price');
+
+            $grossProfit = Transaction::forStore($activeStoreId)
+                ->whereDate('created_at', $date)
+                ->sum('total_profit');
+
+            $expenses = Expense::where('store_id', $activeStoreId)
+                ->whereDate('created_at', $date)
+                ->where('category', 'operational')
+                ->sum('amount');
+
+            $netProfit = $grossProfit - $expenses;
+
+            $dailyChartData[] = [
+                'day_label' => $date->format('d M'),
+                'sales'     => (float) $sales,
+                'profit'    => (float) $netProfit,
             ];
         }
 
         return view('dashboard.index', compact(
-            'activeStoreId', // <--- Kirim ke View
+            'activeStoreId',
             'todaySales',
             'todayProfit',
             'todayExpenses',
@@ -79,7 +118,8 @@ class DashboardController extends Controller
             'activeShift',
             'recentShifts',
             'latestTransactions',
-            'monthlyChartData'
+            'monthlyChartData',
+            'dailyChartData'
         ));
     }
 

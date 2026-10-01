@@ -16,7 +16,7 @@
             </div>
 
             <div id="print_tbody" class="py-1 space-y-1 border-b border-black border-dashed">
-                </div>
+            </div>
 
             <div class="py-1 border-b border-black border-dashed">
                 <table class="po-receipt-table">
@@ -134,14 +134,14 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    // VARIABEL GLOBAL UNTUK MENGINGAT KONEKSI BLUETOOTH PRINTER
     let btDevice = null;
     let btCharacteristic = null;
 
+    let selectedMainCategory = 'all';
+    let selectedSubCategory = 'all';
+
     document.addEventListener("DOMContentLoaded", function() {
-        if (typeof calculateTotals === "function") {
-            calculateTotals();
-        }
+        applyReorderFilters();
     });
 
     function formatRupiahIDR(val) {
@@ -150,40 +150,170 @@
         return 'Rp ' + numberVal.toLocaleString('id-ID');
     }
 
+    // HITUNG REKAP STATISTIK BERDASARKAN HASIL FILTER
     function calculateTotals() {
         let rows = document.querySelectorAll('.item-row');
         let grandPcs = 0;
         let grandCost = 0;
+        let grandItems = 0;
 
         rows.forEach(row => {
-            let cost = parseInt(row.getAttribute('data-cost')) || 0;
-            let qtyInput = row.querySelector('.order-qty');
-            let qty = parseInt(qtyInput ? qtyInput.value : 0) || 0;
+            if (row.getAttribute('data-filtered-visible') !== 'false') {
+                let cost = parseInt(row.getAttribute('data-cost')) || 0;
+                let qtyInput = row.querySelector('.order-qty');
+                let qty = parseInt(qtyInput ? qtyInput.value : 0) || 0;
 
-            let subtotal = cost * qty;
-            grandPcs += qty;
-            grandCost += subtotal;
+                let subtotal = cost * qty;
+                grandPcs += qty;
+                grandCost += subtotal;
+                grandItems++;
 
-            let subEl = row.querySelector('.item-subtotal');
-            if (subEl) subEl.innerText = formatRupiahIDR(subtotal);
+                let subEl = row.querySelector('.item-subtotal');
+                if (subEl) subEl.innerText = formatRupiahIDR(subtotal);
+            }
         });
 
+        let itemsEl = document.getElementById('grand_total_items');
         let pcsEl = document.getElementById('grand_total_pcs');
         let costEl = document.getElementById('grand_total_cost');
+
+        if (itemsEl) itemsEl.innerText = grandItems.toLocaleString('id-ID') + ' Item';
         if (pcsEl) pcsEl.innerText = grandPcs.toLocaleString('id-ID') + ' Pcs';
         if (costEl) costEl.innerText = formatRupiahIDR(grandCost);
     }
 
-    // FUNGSI UNTUK MENAMPILKAN MODAL RESI RESTOK PO
+    // MEMBERSIHKAN SIMBOL/KARAKTER UNTUK PENCOCOKAN
+    function cleanFilterKey(str) {
+        if (!str) return '';
+        return str.toString()
+                  .toLowerCase()
+                  .replace(/&/g, 'and')
+                  .replace(/[^a-z0-9]/g, '');
+    }
+
+    function filterMainCategory(catSlug, element) {
+        selectedMainCategory = (catSlug || '').toLowerCase().trim();
+        selectedSubCategory = 'all';
+
+        document.querySelectorAll('.main-cat-btn').forEach(btn => {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-200', 'font-black');
+            btn.classList.add('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600', 'font-bold');
+        });
+
+        element.classList.remove('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600', 'font-bold');
+        element.classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-200', 'font-black');
+
+        let subCatsData = [];
+        try {
+            let subAttr = element.getAttribute('data-subcategories');
+            if (subAttr) subCatsData = JSON.parse(subAttr);
+        } catch (e) {
+            subCatsData = [];
+        }
+
+        let subContainer = document.getElementById('sub_category_pills_container');
+        if (subContainer) {
+            let html = `
+                <button type="button" onclick="filterSubCategory('all', this)" class="sub-cat-pill px-3 py-1.5 rounded-lg text-xs font-black transition whitespace-nowrap bg-indigo-100 text-indigo-700 active:scale-95 cursor-pointer">
+                    Semua
+                </button>
+            `;
+
+            if (subCatsData && subCatsData.length > 0) {
+                subCatsData.forEach(sub => {
+                    let subVal = sub.name || sub.slug || '';
+                    let safeVal = subVal.replace(/'/g, "\\'");
+                    html += `
+                        <button type="button" onclick="filterSubCategory('${safeVal}', this)" class="sub-cat-pill px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-600 active:scale-95 cursor-pointer">
+                            ${subVal}
+                        </button>
+                    `;
+                });
+            }
+
+            subContainer.innerHTML = html;
+        }
+
+        applyReorderFilters();
+    }
+
+    function filterSubCategory(subSlug, element) {
+        selectedSubCategory = (subSlug || '').toLowerCase().trim();
+
+        document.querySelectorAll('.sub-cat-pill').forEach(btn => {
+            btn.classList.remove('bg-indigo-100', 'text-indigo-700', 'font-black');
+            btn.classList.add('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600', 'font-bold');
+        });
+
+        element.classList.remove('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600', 'font-bold');
+        element.classList.add('bg-indigo-100', 'text-indigo-700', 'font-black');
+
+        applyReorderFilters();
+    }
+
+    function applyReorderFilters() {
+        let rows = document.querySelectorAll('.item-row');
+        let searchKeyword = (document.getElementById('reorder_search_input')?.value || '').trim();
+
+        let cleanSelectedMain = cleanFilterKey(selectedMainCategory);
+        let cleanSelectedSub  = cleanFilterKey(selectedSubCategory);
+        let cleanSearch       = cleanFilterKey(searchKeyword);
+
+        rows.forEach(row => {
+            let catAttr    = row.getAttribute('data-category') || '';
+            let subCatAttr = row.getAttribute('data-subcategory') || '';
+            let nameAttr   = row.getAttribute('data-name') || '';
+            let codeAttr   = row.getAttribute('data-code') || '';
+
+            let cleanCat    = cleanFilterKey(catAttr);
+            let cleanSubCat = cleanFilterKey(subCatAttr);
+            let cleanName   = cleanFilterKey(nameAttr);
+            let cleanCode   = cleanFilterKey(codeAttr);
+
+            // Match Kategori Utama
+            let matchMain = (selectedMainCategory === 'all') || 
+                            cleanCat.includes(cleanSelectedMain) || 
+                            cleanSubCat.includes(cleanSelectedMain);
+
+            // Match Sub Kategori
+            let matchSub = (selectedSubCategory === 'all') || 
+                           cleanSubCat.includes(cleanSelectedSub) || 
+                           cleanCat.includes(cleanSelectedSub) || 
+                           cleanName.includes(cleanSelectedSub);
+
+            // Match Search Bar
+            let matchSearch = !cleanSearch || 
+                              cleanName.includes(cleanSearch) || 
+                              cleanCode.includes(cleanSearch);
+
+            if (matchMain && matchSub && matchSearch) {
+                row.setAttribute('data-filtered-visible', 'true');
+            } else {
+                row.setAttribute('data-filtered-visible', 'false');
+            }
+        });
+
+        if (typeof reorderCurrentPage !== 'undefined') {
+            reorderCurrentPage = 1;
+        }
+
+        if (typeof renderReorderPagination === 'function') {
+            renderReorderPagination();
+        }
+
+        calculateTotals();
+    }
+
+    // CETAK PO BERDASARKAN HASIL FILTER
     function printOrderReceipt() {
         let rows = document.querySelectorAll('.item-row');
-        
-        // 1. Jika tabel kosong sama sekali
-        if (rows.length === 0) {
+        let visibleRows = Array.from(rows).filter(r => r.getAttribute('data-filtered-visible') !== 'false');
+
+        if (visibleRows.length === 0) {
             Swal.fire({
                 icon: 'info',
                 title: 'Tidak Ada Barang!',
-                text: 'Tidak ada barang yang perlu dipesan saat ini.',
+                text: 'Tidak ada barang yang tampil pada filter saat ini.',
                 confirmButtonColor: '#4f46e5',
                 confirmButtonText: 'Mengerti',
                 customClass: {
@@ -209,7 +339,7 @@
         
         document.getElementById('print_date').innerText = `${day}/${month}/${year} ${hours}:${minutes} WIB`;
 
-        rows.forEach(row => {
+        visibleRows.forEach(row => {
             let name = row.getAttribute('data-name');
             let code = row.getAttribute('data-code');
             let qtyInput = row.querySelector('.order-qty');
@@ -237,7 +367,6 @@
             }
         });
 
-        // 2. Jika ada baris tapi kuantitas order masih 0 semua
         if (totalItems === 0) {
             Swal.fire({
                 icon: 'warning',
@@ -256,7 +385,6 @@
         document.getElementById('print_total_items').innerText = totalItems + ' Item';
         document.getElementById('print_total_pcs').innerText = totalPcs + ' Pcs';
 
-        // TAMPILKAN MODAL RESI
         document.getElementById('reorderReceiptModal').classList.remove('hidden');
     }
 
@@ -264,13 +392,11 @@
         document.getElementById('reorderReceiptModal').classList.add('hidden');
     }
 
-    // FUNGSI UTAMA CETAK DIRECT PRINT VIA BLUETOOTH DENGAN FALLBACK WINDOW.PRINT
     async function executePrintOrder() {
         let isAndroid = /Android/i.test(navigator.userAgent);
 
         if (navigator.bluetooth && isAndroid) {
             try {
-                // 1. HUBUNGKAN KE PRINTER BLUETOOTH JIKA BELUM TERKONEKSI
                 if (!btDevice || !btDevice.gatt.connected || !btCharacteristic) {
                     btDevice = await navigator.bluetooth.requestDevice({
                         acceptAllDevices: true,
@@ -296,19 +422,16 @@
                     return;
                 }
 
-                // 2. CEK KETERSEDIAAN LIBRARY ESC-POS ENCODER
                 if (typeof EscPosEncoder === 'undefined') {
                     console.warn('EscPosEncoder CDN belum dimuat di app.blade.php');
                     window.print();
                     return;
                 }
 
-                // 3. AMBIL DATA ELEMEN HEADER & RINGKASAN PO
                 let dateStr    = document.getElementById('print_date')?.innerText || '-';
                 let totalItems = document.getElementById('print_total_items')?.innerText || '0 Item';
                 let totalPcs   = document.getElementById('print_total_pcs')?.innerText || '0 Pcs';
 
-                // 4. SUSUN ENCODER DATA COMMAND ESC/POS THERMAL
                 let encoder = new EscPosEncoder();
                 encoder
                     .initialize()
@@ -323,7 +446,6 @@
                     .line('[ DAFTAR BARANG DIORDER ]')
                     .line('--------------------------------');
 
-                // Iterasi item barang diorder dari modal resi
                 let itemRows = document.querySelectorAll('#print_tbody .po-receipt-table tr');
                 itemRows.forEach(row => {
                     let name = row.querySelector('.lbl .font-extrabold')?.innerText.replace(/\n/g, ' ').trim() || '';
@@ -336,7 +458,6 @@
                     }
                 });
 
-                // Ringkasan Total PO & Catatan Karyawan
                 let resultData = encoder
                     .align('center')
                     .line('--------------------------------')
@@ -354,7 +475,6 @@
                     .line('\n\n\n')
                     .encode();
 
-                // 5. KIRIM CHUNK DATA BYTE BERGANTIAN KE PRINTER BLUETOOTH
                 const chunkSize = 512;
                 for (let i = 0; i < resultData.length; i += chunkSize) {
                     const chunk = resultData.slice(i, i + chunkSize);
@@ -366,7 +486,6 @@
                 window.print();
             }
         } else {
-            // Fallback untuk PC/Laptop
             window.print();
         }
     }

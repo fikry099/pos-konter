@@ -66,7 +66,7 @@ class CategorySeeder extends Seeder
             );
         }
 
-        // 4. HANDPHONE (BARU & SECOND)
+        // 4. HANDPHONE (BARU & SECOND - SESUAI POS)
         $hpCategory = Category::updateOrCreate(
             ['slug' => 'handphone'],
             [
@@ -75,16 +75,16 @@ class CategorySeeder extends Seeder
             ]
         );
         Category::updateOrCreate(
-            ['slug' => 'hp-baru'],
+            ['slug' => 'hp-new'],
             [
-                'name'      => 'Baru (New)',
+                'name'      => 'Handphone Baru (New)',
                 'parent_id' => $hpCategory->id,
             ]
         );
         Category::updateOrCreate(
             ['slug' => 'hp-second'],
             [
-                'name'      => 'Second / Bekas',
+                'name'      => 'Handphone Second',
                 'parent_id' => $hpCategory->id,
             ]
         );
@@ -116,7 +116,7 @@ class CategorySeeder extends Seeder
                 'parent_id' => null,
             ]
         );
-        $banks = ['BCA', 'BRI', 'Mandiri', 'BNI', 'BSI', 'Permata'];
+        $banks = ['BCA', 'BRI', 'Mandiri', 'BNI', 'BSI', 'Permata', 'SeaBank', 'Bank Jago', 'CIMB Niaga', 'Danamon', 'BTN', 'Bank Daerah (BPD)', 'Bank Lainnya'];
         foreach ($banks as $bank) {
             Category::updateOrCreate(
                 ['slug' => 'bank-' . Str::slug($bank)],
@@ -136,7 +136,7 @@ class CategorySeeder extends Seeder
             ]
         );
 
-        // 8. AKSESORIS HP
+        // 8. AKSESORIS HP (9 SUB-KATEGORI SESUAI PERSIS POS sub-providers.blade.php)
         $accRoot = Category::updateOrCreate(
             ['slug' => 'aksesoris-hp'],
             [
@@ -144,12 +144,24 @@ class CategorySeeder extends Seeder
                 'parent_id' => null,
             ]
         );
-        $accessories = ['Proteksi', 'Power', 'Audio', 'Penyimpanan', 'Mount & Stand'];
+
+        $accessories = [
+            ['name' => 'Cable Data & AUX', 'slug' => 'cable-data-aux'],
+            ['name' => 'Adaptor / Kepala', 'slug' => 'adaptor-kepala'],
+            ['name' => 'Adaptor 1Set & Car', 'slug' => 'adaptor-set-car'],
+            ['name' => 'Headset / Earphone', 'slug' => 'headset-earphone'],
+            ['name' => 'MMC & Flashdisk', 'slug' => 'mmc-flashdisk'],
+            ['name' => 'Powerbank', 'slug' => 'powerbank'],
+            ['name' => 'Softcase', 'slug' => 'softcase'],
+            ['name' => 'Antigores', 'slug' => 'antigores'],
+            ['name' => 'ACC Mix', 'slug' => 'acc-mix'],
+        ];
+
         foreach ($accessories as $acc) {
             Category::updateOrCreate(
-                ['slug' => 'acc-' . Str::slug($acc)],
+                ['slug' => $acc['slug']],
                 [
-                    'name'      => $acc,
+                    'name'      => $acc['name'],
                     'parent_id' => $accRoot->id,
                 ]
             );

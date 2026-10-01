@@ -88,7 +88,18 @@
         </div>
     </div>
 
-    <!-- CARD 9 (SEMUA PRODUK) -->
+    <!-- CARD 9 (KUOTA TEMBAK) -->
+    <div onclick="openQuotaInjectModal()" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center cursor-pointer transition active:scale-95 group">
+        <div class="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition shadow-inner shrink-0 mb-3">
+            <i class="fa-solid fa-wifi"></i>
+        </div>
+        <div>
+            <h3 class="font-extrabold text-sm md:text-base text-slate-800 group-hover:text-indigo-600 transition">Kuota Tembak</h3>
+            <p class="text-xs text-gray-400 mt-1 font-medium">Inject Kuota Direct Nomor</p>
+        </div>
+    </div>
+
+    <!-- CARD 10 (SEMUA PRODUK) -->
     <div onclick="showAllProducts()" class="bg-white p-6 rounded-3xl border border-slate-200/90 hover:border-indigo-400 shadow-sm hover:shadow-md flex flex-col items-center justify-center text-center space-y-2.5 group active:scale-95">
         <div class="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition shadow-inner shrink-0 mb-1">
             <i class="fa-solid fa-border-all"></i>

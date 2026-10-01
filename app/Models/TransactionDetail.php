@@ -10,7 +10,7 @@ class TransactionDetail extends Model
     protected $fillable = [
         'transaction_id',
         'product_id',
-        'custom_name',      // <-- PASTIKAN ADA DI SINI
+        'custom_name',
         'served_by_user_id', 
         'target_phone',
         'digital_provider',

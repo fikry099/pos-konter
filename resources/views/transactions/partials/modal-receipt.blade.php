@@ -179,7 +179,7 @@
 
     // FUNGSI UTAMA CETAK AUTOMATIC CONNECT & DIRECT PRINT VIA BLUETOOTH
     async function printThermalReceipt(e) {
-        if (e) e.preventDefault(); // Mencegah form submit/refresh otomatis
+        if (e) e.preventDefault();
 
         let isAndroid = /Android/i.test(navigator.userAgent);
 
@@ -414,13 +414,19 @@
                         let isTransferOrTopup = formattedReceiptName.toLowerCase().includes('transfer') || formattedReceiptName.toLowerCase().includes('top-up');
                         let targetLabel = isTransferOrTopup ? 'TUJUAN/REK' : 'NO';
 
+                        // PENGECEKAN KETAT: Hanya tampilkan target phone jika ada isi valid (tidak kosong / "-") dan tergolong produk digital/server
+                        let cleanTargetPhone = (item.target_phone || '').trim();
+                        let productType = (item.product && item.product.type) ? item.product.type.toLowerCase() : '';
+                        let isDigitalProduct = (productType === 'digital') || item.digital_provider || isTransferOrTopup;
+                        let showTargetPhone = isDigitalProduct && cleanTargetPhone !== '' && cleanTargetPhone !== '-';
+
                         detailsContainer.innerHTML += `
                             <div class="py-1 border-b border-black/20 last:border-none">
                                 <table class="trx-receipt-table">
                                     <tr>
                                         <td class="lbl">
                                             <div class="font-extrabold uppercase text-[9px] leading-tight text-black">${formattedReceiptName} x${item.qty}</div>
-                                            ${item.target_phone ? `<div class="text-[8px] text-black font-bold mt-0.5">${targetLabel}: ${item.target_phone}</div>` : ''}
+                                            ${showTargetPhone ? `<div class="text-[8px] text-black font-bold mt-0.5">${targetLabel}:${cleanTargetPhone}</div>` : ''}
                                             ${item.digital_provider ? `<div class="text-[8px] text-black font-bold">SERVER: ${item.digital_provider}</div>` : ''}
                                         </td>
                                         <td class="val font-black text-[9px] text-black">

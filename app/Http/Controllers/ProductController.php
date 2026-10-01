@@ -215,37 +215,33 @@ class ProductController extends Controller
     public function reorderOrder()
     {
         $storeId = $this->getActiveStoreId();
+
+        // Ambil seluruh produk fisik aktif yang stok cabang kurang dari min_stock
         $lowStockProducts = StoreProductStock::with([
                 'product' => function ($qp) {
                     $qp->select('id', 'category_id', 'name', 'code', 'type', 'selling_price', 'cost_price')
-                       ->with('category:id,parent_id,name,slug');
+                       ->with('category.parent.parent');
                 }
             ])
             ->where('store_id', $storeId)
             ->whereHas('product', function ($query) {
                 $query->where('type', 'physical')
-                    ->where('is_active', true)
-                    ->whereHas('category', function ($catQuery) {
-                        $catQuery->where(function ($q) {
-                            $q->whereIn('slug', ['voucher-internet', 'kartu-perdana'])
-                              ->orWhere('name', 'LIKE', '%Voucher%')
-                              ->orWhere('name', 'LIKE', '%Perdana%')
-                              ->orWhereHas('parent', function ($parentQuery) {
-                                  $parentQuery->whereIn('slug', ['voucher-internet', 'kartu-perdana'])
-                                              ->orWhere('name', 'LIKE', '%Voucher%')
-                                              ->orWhere('name', 'LIKE', '%Perdana%');
-                              });
-                        });
-                    });
+                    ->where('is_active', true);
             })
             ->whereColumn('stock', '<', 'min_stock')
             ->get();
 
         if ($lowStockProducts->isEmpty()) {
-            session()->flash('info', 'Semua stok voucher & kartu perdana di cabang ini masih mencukupi.');
+            session()->flash('info', 'Semua stok produk fisik di cabang ini masih mencukupi.');
         }
 
-        return view('products.reorder', compact('lowStockProducts'));
+        // Ambil kategori utama beserta anak kategorinya
+        $categories = Category::whereNull('parent_id')
+            ->select('id', 'name', 'slug')
+            ->with('allChildren:id,parent_id,name,slug')
+            ->get();
+
+        return view('products.reorder', compact('lowStockProducts', 'categories'));
     }
 
     /**

@@ -124,17 +124,17 @@ class CashOutController extends Controller
             ]);
 
             // 2. HITUNG PENGURANGAN NETT UANG KAS FISIK DI LACI
-            // - Jika Admin Transfer: Laci berkurang murni sebesar Nominal Cash Ditarik.
-            // - Jika Admin Cash: Pelanggan menyerahkan admin_fee tunai ke laci, jadi net pengeluaran laci = (cash_amount - admin_fee).
             $netCashOutFromDrawer = ($adminMethod === 'cash') ? ($cashAmount - $adminFee) : $cashAmount;
 
-            // 3. CATAT EXPENSE SHIFT UNTUK MEMOTONG EKSPEKTASI UANG KAS LACI DI SHIFTCONTROLLER
+            // 3. CATAT EXPENSE SHIFT DENGAN KATEGORI 'cash_out'
+            // KUNCI PERBAIKAN: Menggunakan 'category' => 'cash_out' agar memotong fisik uang laci kasir,
+            // TETAPI TIDAK IKUT MENGURANGI LABA BERSIH OWNER DI BOOKKEEPINGCONTROLLER!
             if ($netCashOutFromDrawer > 0) {
                 Expense::create([
                     'store_id'    => $storeId,
                     'shift_id'    => $activeShift->id,
                     'user_id'     => Auth::id(),
-                    'category'    => 'operational', // Masuk sebagai penyesuaian kas laci
+                    'category'    => 'cash_out', // <--- DIPERBAIKI (DARI 'operational' MENJADI 'cash_out')
                     'description' => 'Penyerahan Uang Laci: ' . $customName,
                     'amount'      => $netCashOutFromDrawer,
                 ]);

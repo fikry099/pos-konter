@@ -4,7 +4,7 @@
     <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80">
         <form action="{{ route('expenses.index') }}" method="GET" class="flex flex-col sm:flex-row items-center gap-2.5">
             
-            <!-- INPUT TANGGAL DENGAN IKON KALENDER DI KANAN BISA DIKLIK -->
+            <!-- INPUT TANGGAL -->
             <div class="relative w-full sm:w-auto">
                 <input type="date" id="expense_date_input" name="date" value="{{ request('date') }}" class="w-full pl-3 pr-9 py-2 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white transition cursor-pointer [color-scheme:light]">
                 <button type="button" onclick="document.getElementById('expense_date_input').showPicker()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-600 transition cursor-pointer" title="Pilih Tanggal">
@@ -42,11 +42,12 @@
     <!-- TABEL PENGELUARAN -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
         <div class="overflow-x-auto no-scrollbar">
-            <table class="w-full text-left border-collapse min-w-[550px]">
+            <table class="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200/80 text-slate-400 text-[10px] sm:text-xs uppercase font-extrabold">
                         <th class="py-2.5 px-3.5">Waktu</th>
                         <th class="py-2.5 px-3.5">Keterangan</th>
+                        <th class="py-2.5 px-3.5">Kategori</th>
                         <th class="py-2.5 px-3.5">Kasir / Shift</th>
                         <th class="py-2.5 px-3.5 text-right">Nominal</th>
                         <th class="py-2.5 px-3.5 text-center">Aksi</th>
@@ -61,6 +62,18 @@
                             <td class="py-2.5 px-3.5 font-bold text-slate-800 text-xs sm:text-sm">
                                 {{ $exp->description }}
                             </td>
+                            <!-- BADGE KATEGORI PENGELUARAN -->
+                            <td class="py-2.5 px-3.5 whitespace-nowrap">
+                                @if(($exp->category ?? 'operational') === 'operational')
+                                    <span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Operasional</span>
+                                @elseif(($exp->category ?? '') === 'owner_withdrawal')
+                                    <span class="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Diambil Owner</span>
+                                @elseif(($exp->category ?? '') === 'cash_out')
+                                    <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Tarik Tunai</span>
+                                @else
+                                    <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Restok/Modal</span>
+                                @endif
+                            </td>
                             <td class="py-2.5 px-3.5 text-xs whitespace-nowrap">
                                 <div class="font-bold text-slate-700 text-xs">{{ $exp->user->name ?? '-' }}</div>
                                 <span class="text-[10px] text-slate-400 font-mono border border-slate-200 bg-slate-50 px-1.5 py-0.5 rounded-md inline-block mt-0.5">Shift #{{ $exp->shift_id }}</span>
@@ -69,7 +82,6 @@
                                 Rp {{ number_format($exp->amount, 0, ',', '.') }}
                             </td>
                             <td class="py-2.5 px-3.5 text-center whitespace-nowrap">
-                                <!-- GANTI DENGAN PEMANGGILAN FUNGSI SWEETALERT confirmDeleteExpense -->
                                 <button type="button" onclick="confirmDeleteExpense('{{ route('expenses.destroy', $exp->id) }}', '{{ addslashes($exp->description) }}')" class="text-slate-400 hover:text-rose-600 w-7 h-7 rounded-lg hover:bg-rose-50 transition inline-flex items-center justify-center cursor-pointer" title="Hapus Pengeluaran">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
@@ -77,7 +89,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="py-10 text-center text-slate-400 text-xs font-medium">
+                            <td colspan="6" class="py-10 text-center text-slate-400 text-xs font-medium">
                                 <i class="fa-solid fa-hand-holding-dollar text-3xl mb-2 text-slate-300 block"></i>
                                 <span>Belum ada pengeluaran kas yang dicatat.</span>
                             </td>

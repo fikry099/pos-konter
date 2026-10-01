@@ -12,7 +12,7 @@ let posItemsPerPage = 12;
 let posVisibleProducts = [];
 
 // ==========================================
-// DAFTAR MEREK KHUSUS CABLE DATA & AUX
+// DAFTAR MEREK KHUSUS AKSESORIS
 // ==========================================
 const CABLE_DATA_BRANDS = [
     { key: 'vivan', name: 'Vivan' },
@@ -24,6 +24,61 @@ const CABLE_DATA_BRANDS = [
     { key: 'tecnix', name: 'Tecnix' },
     { key: 'rapa', name: 'Rapa' },
     { key: 'luna', name: 'Luna' }
+];
+
+const CHARGER_SET_BRANDS = [
+    { key: 'xiaomi', name: 'Xiaomi / Mi' },
+    { key: 'wellcomm', name: 'Wellcomm' },
+    { key: 'hikaru', name: 'Hikaru' },
+    { key: 'dap', name: 'DAP' },
+    { key: 'oraimo', name: 'Oraimo' },
+    { key: 'log-on', name: 'Log-on' },
+    { key: 'rapa', name: 'Rapa' },
+    { key: 'olike', name: 'Olike' },
+    { key: 'tecno', name: 'Tecno' }
+];
+
+const ADAPTER_HEAD_BRANDS = [
+    { key: 'roket', name: 'Rocket' },
+    { key: 'olike', name: 'Olike' },
+    { key: 'wellcomm', name: 'Wellcomm' },
+    { key: 'vivan', name: 'Vivan' },
+    { key: 'robot', name: 'Robot' },
+    { key: 'oraimo', name: 'Oraimo' },
+    { key: 'samsung', name: 'Samsung' }
+];
+
+// DAFTAR MEREK UTAMA / POPULER KHUSUS HEADSET & EARPHONE
+const HEADSET_EARPHONE_BRANDS = [
+    { key: 'robot', name: 'Robot' },
+    { key: 'oraimo', name: 'Oraimo' },
+    { key: 'olike', name: 'Olike' },
+    { key: 'wellcomm', name: 'Wellcomm' },
+    { key: 'vivan', name: 'Vivan' },
+    { key: 'tecnix', name: 'Tecnix' },
+    { key: 'dap', name: 'DAP' },
+    { key: 'sony', name: 'Sony' },
+    { key: 'philips', name: 'Philips' },
+    { key: 'log-on', name: 'Log-On' }
+];
+
+// DAFTAR MEREK KHUSUS MMC & FLASHDISK (MEMORI)
+const STORAGE_BRANDS = [
+    { key: 'robot', name: 'Robot' },
+    { key: 'vivan', name: 'Vivan' },
+    { key: 'olike', name: 'Olike' },
+    { key: 'toshiba', name: 'Toshiba' },
+    { key: 'v-gen', name: 'V-Gen' }
+];
+
+// DAFTAR MEREK KHUSUS POWERBANK
+const POWERBANK_BRANDS = [
+    { key: 'oraimo', name: 'Oraimo' },
+    { key: 'tecnix', name: 'Tecnix' },
+    { key: 'veger', name: 'Veger' },
+    { key: 'vizz', name: 'Vizz' },
+    { key: 'boldwave', name: 'Boldwave' },
+    { key: 'nicol', name: 'Nicol' }
 ];
 
 function togglePriceFilterVisibility(show) {
@@ -102,12 +157,14 @@ function selectProviderFilter(providerKey, title) {
     let provLower = (providerKey || '').toLowerCase();
 
     // JIKA KATEGORI/PROVIDER ADALAH E-WALLET ATAU BANK, LANGSUNG BUKA MODAL NOMINAL BEBAS
-    if (
+    let isBankOrWalletTarget = (
         catLower.includes('wallet') || catLower.includes('ewallet') || 
         catLower.includes('bank') || catLower.includes('transfer') ||
         ['dana', 'gopay', 'ovo', 'shopee', 'shopeepay', 'linkaja', 'maxim', 
          'bca', 'bri', 'mandiri', 'bni', 'bsi', 'seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd', 'lainnya'].includes(provLower)
-    ) {
+    ) && !provLower.includes('powerbank') && provLower !== 'pb';
+
+    if (isBankOrWalletTarget) {
         let displayTitle = title || providerKey;
         if ((catLower.includes('bank') || catLower.includes('transfer')) && !displayTitle.toLowerCase().includes('bank')) {
             displayTitle = 'Bank ' + displayTitle;
@@ -124,18 +181,34 @@ function selectProviderFilter(providerKey, title) {
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
-    // =========================================================================
-    // HANYA TAMPILKAN SIDEBAR MEREK JIKA PROVIDER ADALAH CABLE DATA & AUX
-    // =========================================================================
+    // BERSIHKAN KARTU PRODUK BAWAAN
+    let gridView = document.getElementById('view_products_grid');
+    if (gridView) {
+        let container = gridView.querySelector('.grid');
+        if (container) {
+            container.innerHTML = `
+                <div class="col-span-full bg-white rounded-3xl p-10 text-center text-indigo-600 border border-indigo-100 shadow-sm">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+                    <p class="text-sm font-bold text-slate-700">Memuat produk ${title || providerKey}...</p>
+                </div>
+            `;
+        }
+    }
+
+    // PENGECEKAN SIDEBAR MEREK
     let brandSidebar = document.getElementById('brand_sidebar_container');
-    let isCableData = provLower.includes('cable') || provLower.includes('kabel') || provLower.includes('aux');
+    let isPowerbank   = provLower.includes('powerbank') || provLower.includes('pb');
+    let isStorage     = provLower.includes('mmc') || provLower.includes('flashdisk') || provLower.includes('memori') || provLower.includes('memory') || provLower.includes('fd');
+    let isHeadset     = provLower.includes('headset') || provLower.includes('earphone') || provLower.includes('tws') || provLower.includes('hf') || provLower.includes('handsfree');
+    let isCableData   = provLower.includes('cable') || provLower.includes('kabel') || provLower.includes('aux');
+    let isChargerSet  = (provLower.includes('charger') && provLower.includes('set')) || provLower.includes('car-charger') || provLower.includes('adaptor-set');
+    let isAdapterHead = provLower.includes('adaptor-kepala') || provLower.includes('kepala') || provLower === 'adaptor' || (provLower.includes('charger') && !provLower.includes('set'));
 
     if (brandSidebar) {
-        if (isCableData) {
+        if (isPowerbank || isStorage || isHeadset || isCableData || isChargerSet || isAdapterHead || catLower.includes('aksesoris')) {
             brandSidebar.classList.remove('hidden');
             renderDynamicBrandList(selectedCategory, selectedProvider);
         } else {
-            // Sembunyikan sidebar merek untuk kategori/provider lainnya (seperti Softcase, Adaptor, dll.)
             brandSidebar.classList.add('hidden');
         }
     }
@@ -151,34 +224,59 @@ function selectProviderFilter(providerKey, title) {
 }
 
 /**
- * FUNGSI DEDIKASI: Merender HTML Tombol Merek di Sidebar
+ * FUNGSI DEDIKASI: Merender HTML Tombol Merek di Sidebar & Memperbarui Badge Jumlah Merek
  */
 function renderDynamicBrandList(category, provider) {
-    let catLower = (category || '').toLowerCase();
     let provLower = (provider || '').toLowerCase();
     let wrapper = document.getElementById('brand_list_wrapper');
     if (!wrapper) return;
 
-    // Cek apakah provider khusus Cable Data & AUX
-    let isCableData = provLower.includes('cable') || provLower.includes('kabel') || provLower.includes('aux');
+    // KONDISI PENENTUAN ARRAY MEREK
+    let isPowerbank   = provLower.includes('powerbank') || provLower.includes('pb');
+    let isStorage     = provLower.includes('mmc') || provLower.includes('flashdisk') || provLower.includes('memori') || provLower.includes('memory') || provLower.includes('fd');
+    let isHeadset     = provLower.includes('headset') || provLower.includes('earphone') || provLower.includes('tws') || provLower.includes('hf') || provLower.includes('handsfree');
+    let isCableData   = provLower.includes('cable') || provLower.includes('kabel') || provLower.includes('aux');
+    let isChargerSet  = (provLower.includes('charger') && provLower.includes('set')) || provLower.includes('car-charger') || provLower.includes('adaptor-set');
+    let isAdapterHead = provLower.includes('adaptor-kepala') || provLower.includes('kepala') || provLower === 'adaptor' || (provLower.includes('charger') && !provLower.includes('set'));
 
-    if (isCableData) {
+    let brandArray = [];
+    if (isPowerbank) {
+        brandArray = POWERBANK_BRANDS;
+    } else if (isStorage) {
+        brandArray = STORAGE_BRANDS;
+    } else if (isHeadset) {
+        brandArray = HEADSET_EARPHONE_BRANDS;
+    } else if (isCableData) {
+        brandArray = CABLE_DATA_BRANDS;
+    } else if (isChargerSet) {
+        brandArray = CHARGER_SET_BRANDS;
+    } else if (isAdapterHead) {
+        brandArray = ADAPTER_HEAD_BRANDS;
+    }
+
+    // Update Badge Jumlah Merek Dinamis
+    let countBadge = document.getElementById('brand_count_badge');
+    if (countBadge) {
+        countBadge.innerText = brandArray.length;
+    }
+
+    if (brandArray.length > 0) {
         let html = `
             <button type="button" 
                     onclick="selectBrandFilter('all')" 
                     data-brand-btn="all"
-                    class="brand-filter-btn w-full text-left px-3 py-2 rounded-xl bg-indigo-600 text-white font-bold transition flex items-center justify-between">
-                <span>Semua Merek</span>
+                    class="brand-filter-btn shrink-0 text-left px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-bold transition flex items-center justify-between space-x-2">
+                <span class="whitespace-nowrap">Semua Merek</span>
                 <i class="fa-solid fa-check text-[10px]"></i>
             </button>
         `;
 
-        CABLE_DATA_BRANDS.forEach(b => {
+        brandArray.forEach(b => {
             html += `
                 <button type="button" 
                         onclick="selectBrandFilter('${b.key}')" 
                         data-brand-btn="${b.key}"
-                        class="brand-filter-btn w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition flex items-center justify-between">
+                        class="brand-filter-btn shrink-0 text-left px-3.5 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition flex items-center justify-between whitespace-nowrap">
                     <span>${b.name}</span>
                 </button>
             `;
@@ -186,11 +284,9 @@ function renderDynamicBrandList(category, provider) {
 
         wrapper.innerHTML = html;
     } else {
-        // Jika bukan Cable Data & AUX, kembalikan ke tombol merek default
         resetBrandSidebarUI();
     }
 
-    // Reset input pencarian di sidebar
     let searchInput = document.getElementById('search_brand_input');
     if (searchInput) searchInput.value = '';
     filterBrandList();
@@ -293,8 +389,11 @@ function renderProductsHTML(products, container) {
     let catStr = (selectedCategory || '').toLowerCase();
     let provStr = (selectedProvider || '').toLowerCase();
     
-    let isBankOrWallet = catStr.includes('bank') || catStr.includes('ewallet') || catStr.includes('wallet') || catStr.includes('transfer') ||
-                         provStr.includes('bank') || provStr.includes('ewallet') || provStr.includes('bca') || provStr.includes('bri') || provStr.includes('bni') || provStr.includes('mandiri') || provStr.includes('dana') || provStr.includes('ovo') || provStr.includes('gopay') || provStr.includes('shopeepay') || provStr.includes('linkaja');
+    // PERKETAT KONDISI E-WALLET / BANK KUSTUM AGAR TIDAK KENA BENTROK KATA 'pb' POWERBANK
+    let isBankOrWallet = (
+        catStr.includes('bank') || catStr.includes('ewallet') || catStr.includes('wallet') || catStr.includes('transfer') ||
+        provStr.includes('bank') || provStr.includes('ewallet') || provStr.includes('bca') || provStr.includes('bri') || provStr.includes('bni') || provStr.includes('mandiri') || provStr.includes('dana') || provStr.includes('ovo') || provStr.includes('gopay') || provStr.includes('shopeepay') || provStr.includes('linkaja')
+    ) && !provStr.includes('powerbank') && provStr !== 'pb';
 
     if (isBankOrWallet) {
         let providerTitleParam = (window.selectedProviderTitle || selectedProvider || '').replace(/'/g, "\\'");
@@ -446,12 +545,12 @@ function selectBrandFilter(brandKey) {
     buttons.forEach(btn => {
         let attr = btn.getAttribute('data-brand-btn');
         if (attr === selectedBrand) {
-            btn.className = 'brand-filter-btn w-full text-left px-3 py-2 rounded-xl bg-indigo-600 text-white font-bold transition flex items-center justify-between';
+            btn.className = 'brand-filter-btn shrink-0 text-left px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-bold transition flex items-center justify-between space-x-2';
             if (!btn.querySelector('.fa-check')) {
                 btn.insertAdjacentHTML('beforeend', '<i class="fa-solid fa-check text-[10px]"></i>');
             }
         } else {
-            btn.className = 'brand-filter-btn w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition flex items-center justify-between';
+            btn.className = 'brand-filter-btn shrink-0 text-left px-3.5 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition flex items-center justify-between whitespace-nowrap';
             let checkIcon = btn.querySelector('.fa-check');
             if (checkIcon) checkIcon.remove();
         }
@@ -469,7 +568,6 @@ function resetBrandSidebarUI() {
 
 // 8. LOGIKA MUNDUR BERTAHAP SAAT KLIK TOMBOL KEMBALI
 function resetCategoryNavigation() {
-    // JIKA BERADA DI GRID PRODUK RESULT (LEVEL 3) -> MUNDUR KE PILIHAN SUB-KATEGORI/PROVIDER LEVEL 2
     if (navLevel === 3) {
         navLevel = 2;
         selectedProvider = '';
@@ -527,7 +625,6 @@ function resetCategoryNavigation() {
         return;
     }
 
-    // MUNDUR KE KATALOG UTAMA (LEVEL 1)
     navLevel = 1;
     selectedCategory = '';
     selectedProvider = '';
@@ -584,7 +681,6 @@ function applyProductFilters() {
         let matchSearch = searchKeyword === '' || name.includes(searchKeyword) || code.includes(searchKeyword);
         let matchPrice = (price >= minPrice && price <= maxPrice);
         
-        // Match Filter Merek dari Sidebar
         let matchBrand = (selectedBrand === 'all') || brand.includes(selectedBrand) || name.includes(selectedBrand);
 
         if (matchSearch && matchPrice && matchBrand) {

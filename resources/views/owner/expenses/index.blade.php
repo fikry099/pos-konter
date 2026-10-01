@@ -122,8 +122,10 @@
                                     <td class="py-3 px-3">
                                         @if(($exp->category ?? 'operational') === 'operational')
                                             <span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Operasional</span>
+                                        @elseif(($exp->category ?? '') === 'cash_out')
+                                            <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Tarik Tunai</span>
                                         @else
-                                            <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Restok/Modal</span>
+                                            <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Restok/Modal</span>
                                         @endif
                                     </td>
                                     <td class="py-3 px-3 text-slate-600">

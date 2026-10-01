@@ -21,7 +21,7 @@
     <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between transition hover:shadow-md min-w-0">
         <div class="space-y-0.5 min-w-0 flex-1">
             <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block truncate">Total Jenis Produk</span>
-            <span class="text-sm sm:text-lg font-black text-slate-900 font-mono block truncate">{{ $totalItems }} Item</span>
+            <span id="grand_total_items" class="text-sm sm:text-lg font-black text-slate-900 font-mono block truncate">{{ $totalItems }} Item</span>
         </div>
         <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-base shrink-0 shadow-sm border border-amber-100 ml-2">
             <i class="fa-solid fa-boxes-stacked"></i>

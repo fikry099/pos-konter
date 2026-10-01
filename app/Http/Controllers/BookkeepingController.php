@@ -104,24 +104,29 @@ class BookkeepingController extends Controller
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month);
 
-        // Ambil seluruh collection transaksi bulan ini agar penyiangan case-insensitive cepat & akurat
         $transactions = (clone $trxQuery)->get();
 
         $totalOmset     = (float) $transactions->sum('total_price');
         $totalCost      = (float) $transactions->sum('total_cost');
         $grossProfit    = (float) $transactions->sum('total_profit');
 
-        // Hitung Uang Tunai (Bebas masalah huruf besar/kecil)
+        // Hitung Uang Tunai Penjualan
         $totalCash = (float) $transactions->filter(function($trx) {
             $method = strtolower($trx->payment_method ?? '');
             return in_array($method, ['cash', 'tunai', 'cash/tunai', '']);
         })->sum('total_price');
 
-        // Hitung QRIS & Non-Tunai (Bebas masalah huruf besar/kecil)
+        // PERBAIKAN: Hitung QRIS & Non-Tunai
+        // Untuk transaksi Tarik Tunai (WD-), gunakan pay_amount (Nominal Cash Ditarik + Biaya Admin)
         $totalQris = (float) $transactions->filter(function($trx) {
             $method = strtolower($trx->payment_method ?? '');
             return in_array($method, ['qris', 'transfer', 'bank', 'ewallet', 'non-cash']);
-        })->sum('total_price');
+        })->sum(function($trx) {
+            if (str_starts_with($trx->invoice_code ?? '', 'WD-')) {
+                return (float) ($trx->pay_amount ?? 0);
+            }
+            return (float) $trx->total_price;
+        });
 
         $totalExpenses  = (float) Expense::forStore($storeId)
             ->whereYear('created_at', $year)
@@ -139,11 +144,10 @@ class BookkeepingController extends Controller
             'total_expenses'         => $totalExpenses,
             'total_bonus_allocation' => $totalBonusAllocation,
             'net_profit'             => $netProfit,
-            'total_cash'             => $totalCash, // <--- PENAMBAHAN KEY DANA TUNAI
-            'total_qris'             => $totalQris, // <--- PENAMBAHAN KEY SALDO QRIS
+            'total_cash'             => $totalCash,
+            'total_qris'             => $totalQris, // <--- SUDAH AKURAT MENGHITUNG TOTAL TRANSFER TARIK TUNAI
         ];
 
-        // Hitung total estimasi modal restok periode ini tanpa memuat seluruh baris tabel
         $totalRestockCost = Restock::where('store_id', $storeId)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
@@ -159,9 +163,6 @@ class BookkeepingController extends Controller
         ));
     }
 
-    /**
-     * METHOD BARU: Halaman Khusus Riwayat Restok Barang (Dedicated View)
-     */
     public function restockHistory(Request $request)
     {
         $storeId = $this->getActiveStoreId();
@@ -195,9 +196,6 @@ class BookkeepingController extends Controller
         ));
     }
 
-    /**
-     * Halaman Detail Riwayat Absensi Karyawan
-     */
     public function userAttendanceDetail(Request $request, User $user)
     {
         $month = str_pad($request->input('month', date('m')), 2, '0', STR_PAD_LEFT);

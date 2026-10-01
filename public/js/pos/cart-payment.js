@@ -190,46 +190,37 @@ function openAddToCartModal(product) {
     let qtyInput = document.getElementById('modal_quantity');
 
     let customContainer = document.getElementById('custom_amount_container');
+    let quotaContainer = document.getElementById('quota_inject_container');
     let isCustomInput = document.getElementById('modal_is_custom_amount');
-    let customPriceInput = document.getElementById('modal_custom_price');
+    let isQuotaInjectInput = document.getElementById('modal_is_quota_inject');
 
-    let prodName = product.name.toLowerCase();
+    let prodName = (product.name || '').toLowerCase();
+    
+    let bankKeywords = ['bank', 'transfer', 'cimb', 'bca', 'bri', 'bni', 'mandiri', 'permata', 'danamon', 'bsi', 'neo', 'seabank', 'btn', 'bpd', 'jago'];
+    let isBankType = bankKeywords.some(keyword => prodName.includes(keyword));
 
-    // Reset nilai awal
-    phoneInput.value = '';
-    accNumberInput.value = '';
-    accNameInput.value = '';
-    qtyInput.value = 1;
+    if (phoneInput) phoneInput.value = '';
+    if (accNumberInput) accNumberInput.value = '';
+    if (accNameInput) accNameInput.value = '';
+    if (qtyInput) qtyInput.value = 1;
 
     if (customContainer) customContainer.classList.add('hidden');
+    if (quotaContainer) quotaContainer.classList.add('hidden');
     if (isCustomInput) isCustomInput.value = '0';
-    if (customPriceInput) customPriceInput.required = false;
+    if (isQuotaInjectInput) isQuotaInjectInput.value = '0';
 
-    // Logika tampilan field berdasarkan tipe produk
-    if (prodName.includes('transfer') || prodName.includes('bank')) {
-        bankContainer.classList.remove('hidden');
-        phoneContainer.style.display = 'none';
-        qtyContainer.classList.add('hidden');
-
-        accNumberInput.required = true;
-        accNameInput.required = true;
-        phoneInput.required = false;
+    if (isBankType) {
+        if (bankContainer) bankContainer.classList.remove('hidden');
+        if (phoneContainer) phoneContainer.classList.add('hidden');
+        if (qtyContainer) qtyContainer.classList.add('hidden');
     } else if (product.type === 'digital') {
-        phoneContainer.style.display = 'block';
-        bankContainer.classList.add('hidden');
-        qtyContainer.classList.add('hidden');
-
-        phoneInput.required = true;
-        accNumberInput.required = false;
-        accNameInput.required = false;
+        if (phoneContainer) phoneContainer.classList.remove('hidden');
+        if (bankContainer) bankContainer.classList.add('hidden');
+        if (qtyContainer) qtyContainer.classList.add('hidden');
     } else {
-        phoneContainer.style.display = 'none';
-        bankContainer.classList.add('hidden');
-        qtyContainer.classList.remove('hidden');
-
-        phoneInput.required = false;
-        accNumberInput.required = false;
-        accNameInput.required = false;
+        if (phoneContainer) phoneContainer.classList.add('hidden');
+        if (bankContainer) bankContainer.classList.add('hidden');
+        if (qtyContainer) qtyContainer.classList.remove('hidden');
     }
 
     document.getElementById('cartModal').classList.remove('hidden');
@@ -250,7 +241,6 @@ function openCustomAmountModal(providerParam) {
     let formModal = cartModal ? cartModal.querySelector('form') : null;
 
     if (formModal) {
-        // 1. Set nama bank/wallet ke field service_type
         let serviceTypeInput = formModal.querySelector('input[name="service_type"]');
         if (!serviceTypeInput) {
             serviceTypeInput = document.createElement('input');
@@ -260,7 +250,6 @@ function openCustomAmountModal(providerParam) {
         }
         serviceTypeInput.value = providerName;
 
-        // 2. Set default server PPOB ke field digital_provider
         let hiddenInput = formModal.querySelector('input[name="digital_provider"]');
         if (!hiddenInput) {
             hiddenInput = document.createElement('input');
@@ -271,42 +260,39 @@ function openCustomAmountModal(providerParam) {
         hiddenInput.value = 'Propana';
     }
 
-    // Sisanya tetap sama...
     let customProductIdInput = document.getElementById('modal_product_id');
     if (customProductIdInput) customProductIdInput.value = 1;
 
     let phoneContainer = document.getElementById('phone_field_container');
-    let phoneInput = document.getElementById('modal_target_phone');
     let bankContainer = document.getElementById('bank_field_container');
-    let accNumberInput = document.getElementById('modal_account_number');
-    let accNameInput = document.getElementById('modal_account_name');
     let customContainer = document.getElementById('custom_amount_container');
+    let quotaContainer = document.getElementById('quota_inject_container');
     let isCustomInput = document.getElementById('modal_is_custom_amount');
+    let isQuotaInjectInput = document.getElementById('modal_is_quota_inject');
     let customPriceInput = document.getElementById('modal_custom_price');
+    let adminFeeInput = document.getElementById('modal_admin_fee');
 
     if (customPriceInput) customPriceInput.value = '';
+    if (adminFeeInput) adminFeeInput.value = '2.000';
     if (isCustomInput) isCustomInput.value = '1';
+    if (isQuotaInjectInput) isQuotaInjectInput.value = '0';
+    
     if (customContainer) customContainer.classList.remove('hidden');
+    if (quotaContainer) quotaContainer.classList.add('hidden');
 
-    let isBankType = providerName.includes('BANK') || providerName.includes('BRI') || providerName.includes('BCA') || providerName.includes('MANDIRI') || providerName.includes('BNI');
+    let bankKeywords = ['BANK', 'TRANSFER', 'CIMB', 'BCA', 'BRI', 'BNI', 'MANDIRI', 'PERMATA', 'DANAMON', 'BSI', 'NEO', 'SEABANK', 'BTN', 'BPD', 'JAGO'];
+    let isBankType = bankKeywords.some(keyword => providerName.includes(keyword));
 
     if (isBankType) {
         if (bankContainer) bankContainer.classList.remove('hidden');
-        if (phoneContainer) phoneContainer.style.display = 'none';
-        if (accNumberInput) accNumberInput.required = true;
-        if (accNameInput) accNameInput.required = true;
-        if (phoneInput) phoneInput.required = false;
+        if (phoneContainer) phoneContainer.classList.add('hidden');
     } else {
         if (bankContainer) bankContainer.classList.add('hidden');
-        if (phoneContainer) phoneContainer.style.display = 'block';
-        if (phoneInput) phoneInput.required = true;
-        if (accNumberInput) accNumberInput.required = false;
-        if (accNameInput) accNameInput.required = false;
+        if (phoneContainer) phoneContainer.classList.remove('hidden');
     }
 
     if (cartModal) cartModal.classList.remove('hidden');
 }
-
 // ==========================================
 // 2. MODAL POPUP PEMBAYARAN & KAMERA
 // ==========================================
@@ -700,4 +686,63 @@ function submitViaFormFallback(url, providerValue, qty, csrfToken) {
 
     document.body.appendChild(form);
     form.submit();
+}
+
+function openQuotaInjectModal() {
+    let modalTitle = document.getElementById('modal_product_name');
+    if (modalTitle) modalTitle.innerText = 'KUOTA TEMBAK (INJECT DATA)';
+
+    let cartModal = document.getElementById('cartModal');
+    let formModal = cartModal ? cartModal.querySelector('form') : null;
+
+    if (formModal) {
+        let serviceTypeInput = formModal.querySelector('input[name="service_type"]');
+        if (!serviceTypeInput) {
+            serviceTypeInput = document.createElement('input');
+            serviceTypeInput.type = 'hidden';
+            serviceTypeInput.name = 'service_type';
+            formModal.appendChild(serviceTypeInput);
+        }
+        serviceTypeInput.value = 'Kuota Tembak';
+
+        let hiddenInput = formModal.querySelector('input[name="digital_provider"]');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'digital_provider';
+            formModal.appendChild(hiddenInput);
+        }
+        hiddenInput.value = 'Propana';
+    }
+
+    let customProductIdInput = document.getElementById('modal_product_id');
+    if (customProductIdInput) customProductIdInput.value = 1;
+
+    let phoneContainer = document.getElementById('phone_field_container');
+    let bankContainer = document.getElementById('bank_field_container');
+    let customContainer = document.getElementById('custom_amount_container');
+    let quotaContainer = document.getElementById('quota_inject_container');
+    
+    let isCustomInput = document.getElementById('modal_is_custom_amount');
+    let isQuotaInjectInput = document.getElementById('modal_is_quota_inject');
+
+    let packageNameInput = document.getElementById('modal_package_name');
+    let costPriceInput = document.getElementById('modal_cost_price');
+    let sellingPriceInput = document.getElementById('modal_selling_price');
+    let targetPhoneInput = document.getElementById('modal_target_phone');
+
+    if (packageNameInput) packageNameInput.value = '';
+    if (costPriceInput) costPriceInput.value = '';
+    if (sellingPriceInput) sellingPriceInput.value = '';
+    if (targetPhoneInput) targetPhoneInput.value = '';
+
+    if (isCustomInput) isCustomInput.value = '0';
+    if (isQuotaInjectInput) isQuotaInjectInput.value = '1';
+
+    if (customContainer) customContainer.classList.add('hidden');
+    if (bankContainer) bankContainer.classList.add('hidden');
+    if (quotaContainer) quotaContainer.classList.remove('hidden');
+    if (phoneContainer) phoneContainer.classList.remove('hidden');
+
+    if (cartModal) cartModal.classList.remove('hidden');
 }

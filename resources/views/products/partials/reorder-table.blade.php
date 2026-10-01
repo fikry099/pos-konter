@@ -22,16 +22,37 @@
             <tbody class="divide-y divide-slate-100 text-xs sm:text-sm font-medium text-slate-700">
                 @forelse($lowStockProducts as $stockItem)
                     @php
-                        $prod = $stockItem->product;
-                        $currentStock = (int) $stockItem->stock;
+                        $prod =$stockItem->product;
+                        $currentStock = (int)$stockItem->stock;
                         $maxStock = (int) ($stockItem->min_stock ?? 5);
-                        $saranOrder = max(1, $maxStock - $currentStock);
+                        $saranOrder = max(1, $maxStock -$currentStock);
+
+                        // Ambil Seluruh Hirarki Kategori (Parent Utama -> Sub Kategori)
+                        $cat = $prod ? $prod->category : null;
+                        $catNamePath = [];$catSlugPath = [];
+                        $currCat =$cat;
+
+                        while($currCat) {
+                            array_unshift($catNamePath,$currCat->name);
+                            if (!empty($currCat->slug)) {
+                                array_unshift($catSlugPath, strtolower($currCat->slug));
+                            }
+                            $currCat =$currCat->parent;
+                        }
+
+                        $categoryString = implode(' > ', $catNamePath);$categoryAllSlugs = implode(' ', $catSlugPath) . ' ' . strtolower($categoryString);
+                        
+                        // Buat data subkategori spesifik untuk pencarian
+                        $subCategorySearch = strtolower($cat?->name ?? '') . ' ' . strtolower($cat?->slug ?? '') . ' ' . strtolower($categoryString);
                     @endphp
                     <tr class="hover:bg-indigo-50/40 transition item-row" 
                         data-id="{{ $prod->id }}"
                         data-name="{{ $prod->name }}"
                         data-code="{{ $prod->code }}"
-                        data-cost="{{ (int)$prod->cost_price }}">
+                        data-cost="{{ (int)$prod->cost_price }}"
+                        data-category="{{ $categoryAllSlugs }}"
+                        data-subcategory="{{ $subCategorySearch }}"
+                        data-filtered-visible="true">
                         
                         <!-- KODE & NAMA PRODUK -->
                         <td class="py-3 px-3">
@@ -42,7 +63,6 @@
                         <!-- KATEGORI DENGAN HIRARKI INDUK -->
                         <td class="py-3 px-3">
                             @php
-                                $cat = $prod->category;
                                 $parent = $cat ? $cat->parent : null;
                             @endphp
                             <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] sm:text-xs border border-slate-200 inline-block">
@@ -85,7 +105,7 @@
         </table>
     </div>
 
-    <!-- FOOTER PAGINASI DENGAN PADDING KANAN -->
+    <!-- FOOTER PAGINASI -->
     <div id="reorder_pagination_container" class="p-3 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
         <div class="flex items-center justify-between w-full sm:w-auto space-x-2 text-slate-500 font-bold">
             <span id="reorder_pagination_info">Menampilkan 0 dari 0 produk</span>
@@ -100,7 +120,6 @@
             </div>
         </div>
 
-        <!-- Tambahkan pr-14 sm:pr-16 di sini agar tombol bergeser ke kiri -->
         <div id="reorder_pagination_buttons" class="flex items-center space-x-1 shrink-0 justify-center w-full sm:w-auto pr-14 sm:pr-16"></div>
     </div>
 </div>
@@ -108,21 +127,26 @@
 <script>
     let reorderCurrentPage = 1;
     let reorderPerPage = 10;
-    let allReorderRows = [];
+    let filteredReorderRows = [];
 
     document.addEventListener('DOMContentLoaded', function() {
-        initReorderPagination();
+        if (typeof applyReorderFilters === 'function') {
+            applyReorderFilters();
+        } else {
+            renderReorderPagination();
+        }
     });
 
-    function initReorderPagination() {
-        allReorderRows = Array.from(document.querySelectorAll('#reorderTable .item-row'));
-        renderReorderPagination();
-    }
-
     function renderReorderPagination() {
-        let totalItems = allReorderRows.length;
+        filteredReorderRows = Array.from(document.querySelectorAll('#reorderTable .item-row')).filter(r => r.getAttribute('data-filtered-visible') !== 'false');
+        
+        let totalItems = filteredReorderRows.length;
         let infoText = document.getElementById('reorder_pagination_info');
         let buttonsWrapper = document.getElementById('reorder_pagination_buttons');
+
+        document.querySelectorAll('#reorderTable .item-row').forEach(row => {
+            row.style.display = 'none';
+        });
 
         if (totalItems === 0) {
             if (infoText) infoText.innerText = "Menampilkan 0 dari 0 produk";
@@ -136,11 +160,9 @@
         let startIdx = (reorderCurrentPage - 1) * reorderPerPage;
         let endIdx = Math.min(startIdx + reorderPerPage, totalItems);
 
-        allReorderRows.forEach((row, index) => {
+        filteredReorderRows.forEach((row, index) => {
             if (index >= startIdx && index < endIdx) {
-                row.classList.remove('hidden');
-            } else {
-                row.classList.add('hidden');
+                row.style.display = '';
             }
         });
 
@@ -150,9 +172,7 @@
 
         if (!buttonsWrapper) return;
         buttonsWrapper.innerHTML = '';
-        buttonsWrapper.className = "flex items-center space-x-1 shrink-0 justify-center w-full sm:w-auto pr-14 sm:pr-16";
 
-        // Tombol Previous
         let prevBtn = document.createElement('button');
         prevBtn.type = 'button';
         prevBtn.disabled = reorderCurrentPage === 1;
@@ -161,7 +181,6 @@
         prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left text-[10px]"></i>';
         buttonsWrapper.appendChild(prevBtn);
 
-        // Angka Halaman
         for (let i = 1; i <= totalPages; i++) {
             if (totalPages > 4 && (i < reorderCurrentPage - 1 || i > reorderCurrentPage + 1) && i !== 1 && i !== totalPages) {
                 if (i === reorderCurrentPage - 2 || i === reorderCurrentPage + 2) {
@@ -181,7 +200,6 @@
             buttonsWrapper.appendChild(pageBtn);
         }
 
-        // Tombol Next
         let nextBtn = document.createElement('button');
         nextBtn.type = 'button';
         nextBtn.disabled = reorderCurrentPage === totalPages;

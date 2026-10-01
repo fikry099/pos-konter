@@ -68,14 +68,14 @@ class ExpenseController extends Controller
         $totalExpenses  = (float) Expense::forStore($storeId)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
-            ->where('category', 'operational') // <--- Modal restok tidak ikut mengurangi laba bersih
+            ->where('category', 'operational') // <--- Modal restok & prive owner tidak memotong laba
             ->sum('amount');
 
         return view('owner.expenses.index', compact('expenses', 'totalExpenses', 'month', 'year'));
     }
 
     /**
-     * Menyimpan Catatan Pengeluaran Kas Baru (Terikat Shift Aktif & Cabang)
+     * Menyimpan Catatan Pengeluaran Kas Baru oleh Kasir (Terikat Shift Aktif & Cabang)
      */
     public function store(Request $request)
     {
@@ -89,6 +89,7 @@ class ExpenseController extends Controller
         }
 
         $request->validate([
+            'category'    => 'required|in:operational,owner_withdrawal', // <--- TAMBAHAN VALIDASI KATEGORI
             'description' => 'required|string|max:255',
             'amount'      => 'required|numeric|min:1',
         ]);
@@ -97,6 +98,7 @@ class ExpenseController extends Controller
             'store_id'    => $storeId,
             'shift_id'    => $activeShift->id,
             'user_id'     => auth()->id(),
+            'category'    => $request->category, // <--- MENYIMPAN KATEGORI DARI FORM KASIR
             'description' => $request->description,
             'amount'      => $request->amount,
         ]);
@@ -135,7 +137,7 @@ class ExpenseController extends Controller
             'store_id'    => $storeId,
             'shift_id'    => null, 
             'user_id'     => auth()->id(),
-            'category'    => $request->category, // <--- Simpan kategori pengeluaran
+            'category'    => $request->category,
             'description' => $request->description,
             'amount'      => $request->amount,
         ]);

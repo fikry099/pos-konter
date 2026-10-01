@@ -10,17 +10,12 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // MATIKAN TRUNCATE PRODUK
-        // DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        // Product::truncate();
-        // DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         $this->call([
             StoreSeeder::class,
             UserSeeder::class,
             EmployeeSeeder::class,
             CategorySeeder::class,
-            AksesorisSeeder::class,
             PpobServerSeeder::class,
 
             PulsaProductSeeder::class,
@@ -31,6 +26,11 @@ class DatabaseSeeder extends Seeder
 
 
             \Database\Seeders\accessories\CableDataProductSeeder::class,
+            \Database\Seeders\accessories\ChargerSetProductSeeder::class,
+            \Database\Seeders\accessories\AdapterHeadProductSeeder::class,
+            \Database\Seeders\accessories\HeadsetEarphoneProductSeeder::class,
+            \Database\Seeders\Accessories\StorageProductSeeder::class,
+            \Database\Seeders\Accessories\PowerbankProductSeeder::class,
         ]);
     }
 }
