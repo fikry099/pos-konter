@@ -60,19 +60,14 @@ class Shift extends Model
      * LOGIKA & HELPER METHODS
      * ========================================================================= */
 
-    /**
-     * Cek apakah ada Shift yang sedang aktif ('open') SPESIFIK per cabang.
-     */
     public static function getActiveShift($storeId = null)
     {
-        // Jika store_id tidak dikirim manual, otomatis ambil store_id milik user yang sedang login
         if (!$storeId && auth()->check()) {
             $storeId = auth()->user()->store_id ?? session('selected_store_id');
         }
 
         $query = self::where('status', 'open');
 
-        // Filter wajib berdasarkan store_id cabang
         if ($storeId) {
             $query->where('store_id', $storeId);
         }
@@ -81,7 +76,7 @@ class Shift extends Model
     }
 
     /**
-     * Hitung Total Penjualan Shift (Hanya Transaksi Completed / Tidak Batal)
+     * Hitung Total Omset Penjualan Keseluruhan (Omset Murni / Fee Admin yang Hak Toko)
      */
     public function getTotalSalesAttribute(): float
     {
@@ -89,19 +84,44 @@ class Shift extends Model
     }
 
     /**
-     * Hitung Total Penjualan Tunai / Cash Shift (Spesifik Uang Fisik Laci)
+     * Hitung Net Arus Uang Murni yang MASUK ke LACI KASIR (Tunai Fisik)
+     * Keterangan:
+     * - Mengambil transaksi bertipe tunai/cash
+     * - KECUALI transaksi Tarik Tunai (invoice_code WD-%) yang uang fisiknya KELUAR dari laci
      */
     public function getTotalCashSalesAttribute(): float
     {
-        return (float) $this->transactions()
+        // 1. Transaksi Penjualan Tunai Biasa (Uang Masuk ke Laci)
+        $regularCash = (float) $this->transactions()
             ->where('status', 'completed')
             ->whereIn('payment_method', ['cash', 'tunai'])
+            ->where('invoice_code', 'NOT LIKE', 'WD-%')
             ->sum('total_price');
+
+        // 2. Transaksi Tarik Tunai dengan Admin Cash (Hanya Fee Admin Tunai yang Masuk ke Laci)
+        $adminCash = (float) $this->transactions()
+            ->where('status', 'completed')
+            ->where('invoice_code', 'LIKE', 'WD-%')
+            ->whereHas('details', function($qd) {
+                $qd->whereRaw('LOWER(custom_name) LIKE ?', ['%admin tunai%'])
+                   ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%admin cash%']);
+            })
+            ->sum('total_price');
+
+        return $regularCash + $adminCash;
     }
 
     /**
-     * Hitung Total Profit Shift (Hanya Transaksi Completed / Tidak Batal)
+     * Hitung Penjualan QRIS / Non-Tunai
      */
+    public function getTotalQrisSalesAttribute(): float
+    {
+        return (float) $this->transactions()
+            ->where('status', 'completed')
+            ->where('payment_method', 'qris')
+            ->sum('total_price');
+    }
+
     public function getTotalProfitAttribute(): float
     {
         return (float) $this->transactions()->where('status', 'completed')->sum('total_profit');
@@ -113,7 +133,7 @@ class Shift extends Model
     }
 
     /**
-     * Hitung Estimasi Uang Fisik Laci Kasir (Modal Awal + Tunai Sukses - Pengeluaran)
+     * Hitung Estimasi Uang Fisik Laci Kasir (Modal Awal + Tunai Masuk Murni - Pengeluaran Kas)
      */
     public function calculateExpectedCash(): float
     {
@@ -147,9 +167,6 @@ class Shift extends Model
         return $this->user->name ?? '-';
     }
 
-    /**
-     * Scope query untuk memfilter shift berdasarkan toko/cabang.
-     */
     public function scopeForStore($query, $storeId)
     {
         return $query->where('store_id', $storeId);

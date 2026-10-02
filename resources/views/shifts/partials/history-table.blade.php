@@ -28,11 +28,12 @@
             <tbody class="divide-y divide-slate-100 font-medium text-slate-700 text-xs sm:text-sm bg-white">
                 @forelse($shifts as $shift)
                     @php
-                        $cashSales = $shift->transactions->where('payment_method', 'cash')->sum('total_price');
-                        $qrisSales = $shift->transactions->where('payment_method', 'qris')->sum('total_price');
-                        $expenses  = $shift->expenses ? $shift->expenses->sum('amount') : 0;
-                        $expectedCash = $shift->cash_initial + $cashSales - $expenses;
-                        $difference = $shift->cash_actual ? ($shift->cash_actual - $expectedCash) : 0;
+                        // MENGGUNAKAN ATRIBUT & METHOD RESMI MODEL SHIFT YANG SUDAH DIPERBAIKI
+                        $cashSales    = $shift->total_cash_sales;
+                        $qrisSales    = $shift->total_qris_sales;
+                        $expenses     = $shift->total_expenses;
+                        $expectedCash = $shift->calculateExpectedCash();
+                        $difference   = $shift->cash_actual ? ($shift->cash_actual - $expectedCash) : $shift->difference;
                     @endphp
                     <tr class="hover:bg-indigo-50/40 transition">
                         <td class="py-3 px-3.5 font-bold text-slate-800 text-xs sm:text-sm">
@@ -69,7 +70,7 @@
                             @endif
                         </td>
                         <td class="py-3 px-3.5 text-center">
-                            <!-- TOMBOL RESI SHIFT (DIBERI PROPERTI SUPAYA TIDAK TERTUTUP FLOATING WIDGET) -->
+                            <!-- TOMBOL RESI SHIFT (DENGAN DATA MURNI DARI MODEL) -->
                             <button type="button" onclick="openShiftReceipt({{ json_encode([
                                 'id'            => $shift->id,
                                 'staff'         => preg_replace('/\s*\([^)]*\)/', '', $shift->staff_names ?? ($shift->user->name ?? 'Kasir')),
