@@ -48,7 +48,6 @@ const ADAPTER_HEAD_BRANDS = [
     { key: 'samsung', name: 'Samsung' }
 ];
 
-// DAFTAR MEREK UTAMA / POPULER KHUSUS HEADSET & EARPHONE
 const HEADSET_EARPHONE_BRANDS = [
     { key: 'robot', name: 'Robot' },
     { key: 'oraimo', name: 'Oraimo' },
@@ -62,7 +61,6 @@ const HEADSET_EARPHONE_BRANDS = [
     { key: 'log-on', name: 'Log-On' }
 ];
 
-// DAFTAR MEREK KHUSUS MMC & FLASHDISK (MEMORI)
 const STORAGE_BRANDS = [
     { key: 'robot', name: 'Robot' },
     { key: 'vivan', name: 'Vivan' },
@@ -71,7 +69,6 @@ const STORAGE_BRANDS = [
     { key: 'v-gen', name: 'V-Gen' }
 ];
 
-// DAFTAR MEREK KHUSUS POWERBANK
 const POWERBANK_BRANDS = [
     { key: 'oraimo', name: 'Oraimo' },
     { key: 'tecnix', name: 'Tecnix' },
@@ -118,7 +115,6 @@ function navigateToSubCategory(catType, title) {
         titleText.innerHTML = '<i class="fa-solid fa-list mr-2 text-indigo-600"></i> Pilih ' + title;
     }
 
-    // Sembunyikan semua grid sub-kategori utama
     let grids = [
         'sub_cellular_grid', 
         'sub_ewallet_grid', 
@@ -156,7 +152,7 @@ function selectProviderFilter(providerKey, title) {
     let catLower = (selectedCategory || '').toLowerCase();
     let provLower = (providerKey || '').toLowerCase();
 
-    // JIKA KATEGORI/PROVIDER ADALAH E-WALLET ATAU BANK, LANGSUNG BUKA MODAL NOMINAL BEBAS
+    // PENGECEKAN APAKAH TARGET MERUPAKAN BANK, E-WALLET, ATAU PROVIDER PULSA SELULER
     let isBankOrWalletTarget = (
         catLower.includes('wallet') || catLower.includes('ewallet') || 
         catLower.includes('bank') || catLower.includes('transfer') ||
@@ -164,24 +160,34 @@ function selectProviderFilter(providerKey, title) {
          'bca', 'bri', 'mandiri', 'bni', 'bsi', 'seabank', 'jago', 'cimb', 'permata', 'danamon', 'btn', 'bpd', 'lainnya'].includes(provLower)
     ) && !provLower.includes('powerbank') && provLower !== 'pb';
 
-    if (isBankOrWalletTarget) {
+    let isPulsaTarget = catLower.includes('pulsa') || catLower.includes('cellular') || catLower.includes('seluler') ||
+                        ['tsel', 'telkomsel', 'isat', 'indosat', 'tri', 'three', '3', 'xl', 'axis', 'smartfren', 'smart', 'by.u'].includes(provLower);
+
+    // JIKA YANG DIKLIK ADALAH BANK, E-WALLET, ATAU PROVIDER PULSA -> LANGSUNG BUKA MODAL NOMINAL BEBAS
+    if (isBankOrWalletTarget || isPulsaTarget) {
         let displayTitle = title || providerKey;
         if ((catLower.includes('bank') || catLower.includes('transfer')) && !displayTitle.toLowerCase().includes('bank')) {
             displayTitle = 'Bank ' + displayTitle;
+        } else if (isPulsaTarget && !displayTitle.toLowerCase().includes('pulsa')) {
+            displayTitle = 'Pulsa ' + displayTitle;
         }
+        
+        // Simpan title provider aktif
+        window.selectedProviderTitle = displayTitle;
+        
+        // Buka modal input nominal kustom secara otomatis
         openCustomAmountModal(displayTitle);
         return;
     }
 
     navLevel = 3;
     selectedProvider = providerKey.toLowerCase();
-    selectedBrand = 'all'; // Reset filter merek ke 'Semua Merek'
+    selectedBrand = 'all';
     window.selectedProviderTitle = title || providerKey;
 
     document.getElementById('view_sub_providers').classList.add('hidden');
     document.getElementById('view_products_grid').classList.remove('hidden');
     
-    // BERSIHKAN KARTU PRODUK BAWAAN
     let gridView = document.getElementById('view_products_grid');
     if (gridView) {
         let container = gridView.querySelector('.grid');
@@ -195,7 +201,6 @@ function selectProviderFilter(providerKey, title) {
         }
     }
 
-    // PENGECEKAN SIDEBAR MEREK
     let brandSidebar = document.getElementById('brand_sidebar_container');
     let isPowerbank   = provLower.includes('powerbank') || provLower.includes('pb');
     let isStorage     = provLower.includes('mmc') || provLower.includes('flashdisk') || provLower.includes('memori') || provLower.includes('memory') || provLower.includes('fd');
@@ -223,15 +228,11 @@ function selectProviderFilter(providerKey, title) {
     fetchProductsFromServer(selectedCategory, selectedProvider);
 }
 
-/**
- * FUNGSI DEDIKASI: Merender HTML Tombol Merek di Sidebar & Memperbarui Badge Jumlah Merek
- */
 function renderDynamicBrandList(category, provider) {
     let provLower = (provider || '').toLowerCase();
     let wrapper = document.getElementById('brand_list_wrapper');
     if (!wrapper) return;
 
-    // KONDISI PENENTUAN ARRAY MEREK
     let isPowerbank   = provLower.includes('powerbank') || provLower.includes('pb');
     let isStorage     = provLower.includes('mmc') || provLower.includes('flashdisk') || provLower.includes('memori') || provLower.includes('memory') || provLower.includes('fd');
     let isHeadset     = provLower.includes('headset') || provLower.includes('earphone') || provLower.includes('tws') || provLower.includes('hf') || provLower.includes('handsfree');
@@ -254,7 +255,6 @@ function renderDynamicBrandList(category, provider) {
         brandArray = ADAPTER_HEAD_BRANDS;
     }
 
-    // Update Badge Jumlah Merek Dinamis
     let countBadge = document.getElementById('brand_count_badge');
     if (countBadge) {
         countBadge.innerText = brandArray.length;
@@ -292,7 +292,6 @@ function renderDynamicBrandList(category, provider) {
     filterBrandList();
 }
 
-// 3. MENGARAH LANGSUNG KE PRODUK DARI UTAMA (PLN / LAINNYA)
 function navigateToDirectCategory(slugKey, title) {
     navLevel = 3;
     selectedCategory = slugKey.toLowerCase();
@@ -320,7 +319,6 @@ function navigateToDirectCategory(slugKey, title) {
     fetchProductsFromServer(selectedCategory, '');
 }
 
-// 4. TAMPILKAN SEMUA PRODUK ON-DEMAND
 function showAllProducts() {
     navLevel = 3;
     selectedCategory = 'all';
@@ -348,7 +346,6 @@ function showAllProducts() {
     fetchProductsFromServer('all', '');
 }
 
-// 5. FETCH AJAX DATA PRODUK
 function fetchProductsFromServer(category, provider) {
     let gridView = document.getElementById('view_products_grid');
     if (!gridView) return;
@@ -389,16 +386,20 @@ function renderProductsHTML(products, container) {
     let catStr = (selectedCategory || '').toLowerCase();
     let provStr = (selectedProvider || '').toLowerCase();
     
-    // PERKETAT KONDISI E-WALLET / BANK KUSTUM AGAR TIDAK KENA BENTROK KATA 'pb' POWERBANK
     let isBankOrWallet = (
         catStr.includes('bank') || catStr.includes('ewallet') || catStr.includes('wallet') || catStr.includes('transfer') ||
         provStr.includes('bank') || provStr.includes('ewallet') || provStr.includes('bca') || provStr.includes('bri') || provStr.includes('bni') || provStr.includes('mandiri') || provStr.includes('dana') || provStr.includes('ovo') || provStr.includes('gopay') || provStr.includes('shopeepay') || provStr.includes('linkaja')
     ) && !provStr.includes('powerbank') && provStr !== 'pb';
 
-    if (isBankOrWallet) {
+    let isPulsaContext = catStr.includes('pulsa') || catStr.includes('cellular') || catStr.includes('seluler') ||
+                         ['tsel', 'telkomsel', 'isat', 'indosat', 'tri', 'three', '3', 'xl', 'axis', 'smartfren', 'smart'].includes(provStr);
+
+    let shouldShowCustomCard = isBankOrWallet || isPulsaContext;
+
+    if (shouldShowCustomCard) {
         let providerTitleParam = (window.selectedProviderTitle || selectedProvider || '').replace(/'/g, "\\'");
 
-        let customDataName = "nominal bebas kustom transfer topup ewallet " + provStr;
+        let customDataName = "nominal bebas kustom pulsa transfer topup " + provStr;
         if (catStr.includes('bank') || provStr.includes('bank') || catStr.includes('transfer')) {
             customDataName = "nominal bebas kustom transfer bank " + provStr;
         }
@@ -425,7 +426,7 @@ function renderProductsHTML(products, container) {
 
                 <div>
                     <div class="text-xs font-semibold text-indigo-200 mb-2">
-                        Rp Bebas + Admin
+                        Rp Bebas + Admin/Margin
                     </div>
                     <button type="button" class="w-full bg-white text-indigo-700 hover:bg-indigo-50 text-xs font-black py-2.5 rounded-xl transition flex items-center justify-center space-x-1.5 shadow-sm active:scale-95">
                         <i class="fa-solid fa-keyboard text-xs"></i>
@@ -437,7 +438,7 @@ function renderProductsHTML(products, container) {
         container.insertAdjacentHTML('beforeend', customCardHTML);
     }
 
-    if ((!products || products.length === 0) && !isBankOrWallet) {
+    if ((!products || products.length === 0) && !shouldShowCustomCard) {
         container.innerHTML = `
             <div class="col-span-full bg-white rounded-3xl p-10 text-center text-gray-400 border border-gray-200">
                 <i class="fa-solid fa-box-open text-4xl mb-2"></i>
@@ -520,7 +521,6 @@ function renderProductsHTML(products, container) {
     applyProductFilters();
 }
 
-// 7. FILTER & MINI SEARCH SIDEBAR MEREK
 function filterBrandList() {
     let input = document.getElementById('search_brand_input');
     let filter = input ? input.value.toLowerCase().trim() : '';
@@ -540,7 +540,6 @@ function filterBrandList() {
 function selectBrandFilter(brandKey) {
     selectedBrand = brandKey.toLowerCase();
 
-    // Update style tombol aktif di sidebar
     let buttons = document.querySelectorAll('#brand_list_wrapper .brand-filter-btn');
     buttons.forEach(btn => {
         let attr = btn.getAttribute('data-brand-btn');
@@ -566,7 +565,6 @@ function resetBrandSidebarUI() {
     selectBrandFilter('all');
 }
 
-// 8. LOGIKA MUNDUR BERTAHAP SAAT KLIK TOMBOL KEMBALI
 function resetCategoryNavigation() {
     if (navLevel === 3) {
         navLevel = 2;
@@ -680,7 +678,6 @@ function applyProductFilters() {
 
         let matchSearch = searchKeyword === '' || name.includes(searchKeyword) || code.includes(searchKeyword);
         let matchPrice = (price >= minPrice && price <= maxPrice);
-        
         let matchBrand = (selectedBrand === 'all') || brand.includes(selectedBrand) || name.includes(selectedBrand);
 
         if (matchSearch && matchPrice && matchBrand) {

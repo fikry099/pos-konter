@@ -76,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Modul Pengeluaran Kas Operasional (Expenses)
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    Route::get('/expenses/export-excel', [ExpenseController::class, 'exportExcel'])->name('expenses.export_excel');
     Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
     Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
 
@@ -107,8 +108,9 @@ Route::middleware(['auth'])->group(function () {
         // Monitoring Shift, Absensi, & Audit Laci Seluruh Toko
         Route::get('/owner/monitoring', [DashboardController::class, 'monitoring'])->name('owner.monitoring');
 
-        // Pembukuan Keuangan, Rekap Bonus, & Detail Absensi Karyawan (Tab Baru)
+        // Pembukuan Keuangan, Export Excel, Rekap Bonus, & Detail Absensi Karyawan
         Route::get('/owner/bookkeeping', [BookkeepingController::class, 'index'])->name('owner.bookkeeping');
+        Route::get('/owner/bookkeeping/export', [BookkeepingController::class, 'exportExcel'])->name('owner.bookkeeping.export');
         Route::get('/owner/attendances/{user}', [BookkeepingController::class, 'userAttendanceDetail'])->name('owner.attendances.detail');
 
         // Halaman Khusus Riwayat Restok Barang
@@ -120,6 +122,7 @@ Route::middleware(['auth'])->group(function () {
         // Modul Pengeluaran Toko (Role Owner)
         Route::get('/owner/expenses', [ExpenseController::class, 'ownerIndex'])->name('owner.expenses.index');
         Route::post('/owner/expenses', [ExpenseController::class, 'ownerStore'])->name('owner.expenses.store');
+        Route::delete('/owner/expenses/{id}', [ExpenseController::class, 'ownerDestroy'])->name('owner.expenses.destroy');
         
     });
 

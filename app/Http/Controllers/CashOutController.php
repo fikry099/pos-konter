@@ -18,9 +18,6 @@ class CashOutController extends Controller
         return Auth::user()->store_id ?? session('selected_store_id') ?? 1;
     }
 
-    /**
-     * Halaman Form Tarik Tunai & Riwayat Tarik Tunai Hari Ini
-     */
     public function index()
     {
         $storeId = $this->getActiveStoreId();
@@ -41,9 +38,6 @@ class CashOutController extends Controller
         return view('cash-outs.index', compact('activeShift', 'todayCashOuts', 'storeName'));
     }
 
-    /**
-     * Memproses Transaksi Tarik Tunai
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -123,26 +117,21 @@ class CashOutController extends Controller
                 'profit'            => $adminFee,
             ]);
 
-            // 2. HITUNG PENGURANGAN NETT UANG KAS FISIK DI LACI
-            $netCashOutFromDrawer = ($adminMethod === 'cash') ? ($cashAmount - $adminFee) : $cashAmount;
-
-            // 3. CATAT EXPENSE SHIFT DENGAN KATEGORI 'cash_out'
-            // KUNCI PERBAIKAN: Menggunakan 'category' => 'cash_out' agar memotong fisik uang laci kasir,
-            // TETAPI TIDAK IKUT MENGURANGI LABA BERSIH OWNER DI BOOKKEEPINGCONTROLLER!
-            if ($netCashOutFromDrawer > 0) {
+            // 2. CATAT PENYERAHAN UANG FISIK DARI LACI (MURNI NOMINAL TARIK TUNAI)
+            if ($cashAmount > 0) {
                 Expense::create([
                     'store_id'    => $storeId,
                     'shift_id'    => $activeShift->id,
                     'user_id'     => Auth::id(),
-                    'category'    => 'cash_out', // <--- DIPERBAIKI (DARI 'operational' MENJADI 'cash_out')
+                    'category'    => 'cash_out',
                     'description' => 'Penyerahan Uang Laci: ' . $customName,
-                    'amount'      => $netCashOutFromDrawer,
+                    'amount'      => $cashAmount, // DIPERBAIKI: Menggunakan nominal murni $cashAmount
                 ]);
             }
 
             DB::commit();
 
-            return redirect()->route('transactions.index')->with('success', 'Tarik Tunai Rp ' . number_format($cashAmount, 0, ',', '.') . ' berhasil diproses! Uang laci terpotong Rp ' . number_format($netCashOutFromDrawer, 0, ',', '.') . ' & omset admin tercatat.');
+            return redirect()->route('transactions.index')->with('success', 'Tarik Tunai Rp ' . number_format($cashAmount, 0, ',', '.') . ' berhasil diproses! Uang laci terpotong Rp ' . number_format($cashAmount, 0, ',', '.') . ' & omset admin tercatat.');
 
         } catch (\Exception $e) {
             DB::rollBack();

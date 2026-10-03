@@ -30,9 +30,12 @@
         <div class="flex-1 w-full">
             <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-3.5">
                 
-                <!-- KARTU NOMINAL BEBAS -->
+                <!-- KARTU NOMINAL BEBAS (INITIAL DUMMY / DIRENDER JS SAAT SELECT PROVIDER) -->
                 <div id="card_custom_amount" class="hidden bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl shadow-md hover:shadow-indigo-200 p-3.5 flex flex-col justify-between transition cursor-pointer active:scale-98 group"
-                     onclick="openCustomAmountModal()">
+                     onclick="openCustomAmountModal(window.selectedProviderTitle || '')"
+                     data-name="nominal bebas kustom pulsa transfer topup"
+                     data-code="CUSTOM"
+                     data-price="0">
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-sm">Kustom</span>

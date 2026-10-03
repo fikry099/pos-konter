@@ -1,6 +1,6 @@
 <div class="space-y-3.5">
     
-    <!-- FILTER TABEL -->
+    <!-- FILTER TABEL & EXPORT EXCEL -->
     <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200/80">
         <form action="{{ route('expenses.index') }}" method="GET" class="flex flex-col sm:flex-row items-center gap-2.5">
             
@@ -24,7 +24,7 @@
                 </select>
             </div>
 
-            <!-- TOMBOL FILTER & RESET -->
+            <!-- TOMBOL FILTER, RESET, & EXPORT EXCEL -->
             <div class="flex items-center space-x-2 w-full sm:w-auto shrink-0">
                 <button type="submit" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs px-3.5 py-2 rounded-xl font-extrabold transition shadow-md shadow-indigo-200 flex items-center justify-center space-x-1.5 cursor-pointer">
                     <i class="fa-solid fa-filter text-[10px]"></i>
@@ -35,6 +35,13 @@
                         Reset
                     </a>
                 @endif
+
+                <!-- TOMBOL EXPORT EXCEL -->
+                <a href="{{ route('expenses.export_excel', request()->only(['date', 'shift_id'])) }}" 
+                   class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs px-3.5 py-2 rounded-xl font-extrabold transition shadow-md shadow-emerald-200 flex items-center justify-center space-x-1.5 cursor-pointer">
+                    <i class="fa-solid fa-file-excel text-[11px]"></i>
+                    <span>Export Excel</span>
+                </a>
             </div>
         </form>
     </div>
@@ -62,7 +69,6 @@
                             <td class="py-2.5 px-3.5 font-bold text-slate-800 text-xs sm:text-sm">
                                 {{ $exp->description }}
                             </td>
-                            <!-- BADGE KATEGORI PENGELUARAN -->
                             <td class="py-2.5 px-3.5 whitespace-nowrap">
                                 @if(($exp->category ?? 'operational') === 'operational')
                                     <span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md text-[10px] font-extrabold">Operasional</span>

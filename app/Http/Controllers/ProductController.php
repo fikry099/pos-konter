@@ -80,7 +80,15 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $categories = Category::select('id', 'name', 'parent_id')->get();
+        $categories = Category::whereNull('parent_id')
+            ->select('id', 'name', 'slug', 'parent_id')
+            ->with([
+                'children:id,name,slug,parent_id',
+                'children.children:id,name,slug,parent_id'
+            ])
+            ->orderBy('name', 'asc')
+            ->get();
+
         return view('products.create', compact('categories'));
     }
 
@@ -132,10 +140,17 @@ class ProductController extends Controller
      */
     public function edit($id)
     {
-        $product    = Product::findOrFail($id);
+        $product = Product::findOrFail($id);
         
-        // OPTIMASI: Mengambil data kategori ringan tanpa eager loading 'allChildren'
-        $categories = Category::select('id', 'name', 'parent_id')->get();
+        // AMBIL HANYA KATALOG UTAMA (LEVEL 1) BESERTA RELASI ANAKNYA
+        $categories = Category::whereNull('parent_id')
+            ->select('id', 'name', 'slug', 'parent_id')
+            ->with([
+                'children:id,name,slug,parent_id',
+                'children.children:id,name,slug,parent_id'
+            ])
+            ->orderBy('name', 'asc')
+            ->get();
         
         $storeId    = $this->getActiveStoreId();
         $storeStock = StoreProductStock::where('store_id', $storeId)

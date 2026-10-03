@@ -10,6 +10,8 @@ use App\Models\Expense;
 use App\Models\Store;
 use App\Models\Attendance;
 use App\Models\Restock;
+use App\Exports\BookkeepingExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,16 +23,10 @@ class BookkeepingController extends Controller
     }
 
     /**
-     * Halaman Utama Pembukuan & Rekap Bonus Karyawan (Role Owner)
+     * Helper privat untuk mengambil data rekap keuangan dan bonus karyawan
      */
-    public function index(Request $request)
+    private function getBookkeepingData($storeId, $month, $year)
     {
-        $storeId = $this->getActiveStoreId();
-        $selectedStore = Store::find($storeId);
-
-        $month = str_pad($request->input('month', date('m')), 2, '0', STR_PAD_LEFT);
-        $year  = $request->input('year', date('Y'));
-
         $bonusRate = 1000;
 
         // 1. Ambil HANYA user role KARYAWAN
@@ -104,63 +100,108 @@ class BookkeepingController extends Controller
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month);
 
-        $transactions = (clone $trxQuery)->get();
+            $transactions = (clone $trxQuery)->get();
 
-        $totalOmset     = (float) $transactions->sum('total_price');
-        $totalCost      = (float) $transactions->sum('total_cost');
-        $grossProfit    = (float) $transactions->sum('total_profit');
+            $totalOmset     = (float) $transactions->sum('total_price');
+            $totalCost      = (float) $transactions->sum('total_cost');
+            $grossProfit    = (float) $transactions->sum('total_profit');
+    
+            // Hitung Uang Tunai Penjualan
+            $totalCash = (float) $transactions->filter(function($trx) {
+                $method = strtolower($trx->payment_method ?? '');
+                return in_array($method, ['cash', 'tunai', 'cash/tunai', '']);
+            })->sum('total_price');
+    
+            // Hitung QRIS & Non-Tunai
+            $totalQris = (float) $transactions->filter(function($trx) {
+                $method = strtolower($trx->payment_method ?? '');
+                return in_array($method, ['qris', 'transfer', 'bank', 'ewallet', 'non-cash']);
+            })->sum(function($trx) {
+                if (str_starts_with($trx->invoice_code ?? '', 'WD-')) {
+                    return (float) ($trx->pay_amount ?? 0);
+                }
+                return (float) $trx->total_price;
+            });
+    
+            $totalExpenses  = (float) Expense::forStore($storeId)
+                ->whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->where('category', 'operational')
+                ->sum('amount');
+    
+            $totalBonusAllocation = $employeeReport->sum('total_bonus');
+            
+            // PERUBAHAN LOGIKA: Beban operasional TIDAK LAGI mengurangi laba bersih
+            // Laba bersih sekarang hanya Gross Profit dikurangi Alokasi Bonus Karyawan
+            $netProfit = $grossProfit - $totalBonusAllocation;
+    
+            $financialSummary = [
+                'total_omset'            => $totalOmset,
+                'total_cost'             => $totalCost,
+                'gross_profit'           => $grossProfit,
+                'total_expenses'         => $totalExpenses,
+                'total_bonus_allocation' => $totalBonusAllocation,
+                'net_profit'             => $netProfit,
+                'total_cash'             => $totalCash,
+                'total_qris'             => $totalQris,
+            ];
 
-        // Hitung Uang Tunai Penjualan
-        $totalCash = (float) $transactions->filter(function($trx) {
-            $method = strtolower($trx->payment_method ?? '');
-            return in_array($method, ['cash', 'tunai', 'cash/tunai', '']);
-        })->sum('total_price');
-
-        // PERBAIKAN: Hitung QRIS & Non-Tunai
-        // Untuk transaksi Tarik Tunai (WD-), gunakan pay_amount (Nominal Cash Ditarik + Biaya Admin)
-        $totalQris = (float) $transactions->filter(function($trx) {
-            $method = strtolower($trx->payment_method ?? '');
-            return in_array($method, ['qris', 'transfer', 'bank', 'ewallet', 'non-cash']);
-        })->sum(function($trx) {
-            if (str_starts_with($trx->invoice_code ?? '', 'WD-')) {
-                return (float) ($trx->pay_amount ?? 0);
-            }
-            return (float) $trx->total_price;
-        });
-
-        $totalExpenses  = (float) Expense::forStore($storeId)
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->where('category', 'operational')
-            ->sum('amount');
-
-        $totalBonusAllocation = $employeeReport->sum('total_bonus');
-        $netProfit            = $grossProfit - $totalExpenses - $totalBonusAllocation;
-
-        $financialSummary = [
-            'total_omset'            => $totalOmset,
-            'total_cost'             => $totalCost,
-            'gross_profit'           => $grossProfit,
-            'total_expenses'         => $totalExpenses,
-            'total_bonus_allocation' => $totalBonusAllocation,
-            'net_profit'             => $netProfit,
-            'total_cash'             => $totalCash,
-            'total_qris'             => $totalQris, // <--- SUDAH AKURAT MENGHITUNG TOTAL TRANSFER TARIK TUNAI
+        return [
+            'employeeReport'   => $employeeReport,
+            'financialSummary' => $financialSummary,
         ];
+    }
+
+    /**
+     * Halaman Utama Pembukuan & Rekap Bonus Karyawan (Role Owner)
+     */
+    public function index(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+        $selectedStore = Store::find($storeId);
+
+        $month = str_pad($request->input('month', date('m')), 2, '0', STR_PAD_LEFT);
+        $year  = $request->input('year', date('Y'));
+
+        $data = $this->getBookkeepingData($storeId, $month, $year);
 
         $totalRestockCost = Restock::where('store_id', $storeId)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->sum('total_cost');
 
-        return view('owner.bookkeeping.index', compact(
-            'selectedStore', 
-            'month', 
-            'year', 
-            'employeeReport', 
-            'financialSummary', 
-            'totalRestockCost'
-        ));
+        return view('owner.bookkeeping.index', [
+            'selectedStore'    => $selectedStore,
+            'month'            => $month,
+            'year'             => $year,
+            'employeeReport'   => $data['employeeReport'],
+            'financialSummary' => $data['financialSummary'],
+            'totalRestockCost' => $totalRestockCost
+        ]);
+    }
+
+    /**
+     * Export Laporan Pembukuan ke Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        $storeId = $this->getActiveStoreId();
+        $month   = str_pad($request->input('month', date('m')), 2, '0', STR_PAD_LEFT);
+        $year    = $request->input('year', date('Y'));
+
+        $data = $this->getBookkeepingData($storeId, $month, $year);
+
+        $fileName = 'Pembukuan_Laporan_' . date('F', mktime(0, 0, 0, (int)$month, 1)) . "_{$year}.xlsx";
+
+        return Excel::download(
+            new BookkeepingExport(
+                $data['financialSummary'], 
+                $data['employeeReport'], 
+                $month, 
+                $year
+            ), 
+            $fileName
+        );
     }
 
     public function restockHistory(Request $request)

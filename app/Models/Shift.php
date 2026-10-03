@@ -76,7 +76,7 @@ class Shift extends Model
     }
 
     /**
-     * Hitung Total Omset Penjualan Keseluruhan (Omset Murni / Fee Admin yang Hak Toko)
+     * Hitung Total Omset Penjualan Keseluruhan
      */
     public function getTotalSalesAttribute(): float
     {
@@ -84,21 +84,18 @@ class Shift extends Model
     }
 
     /**
-     * Hitung Net Arus Uang Murni yang MASUK ke LACI KASIR (Tunai Fisik)
-     * Keterangan:
-     * - Mengambil transaksi bertipe tunai/cash
-     * - KECUALI transaksi Tarik Tunai (invoice_code WD-%) yang uang fisiknya KELUAR dari laci
+     * Hitung Total Uang Tunai Murni yang MASUK ke Laci Kasir
      */
     public function getTotalCashSalesAttribute(): float
     {
-        // 1. Transaksi Penjualan Tunai Biasa (Uang Masuk ke Laci)
+        // 1. Transaksi Penjualan Tunai Biasa (Bukan Tarik Tunai)
         $regularCash = (float) $this->transactions()
             ->where('status', 'completed')
             ->whereIn('payment_method', ['cash', 'tunai'])
             ->where('invoice_code', 'NOT LIKE', 'WD-%')
             ->sum('total_price');
 
-        // 2. Transaksi Tarik Tunai dengan Admin Cash (Hanya Fee Admin Tunai yang Masuk ke Laci)
+        // 2. Transaksi Tarik Tunai yang Admin-nya dibayar Tunai oleh Pelanggan
         $adminCash = (float) $this->transactions()
             ->where('status', 'completed')
             ->where('invoice_code', 'LIKE', 'WD-%')
@@ -112,14 +109,28 @@ class Shift extends Model
     }
 
     /**
-     * Hitung Penjualan QRIS / Non-Tunai
+     * Hitung Total Penjualan QRIS / Non-Tunai Murni
      */
     public function getTotalQrisSalesAttribute(): float
     {
-        return (float) $this->transactions()
+        // 1. Transaksi QRIS / Transfer Biasa
+        $regularQris = (float) $this->transactions()
             ->where('status', 'completed')
-            ->where('payment_method', 'qris')
+            ->whereIn('payment_method', ['qris', 'transfer'])
+            ->where('invoice_code', 'NOT LIKE', 'WD-%')
             ->sum('total_price');
+
+        // 2. Transaksi Tarik Tunai yang Admin-nya JUGAA dikirim via Transfer/QRIS
+        $adminQris = (float) $this->transactions()
+            ->where('status', 'completed')
+            ->where('invoice_code', 'LIKE', 'WD-%')
+            ->whereHas('details', function($qd) {
+                $qd->whereRaw('LOWER(custom_name) LIKE ?', ['%admin transfer%'])
+                   ->orWhereRaw('LOWER(custom_name) LIKE ?', ['%admin qris%']);
+            })
+            ->sum('total_price');
+
+        return $regularQris + $adminQris;
     }
 
     public function getTotalProfitAttribute(): float
@@ -127,13 +138,17 @@ class Shift extends Model
         return (float) $this->transactions()->where('status', 'completed')->sum('total_profit');
     }
 
+    /**
+     * Total Seluruh Uang Kas yang KELUAR dari Laci (Pengeluaran Operasional + Penyerahan Tarik Tunai)
+     */
     public function getTotalExpensesAttribute(): float
     {
         return (float) $this->expenses()->sum('amount');
     }
 
     /**
-     * Hitung Estimasi Uang Fisik Laci Kasir (Modal Awal + Tunai Masuk Murni - Pengeluaran Kas)
+     * Hitung Estimasi Uang Fisik Laci Kasir:
+     * Modal Awal + Total Uang Tunai Masuk - Total Uang Tunai Keluar
      */
     public function calculateExpectedCash(): float
     {
